@@ -1,0 +1,14 @@
+{
+    "agents": [
+        "junie",
+        "cursor",
+        "codex"
+    ],
+    "guidelines": true,
+    "herd_mcp": false,
+    "mcp": true,
+    "sail": false,
+    "skills": [
+        "wayfinder-development"
+    ]
+}
