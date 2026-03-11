@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'stratz' => [
+        'endpoint' => env('STRATZ_ENDPOINT', 'https://api.stratz.com/graphql'),
+        'token' => env('STRATZ_TOKEN'),
+        'timeout' => (int) env('STRATZ_TIMEOUT', 20),
+    ],
+
 ];

@@ -16,6 +16,10 @@
 .env.production
 .phpactor.json
 .phpunit.result.cache
+.serena
+.mcp.json
+.agents
+AGENTS.md
 Homestead.json
 Homestead.yaml
 npm-debug.log

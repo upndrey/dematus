@@ -1,0 +1,94 @@
+type Query {
+    stratzLeagueMatches(leagueId: Int!, take: Int = 20, skip: Int = 0): [StratzMatch!]!
+        @field(resolver: "App\\GraphQL\\Queries\\StratzQuery@leagueMatches")
+
+    stratzMatch(matchId: ID!): StratzMatch
+        @field(resolver: "App\\GraphQL\\Queries\\StratzQuery@match")
+
+    stratzProPlayers: [StratzProPlayer!]!
+        @field(resolver: "App\\GraphQL\\Queries\\StratzQuery@proPlayers")
+
+    stratzDraft(input: StratzDraftInput!): StratzDraftResult
+        @field(resolver: "App\\GraphQL\\Queries\\StratzQuery@draft")
+}
+
+input StratzDraftInput {
+    matchId: Int
+    gameMode: Int
+    gameVersionId: Int
+    bans: [Int!]
+    players: [StratzDraftPlayerInput!]!
+}
+
+input StratzDraftPlayerInput {
+    slot: Int!
+    heroId: Int!
+    steamAccountId: ID
+}
+
+type StratzMatch {
+    id: ID
+    didRadiantWin: Boolean
+    durationSeconds: Int
+    startDateTime: Int
+    leagueId: Int
+    radiantTeamId: ID
+    direTeamId: ID
+    gameMode: Int
+    lobbyType: Int
+    players: [StratzMatchPlayer!]!
+    pickBans: [StratzPickBan!]!
+}
+
+type StratzMatchPlayer {
+    steamAccountId: ID
+    heroId: Int
+    isRadiant: Boolean
+    kills: Int
+    deaths: Int
+    assists: Int
+    position: String
+    imp: Float
+}
+
+type StratzPickBan {
+    isPick: Boolean
+    heroId: Int
+    isRadiant: Boolean
+    bannedHeroId: Int
+    order: Int
+}
+
+type StratzProPlayer {
+    id: ID
+    name: String
+    realName: String
+    isPro: Boolean
+    teamId: ID
+    position: String
+    countries: [String!]!
+}
+
+type StratzDraftResult {
+    midOutcome: Float
+    safeOutcome: Float
+    offOutcome: Float
+    winValues: [Float!]!
+    durationValues: [Float!]!
+    players: [StratzDraftPlayer!]!
+}
+
+type StratzDraftPlayer {
+    slot: Int
+    position: String
+    positionValues: [Float!]!
+    heroes: [StratzDraftHero!]!
+}
+
+type StratzDraftHero {
+    heroId: Int
+    pickValue: Float
+    winValues: [Float!]!
+    score: Float
+    letter: String
+}
