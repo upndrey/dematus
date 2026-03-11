@@ -73,7 +73,7 @@ class StratzController
     public function draft(FetchDraftRequest $request, StratzService $stratzService): JsonResponse|RedirectResponse
     {
         try {
-            $draft = $stratzService->getDraft($request->toDraftRequest());
+            $draft = $stratzService->getDraftFromMatchId($request->integer('match_id'));
 
             return $this->respond($request, 'draft', $draft);
         } catch (Throwable $throwable) {

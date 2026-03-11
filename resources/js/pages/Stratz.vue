@@ -11,7 +11,7 @@
                 >
                     <div class="space-y-2">
                         <p
-                            class="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-300/80"
+                            class="text-xs font-semibold tracking-[0.35em] text-cyan-300/80 uppercase"
                         >
                             STRATZ Workspace
                         </p>
@@ -20,7 +20,8 @@
                         </h1>
                         <p class="max-w-3xl text-sm leading-6 text-slate-300">
                             Разделите работу по сценариям: итоговые draft-вычисления,
-                            список игр лиги, данные по матчу и выгрузка про-игроков.
+                            список игр лиги, данные по матчу и выгрузка
+                            про-игроков.
                         </p>
                     </div>
                     <div
@@ -52,7 +53,7 @@
                                 tab.label
                             }}</span>
                             <span
-                                class="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.25em]"
+                                class="rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.25em] uppercase"
                                 :class="
                                     activeTab === tab.id
                                         ? tab.badgeClasses
@@ -82,132 +83,53 @@
             >
                 <div class="mb-5 flex flex-col gap-2">
                     <p
-                        class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-300"
+                        class="text-xs font-semibold tracking-[0.3em] text-amber-300 uppercase"
                     >
                         Итоговые вычисления
                     </p>
                     <h2 class="text-xl font-semibold">Draft</h2>
                     <p class="max-w-3xl text-sm text-slate-300">
-                        Соберите 10 слотов, при необходимости укажите матч,
-                        версию игры и баны, затем получите рассчитанные исходы.
+                        Введите только ID матча. Backend сам соберет payload для
+                        STRATZ Plus Draft из пиков, банов, игроков, режима и
+                        версии игры.
                     </p>
                 </div>
 
-                <form class="flex flex-col gap-4" @submit.prevent="submitDraft">
-                    <div class="grid gap-3 md:grid-cols-3">
-                        <label class="flex flex-col gap-2 text-sm">
-                            Match ID
-                            <input
-                                v-model="draftForm.matchId"
-                                type="number"
-                                min="1"
-                                class="rounded-md border border-slate-700 bg-slate-950 px-3 py-2"
-                            />
-                        </label>
-                        <label class="flex flex-col gap-2 text-sm">
-                            Game Mode
-                            <input
-                                v-model="draftForm.gameMode"
-                                type="number"
-                                min="1"
-                                class="rounded-md border border-slate-700 bg-slate-950 px-3 py-2"
-                            />
-                        </label>
-                        <label class="flex flex-col gap-2 text-sm">
-                            Game Version ID
-                            <input
-                                v-model="draftForm.gameVersionId"
-                                type="number"
-                                min="1"
-                                class="rounded-md border border-slate-700 bg-slate-950 px-3 py-2"
-                            />
-                        </label>
-                    </div>
-
+                <form
+                    class="flex flex-col gap-4 md:max-w-xl"
+                    @submit.prevent="submitDraft"
+                >
                     <label class="flex flex-col gap-2 text-sm">
-                        Bans (через запятую)
+                        Match ID
                         <input
-                            v-model="draftForm.bans"
-                            placeholder="1,2,3"
+                            v-model="draftForm.matchId"
+                            type="number"
+                            min="1"
+                            required
                             class="rounded-md border border-slate-700 bg-slate-950 px-3 py-2"
                         />
                     </label>
 
                     <div
-                        class="overflow-auto rounded-lg border border-slate-800"
+                        class="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-xs leading-6 text-slate-400"
                     >
-                        <table class="w-full min-w-[720px] text-sm">
-                            <thead class="bg-slate-900/80 text-slate-200">
-                                <tr>
-                                    <th class="px-3 py-2 text-left">Slot</th>
-                                    <th class="px-3 py-2 text-left">Hero</th>
-                                    <th class="px-3 py-2 text-left">
-                                        Steam Account ID
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr
-                                    v-for="player in draftForm.players"
-                                    :key="player.slot"
-                                    class="border-t border-slate-800"
-                                >
-                                    <td
-                                        class="px-3 py-2 font-mono text-xs text-slate-300"
-                                    >
-                                        {{ player.slot }}
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        <select
-                                            v-model="player.heroId"
-                                            required
-                                            class="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2"
-                                        >
-                                            <option value="">
-                                                Выберите героя
-                                            </option>
-                                            <option
-                                                v-for="hero in heroes"
-                                                :key="hero.id"
-                                                :value="hero.id"
-                                            >
-                                                {{ hero.title }}
-                                            </option>
-                                        </select>
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        <input
-                                            v-model="player.steamAccountId"
-                                            type="number"
-                                            min="1"
-                                            placeholder="необязательно"
-                                            class="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2"
-                                        />
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        Красивый вывод покажет winner и odds из массива
+                        <code>winValues</code>: первый элемент как старт с
+                        20-й минуты, а финальный элемент как последнюю доступную
+                        точку массива.
                     </div>
 
-                    <div
-                        class="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4 md:flex-row md:items-center md:justify-between"
+                    <button
+                        type="submit"
+                        class="w-full rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400 disabled:opacity-60 md:w-auto"
+                        :disabled="isLoading('draft')"
                     >
-                        <p class="text-xs text-slate-400">
-                            {{ heroes.length }} героев в enum. Слоты 0-4 — Radiant,
-                            5-9 — Dire.
-                        </p>
-                        <button
-                            type="submit"
-                            class="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400 disabled:opacity-60"
-                            :disabled="isLoading('draft')"
-                        >
-                            {{
-                                isLoading('draft')
-                                    ? 'Загрузка...'
-                                    : 'Выполнить draft'
-                            }}
-                        </button>
-                    </div>
+                        {{
+                            isLoading('draft')
+                                ? 'Загрузка...'
+                                : 'Выполнить draft по матчу'
+                        }}
+                    </button>
                 </form>
             </section>
 
@@ -217,16 +139,14 @@
             >
                 <div class="mb-5 flex flex-col gap-2">
                     <p
-                        class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300"
+                        class="text-xs font-semibold tracking-[0.3em] text-sky-300 uppercase"
                     >
                         Игры лиги
                     </p>
-                    <h2 class="text-xl font-semibold">
-                        Получение игр лиги
-                    </h2>
+                    <h2 class="text-xl font-semibold">Получение игр лиги</h2>
                     <p class="max-w-3xl text-sm text-slate-300">
-                        Запросите список матчей конкретной лиги, управляя размером
-                        выборки и смещением.
+                        Запросите список матчей конкретной лиги, управляя
+                        размером выборки и смещением.
                     </p>
                 </div>
 
@@ -284,7 +204,7 @@
             >
                 <div class="mb-5 flex flex-col gap-2">
                     <p
-                        class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-300"
+                        class="text-xs font-semibold tracking-[0.3em] text-emerald-300 uppercase"
                     >
                         Матч
                     </p>
@@ -292,8 +212,8 @@
                         Получение данных по матчу
                     </h2>
                     <p class="max-w-3xl text-sm text-slate-300">
-                        Получите подробные данные по одному матчу: игроков, пики и
-                        баны, режим игры и результат.
+                        Получите подробные данные по одному матчу: игроков,
+                        пики и баны, режим игры и результат.
                     </p>
                 </div>
 
@@ -317,9 +237,7 @@
                         :disabled="isLoading('match')"
                     >
                         {{
-                            isLoading('match')
-                                ? 'Загрузка...'
-                                : 'Получить матч'
+                            isLoading('match') ? 'Загрузка...' : 'Получить матч'
                         }}
                     </button>
                 </form>
@@ -331,24 +249,24 @@
             >
                 <div class="mb-5 flex flex-col gap-2">
                     <p
-                        class="text-xs font-semibold uppercase tracking-[0.3em] text-violet-300"
+                        class="text-xs font-semibold tracking-[0.3em] text-violet-300 uppercase"
                     >
                         Про-игроки
                     </p>
                     <h2 class="text-xl font-semibold">
-                        Получение Про-игроков
+                        Получение про-игроков
                     </h2>
                     <p class="max-w-3xl text-sm text-slate-300">
-                        Запросите актуальный список профессиональных игроков STRATZ
-                        с никами, странами, командами и позицией.
+                        Запросите актуальный список профессиональных игроков
+                        STRATZ с никами, странами, командами и позицией.
                     </p>
                 </div>
 
                 <button
                     type="button"
-                    @click="submitProPlayers"
                     class="w-full rounded-md bg-violet-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-violet-400 disabled:opacity-60 md:w-auto"
                     :disabled="isLoading('pro_players')"
+                    @click="submitProPlayers"
                 >
                     {{
                         isLoading('pro_players')
@@ -371,38 +289,119 @@
             >
                 <h2 class="mb-3 text-lg font-medium">
                     Результат:
-                    <span class="font-mono text-xs uppercase tracking-wider">{{
+                    <span class="font-mono text-xs tracking-wider uppercase">{{
                         result.type
                     }}</span>
                 </h2>
-                <div v-if="result.type === 'pro_players'">
+
+                <div v-if="result.type === 'draft' && draftSummary" class="space-y-5">
+                    <div class="rounded-2xl border border-amber-400/20 bg-slate-950/70 p-4">
+                        <div class="mb-3 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <p class="text-xs font-semibold tracking-[0.3em] text-amber-300 uppercase">
+                                    Красивый вид
+                                </p>
+                                <h3 class="text-base font-semibold text-slate-100">
+                                    Сводка по draft odds
+                                </h3>
+                            </div>
+                            <div
+                                class="inline-flex w-fit rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]"
+                                :class="
+                                    draftSummary.winner === 'radiant'
+                                        ? 'text-emerald-300'
+                                        : 'text-rose-300'
+                                "
+                            >
+                                Winner: {{ draftSummary.winner }}
+                            </div>
+                        </div>
+
+                        <div class="overflow-auto rounded-xl border border-slate-800">
+                            <table class="w-full min-w-[960px] text-sm">
+                                <thead class="bg-slate-900/90 text-slate-200">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">Match ID</th>
+                                        <th class="px-3 py-2 text-left">Winner</th>
+                                        <th class="px-3 py-2 text-left">Radiant odds 1</th>
+                                        <th class="px-3 py-2 text-left">Radiant odds 2</th>
+                                        <th class="px-3 py-2 text-left">Dire odds 1</th>
+                                        <th class="px-3 py-2 text-left">Dire odds 2</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-t border-slate-800 bg-slate-950/60">
+                                        <td class="px-3 py-3 font-mono text-xs text-slate-300">
+                                            {{ draftSummary.match_id }}
+                                        </td>
+                                        <td class="px-3 py-3 capitalize">
+                                            {{ draftSummary.winner }}
+                                        </td>
+                                        <td class="px-3 py-3 text-emerald-300">
+                                            {{ formatOdds(draftSummary.radiant_odds_1) }}
+                                        </td>
+                                        <td class="px-3 py-3 text-emerald-300">
+                                            {{ formatOdds(draftSummary.radiant_odds_2) }}
+                                        </td>
+                                        <td class="px-3 py-3 text-rose-300">
+                                            {{ formatOdds(draftSummary.dire_odds_1) }}
+                                        </td>
+                                        <td class="px-3 py-3 text-rose-300">
+                                            {{ formatOdds(draftSummary.dire_odds_2) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                        <div class="mb-3">
+                            <p class="text-xs font-semibold tracking-[0.3em] text-slate-400 uppercase">
+                                Request
+                            </p>
+                            <h3 class="text-base font-semibold text-slate-100">
+                                Сырой JSON запроса для STRATZ Plus Draft
+                            </h3>
+                        </div>
+                        <pre
+                            class="max-h-[50vh] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs text-slate-200"
+                        >{{ formatJson(draftRequestData) }}</pre>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                        <div class="mb-3">
+                            <p class="text-xs font-semibold tracking-[0.3em] text-slate-400 uppercase">
+                                Raw
+                            </p>
+                            <h3 class="text-base font-semibold text-slate-100">
+                                Сырой ответ STRATZ Plus Draft
+                            </h3>
+                        </div>
+                        <pre
+                            class="max-h-[50vh] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs text-slate-200"
+                        >{{ formatJson(draftRawData) }}</pre>
+                    </div>
+                </div>
+
+                <div v-else-if="result.type === 'pro_players'">
                     <p class="mb-3 text-sm text-slate-300">
                         Найдено
-                        {{ Array.isArray(result.data) ? result.data.length : 0 }}
+                        {{
+                            Array.isArray(result.data) ? result.data.length : 0
+                        }}
                         pro-игроков.
                     </p>
-                    <div
-                        class="overflow-auto rounded-lg border border-slate-800"
-                    >
+                    <div class="overflow-auto rounded-lg border border-slate-800">
                         <table class="w-full min-w-[900px] text-sm">
                             <thead class="bg-slate-900/80 text-slate-200">
                                 <tr>
-                                    <th class="px-3 py-2 text-left">
-                                        Player ID
-                                    </th>
-                                    <th class="px-3 py-2 text-left">
-                                        Nickname
-                                    </th>
-                                    <th class="px-3 py-2 text-left">
-                                        Real Name
-                                    </th>
+                                    <th class="px-3 py-2 text-left">Player ID</th>
+                                    <th class="px-3 py-2 text-left">Nickname</th>
+                                    <th class="px-3 py-2 text-left">Real Name</th>
                                     <th class="px-3 py-2 text-left">Team ID</th>
-                                    <th class="px-3 py-2 text-left">
-                                        Position
-                                    </th>
-                                    <th class="px-3 py-2 text-left">
-                                        Countries
-                                    </th>
+                                    <th class="px-3 py-2 text-left">Position</th>
+                                    <th class="px-3 py-2 text-left">Countries</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -411,23 +410,13 @@
                                     :key="`${player.id}-${player.teamId}`"
                                     class="border-t border-slate-800"
                                 >
-                                    <td
-                                        class="px-3 py-2 font-mono text-xs text-slate-300"
-                                    >
+                                    <td class="px-3 py-2 font-mono text-xs text-slate-300">
                                         {{ player.id || '—' }}
                                     </td>
-                                    <td class="px-3 py-2">
-                                        {{ player.name || '—' }}
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        {{ player.realName || '—' }}
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        {{ player.teamId || '—' }}
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        {{ player.position || '—' }}
-                                    </td>
+                                    <td class="px-3 py-2">{{ player.name || '—' }}</td>
+                                    <td class="px-3 py-2">{{ player.realName || '—' }}</td>
+                                    <td class="px-3 py-2">{{ player.teamId || '—' }}</td>
+                                    <td class="px-3 py-2">{{ player.position || '—' }}</td>
                                     <td class="px-3 py-2">
                                         {{
                                             (Array.isArray(player.countries)
@@ -441,11 +430,11 @@
                         </table>
                     </div>
                 </div>
+
                 <div v-else>
                     <pre
                         class="max-h-[50vh] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs text-slate-200"
-                        >{{ formatJson(result.data) }}
-                    </pre>
+                    >{{ formatJson(result.data) }}</pre>
                 </div>
             </section>
         </div>
@@ -455,15 +444,27 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 
-interface HeroPayload {
-    id: number;
-    name: string;
-    title: string;
-}
-
 type StratzTab = 'draft' | 'league' | 'match' | 'proPlayers';
 
-const props = defineProps<{ heroes: HeroPayload[] }>();
+type DraftFormattedResult = {
+    match_id: number;
+    winner: 'radiant' | 'dire';
+    radiant_odds_1: number | null;
+    radiant_odds_2: number | null;
+    dire_odds_1: number | null;
+    dire_odds_2: number | null;
+};
+
+type DraftResultPayload = {
+    formatted?: DraftFormattedResult;
+    request?: unknown;
+    raw?: unknown;
+};
+
+type StratzResult = {
+    type: string;
+    data: any;
+};
 
 const tabs: Array<{
     id: StratzTab;
@@ -477,8 +478,7 @@ const tabs: Array<{
         id: 'draft',
         label: 'Таб итоговых вычислений',
         shortLabel: 'Draft',
-        description:
-            'Собрать драфт, баны и слоты игроков для итоговых расчетов.',
+        description: 'Собрать draft-расчет автоматически по одному match ID.',
         activeClasses: 'border-amber-400/50 bg-amber-500/10 text-amber-50',
         badgeClasses: 'border-amber-300/40 bg-amber-300/10 text-amber-100',
     },
@@ -486,8 +486,7 @@ const tabs: Array<{
         id: 'league',
         label: 'Таб получения игр лиги',
         shortLabel: 'League',
-        description:
-            'Запросить пачку матчей по league ID с take и skip.',
+        description: 'Запросить пачку матчей по league ID с take и skip.',
         activeClasses: 'border-sky-400/50 bg-sky-500/10 text-sky-50',
         badgeClasses: 'border-sky-300/40 bg-sky-300/10 text-sky-100',
     },
@@ -495,19 +494,15 @@ const tabs: Array<{
         id: 'match',
         label: 'Таб получения данных по матчу',
         shortLabel: 'Match',
-        description:
-            'Получить подробную информацию по конкретному match ID.',
-        activeClasses:
-            'border-emerald-400/50 bg-emerald-500/10 text-emerald-50',
-        badgeClasses:
-            'border-emerald-300/40 bg-emerald-300/10 text-emerald-100',
+        description: 'Получить подробную информацию по конкретному match ID.',
+        activeClasses: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-50',
+        badgeClasses: 'border-emerald-300/40 bg-emerald-300/10 text-emerald-100',
     },
     {
         id: 'proPlayers',
         label: 'Таб получения Про-игроков',
         shortLabel: 'Pro',
-        description:
-            'Выгрузить список профессиональных игроков и их метаданные.',
+        description: 'Выгрузить список профессиональных игроков и их метаданные.',
         activeClasses: 'border-violet-400/50 bg-violet-500/10 text-violet-50',
         badgeClasses: 'border-violet-300/40 bg-violet-300/10 text-violet-100',
     },
@@ -527,25 +522,39 @@ const matchForm = reactive({
 
 const draftForm = reactive({
     matchId: '',
-    gameMode: '',
-    gameVersionId: '',
-    bans: '',
-    players: Array.from({ length: 10 }, (_, slot) => ({
-        slot,
-        heroId: '',
-        steamAccountId: '',
-    })),
 });
 
 const loadingAction = ref<string | null>(null);
 const errorMessage = ref('');
-const result = ref<{ type: string; data: any } | null>(null);
-
-const heroes = computed(() => props.heroes);
+const result = ref<StratzResult | null>(null);
 
 const csrfToken =
     document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
         ?.content || '';
+
+const draftSummary = computed<DraftFormattedResult | null>(() => {
+    if (result.value?.type !== 'draft') {
+        return null;
+    }
+
+    return (result.value.data as DraftResultPayload)?.formatted ?? null;
+});
+
+const draftRawData = computed(() => {
+    if (result.value?.type !== 'draft') {
+        return null;
+    }
+
+    return (result.value.data as DraftResultPayload)?.raw ?? null;
+});
+
+const draftRequestData = computed(() => {
+    if (result.value?.type !== 'draft') {
+        return null;
+    }
+
+    return (result.value.data as DraftResultPayload)?.request ?? null;
+});
 
 const isLoading = (action: string) => loadingAction.value === action;
 
@@ -555,11 +564,20 @@ const jsonHeaders = () => ({
     'X-CSRF-Token': csrfToken,
 });
 
-const formatJson = (value: any) => JSON.stringify(value, null, 2);
+const formatJson = (value: unknown) => JSON.stringify(value, null, 2);
+
+const formatOdds = (value: number | null) => {
+    if (value === null) {
+        return '—';
+    }
+
+    return `${(value * 100).toFixed(2)}%`;
+};
 
 const request = async (action: string, url: string, payload: unknown) => {
     loadingAction.value = action;
     errorMessage.value = '';
+
     try {
         const response = await fetch(url, {
             method: 'post',
@@ -623,38 +641,13 @@ const submitProPlayers = async () => {
 };
 
 const submitDraft = async () => {
-    const players = draftForm.players.map((player) => ({
-        slot: player.slot,
-        heroId: player.heroId ? Number(player.heroId) : null,
-        steamAccountId: player.steamAccountId
-            ? Number(player.steamAccountId)
-            : undefined,
-    }));
-
-    if (
-        players.some(
-            (player) => player.heroId === null || Number.isNaN(player.heroId),
-        )
-    ) {
-        errorMessage.value = 'Выберите героя для каждого слота.';
+    if (!draftForm.matchId) {
+        errorMessage.value = 'Match ID обязателен для draft-расчета';
         return;
     }
 
-    const bans = draftForm.bans
-        .split(',')
-        .map((item) => item.trim())
-        .filter((item) => item !== '' && /^\d+$/.test(item))
-        .map(Number);
-
     await request('draft', '/stratz/draft', {
-        match_id: draftForm.matchId ? Number(draftForm.matchId) : undefined,
-        game_mode: draftForm.gameMode ? Number(draftForm.gameMode) : undefined,
-        game_version_id: draftForm.gameVersionId
-            ? Number(draftForm.gameVersionId)
-            : undefined,
-        bans,
-        hero_ids: players.map((player) => player.heroId),
-        player_ids: players.map((player) => player.steamAccountId ?? null),
+        match_id: Number(draftForm.matchId),
     });
 };
 </script>
