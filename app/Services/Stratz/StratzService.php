@@ -43,6 +43,34 @@ class StratzService
         145 => 'Kez',
     ];
 
+    /**
+     * @var array<int, string>
+     */
+    private const BRACKET_IDS = [
+        1 => 'HERALD',
+        2 => 'GUARDIAN',
+        3 => 'CRUSADER',
+        4 => 'ARCHON',
+        5 => 'LEGEND',
+        6 => 'ANCIENT',
+        7 => 'DIVINE',
+        8 => 'IMMORTAL',
+    ];
+
+    /**
+     * @var array<int, string>
+     */
+    private const BRACKET_BASIC_IDS = [
+        1 => 'HERALD_GUARDIAN',
+        2 => 'HERALD_GUARDIAN',
+        3 => 'CRUSADER_ARCHON',
+        4 => 'CRUSADER_ARCHON',
+        5 => 'LEGEND_ANCIENT',
+        6 => 'LEGEND_ANCIENT',
+        7 => 'DIVINE_IMMORTAL',
+        8 => 'DIVINE_IMMORTAL',
+    ];
+
     public function __construct(protected Api $api) {}
 
     public function getLeagueMatches(int $leagueId, int $take = 20, int $skip = 0): array
@@ -140,6 +168,22 @@ GRAPHQL;
         ];
     }
 
+    public function getRoshFromMatchId(int $matchId): array
+    {
+        $match = $this->getRoshMatchContextById($matchId);
+        $roshRequest = $this->buildRoshRequestFromMatch($matchId, $match);
+        $rosh = $this->getRosh($roshRequest);
+
+        return [
+            'formatted' => $this->buildRoshSummary($matchId, $match, $roshRequest),
+            'request' => $roshRequest,
+            'raw' => [
+                'match' => $match,
+                'analysis' => $rosh,
+            ],
+        ];
+    }
+
     public function getProPlayers(): array
     {
         $query = <<<'GRAPHQL'
@@ -196,6 +240,36 @@ GRAPHQL;
         ]);
 
         return (array) data_get($data, 'plus.draft', []);
+    }
+
+    /**
+     * @param  array{
+     *     match: array{operationName:string, variables:array{matchId:int}},
+     *     analysis: array{
+     *         bracket:string,
+     *         bracketBasicIds:string,
+     *         week:int,
+     *         operations:array<int, array{key:string, operationName:string, variables:array<string, int|string>}>
+     *     }
+     * }  $request
+     * @return array{
+     *     heroes_meta_positions:array<string, mixed>,
+     *     hero_stats_by_time_global:array<string, mixed>,
+     *     hero_stats_by_time_bracket:array<string, mixed>,
+     *     synergy:array<string, mixed>
+     * }
+     */
+    public function getRosh(array $request): array
+    {
+        $week = (int) data_get($request, 'analysis.week');
+        $bracketBasicId = (string) data_get($request, 'analysis.bracketBasicIds');
+
+        return [
+            'heroes_meta_positions' => $this->getRoshHeroesMetaPositionsByWeek($bracketBasicId, $week),
+            'hero_stats_by_time_global' => $this->getRoshHeroStatsByTime($week),
+            'hero_stats_by_time_bracket' => $this->getRoshHeroStatsByTime($week, $bracketBasicId),
+            'synergy' => $this->getRoshSynergy($bracketBasicId, $week),
+        ];
     }
 
     /**
@@ -309,6 +383,87 @@ GRAPHQL;
 
     /**
      * @param  array<string, mixed>  $match
+     * @return array{
+     *     match: array{operationName:string, variables:array{matchId:int}},
+     *     analysis: array{
+     *         bracket:string,
+     *         bracketBasicIds:string,
+     *         week:int,
+     *         operations:array<int, array{key:string, operationName:string, variables:array<string, int|string>}>
+     *     }
+     * }
+     */
+    private function buildRoshRequestFromMatch(int $matchId, array $match): array
+    {
+        $bracketValue = data_get($match, 'bracket');
+        $week = data_get($match, 'endDateTime');
+
+        if (! is_int($bracketValue)) {
+            throw new \RuntimeException('STRATZ ROSH match response does not contain bracket.');
+        }
+
+        if (! is_int($week)) {
+            throw new \RuntimeException('STRATZ ROSH match response does not contain endDateTime.');
+        }
+
+        $bracket = $this->mapBracketToId($bracketValue);
+        $bracketBasicId = $this->mapBracketToBasicId($bracketValue);
+
+        return [
+            'match' => [
+                'operationName' => 'GetMatchPicksBans',
+                'variables' => [
+                    'matchId' => $matchId,
+                ],
+            ],
+            'analysis' => [
+                'bracket' => $bracket,
+                'bracketBasicIds' => $bracketBasicId,
+                'week' => $week,
+                'operations' => [
+                    [
+                        'key' => 'heroes_meta_positions',
+                        'operationName' => 'HeroesMetaPositionsByWeek',
+                        'variables' => [
+                            'bracketBasicIds' => $bracketBasicId,
+                            'week' => $week,
+                        ],
+                    ],
+                    [
+                        'key' => 'hero_stats_by_time_global',
+                        'operationName' => 'GetHeroStatsByTime',
+                        'variables' => [
+                            'week' => $week,
+                        ],
+                    ],
+                    [
+                        'key' => 'hero_stats_by_time_bracket',
+                        'operationName' => 'GetHeroStatsByTime',
+                        'variables' => [
+                            'bracketBasicIds' => $bracketBasicId,
+                            'week' => $week,
+                        ],
+                    ],
+                    [
+                        'key' => 'synergy',
+                        'operationName' => 'Synergy',
+                        'variables' => [
+                            'bracketBasicIds' => $bracketBasicId,
+                            'matchLimit' => 0,
+                            'take' => 200,
+                            'currentWeek' => $week,
+                            'previousWeek1' => $week - 604800,
+                            'previousWeek2' => $week - 1209600,
+                            'previousWeek3' => $week - 1814400,
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $match
      * @param  array<string, mixed>  $draft
      * @return array{
      *     match_id:int,
@@ -339,6 +494,366 @@ GRAPHQL;
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $match
+     * @param  array{
+     *     analysis: array{
+     *         bracket:string,
+     *         bracketBasicIds:string,
+     *         week:int
+     *     }
+     * }  $request
+     * @return array{
+     *     match_id:int,
+     *     winner:string,
+     *     radiant_team:string,
+     *     dire_team:string,
+     *     bracket:string,
+     *     bracket_basic:string,
+     *     date_time:int
+     * }
+     */
+    private function buildRoshSummary(int $matchId, array $match, array $request): array
+    {
+        return [
+            'match_id' => $matchId,
+            'winner' => (bool) data_get($match, 'didRadiantWin') ? 'radiant' : 'dire',
+            'radiant_team' => (string) data_get($match, 'radiantTeam.name', 'Radiant'),
+            'dire_team' => (string) data_get($match, 'direTeam.name', 'Dire'),
+            'bracket' => (string) data_get($request, 'analysis.bracket'),
+            'bracket_basic' => (string) data_get($request, 'analysis.bracketBasicIds'),
+            'date_time' => (int) data_get($request, 'analysis.week'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getRoshMatchContextById(int $matchId): array
+    {
+        $query = <<<'GRAPHQL'
+query GetMatchPicksBans($matchId: Long!) {
+  match(id: $matchId) {
+    id
+    gameMode
+    regionId
+    durationSeconds
+    endDateTime
+    lobbyType
+    didRadiantWin
+    radiantKills
+    direKills
+    bracket
+    radiantTeam {
+      id
+      name
+    }
+    direTeam {
+      id
+      name
+    }
+    league {
+      id
+      displayName
+    }
+    players {
+      heroId
+      position
+    }
+    pickBans {
+      heroId
+      order
+      isPick
+      isRadiant
+      bannedHeroId
+      wasBannedSuccessfully
+    }
+  }
+}
+GRAPHQL;
+
+        $data = $this->api->query($query, [
+            'matchId' => $matchId,
+        ]);
+
+        return (array) data_get($data, 'match', []);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getRoshHeroesMetaPositionsByWeek(string $bracketBasicId, int $week): array
+    {
+        $query = <<<'GRAPHQL'
+query HeroesMetaPositionsByWeek($bracketBasicIds: [RankBracketBasicEnum], $week: Long, $heroIds: [Short]) {
+  heroStats {
+    heroesPos_1: stats(
+      positionIds: [POSITION_1]
+      bracketBasicIds: $bracketBasicIds
+      week: $week
+      heroIds: $heroIds
+    ) {
+      heroId
+      matchCount
+      winCount
+    }
+    heroesPos_2: stats(
+      positionIds: [POSITION_2]
+      bracketBasicIds: $bracketBasicIds
+      week: $week
+      heroIds: $heroIds
+    ) {
+      heroId
+      matchCount
+      winCount
+    }
+    heroesPos_3: stats(
+      positionIds: [POSITION_3]
+      bracketBasicIds: $bracketBasicIds
+      week: $week
+      heroIds: $heroIds
+    ) {
+      heroId
+      matchCount
+      winCount
+    }
+    heroesPos_4: stats(
+      positionIds: [POSITION_4]
+      bracketBasicIds: $bracketBasicIds
+      week: $week
+      heroIds: $heroIds
+    ) {
+      heroId
+      matchCount
+      winCount
+    }
+    heroesPos_5: stats(
+      positionIds: [POSITION_5]
+      bracketBasicIds: $bracketBasicIds
+      week: $week
+      heroIds: $heroIds
+    ) {
+      heroId
+      matchCount
+      winCount
+    }
+    heroes: stats(bracketBasicIds: $bracketBasicIds, week: $week, heroIds: $heroIds) {
+      heroId
+      matchCount
+      winCount
+    }
+  }
+}
+GRAPHQL;
+
+        $data = $this->api->query($query, [
+            'bracketBasicIds' => $bracketBasicId,
+            'week' => $week,
+        ]);
+
+        return (array) data_get($data, 'heroStats', []);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getRoshHeroStatsByTime(int $week, ?string $bracketBasicId = null): array
+    {
+        $query = <<<'GRAPHQL'
+query GetHeroStatsByTime($bracketBasicIds: [RankBracketBasicEnum], $week: Long) {
+  heroStats {
+    heroStatsByTime_1: stats(
+      bracketBasicIds: $bracketBasicIds
+      positionIds: [POSITION_1]
+      groupByTime: true
+      minTime: 20
+      maxTime: 60
+      week: $week
+    ) {
+      heroId
+      time
+      winCount
+      matchCount
+    }
+    heroStatsByTime_2: stats(
+      bracketBasicIds: $bracketBasicIds
+      positionIds: [POSITION_2]
+      groupByTime: true
+      minTime: 20
+      maxTime: 60
+      week: $week
+    ) {
+      heroId
+      time
+      winCount
+      matchCount
+    }
+    heroStatsByTime_3: stats(
+      bracketBasicIds: $bracketBasicIds
+      positionIds: [POSITION_3]
+      groupByTime: true
+      minTime: 20
+      maxTime: 60
+      week: $week
+    ) {
+      heroId
+      time
+      winCount
+      matchCount
+    }
+    heroStatsByTime_4: stats(
+      bracketBasicIds: $bracketBasicIds
+      positionIds: [POSITION_4]
+      groupByTime: true
+      minTime: 20
+      maxTime: 60
+      week: $week
+    ) {
+      heroId
+      time
+      winCount
+      matchCount
+    }
+    heroStatsByTime_5: stats(
+      bracketBasicIds: $bracketBasicIds
+      positionIds: [POSITION_5]
+      groupByTime: true
+      minTime: 20
+      maxTime: 60
+      week: $week
+    ) {
+      heroId
+      time
+      winCount
+      matchCount
+    }
+  }
+}
+GRAPHQL;
+
+        $variables = [
+            'week' => $week,
+        ];
+
+        if ($bracketBasicId !== null) {
+            $variables['bracketBasicIds'] = $bracketBasicId;
+        }
+
+        $data = $this->api->query($query, $variables);
+
+        return (array) data_get($data, 'heroStats', []);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getRoshSynergy(string $bracketBasicId, int $week): array
+    {
+        $query = <<<'GRAPHQL'
+query Synergy(
+  $bracketBasicIds: [RankBracketBasicEnum]
+  $matchLimit: Int
+  $take: Int
+  $currentWeek: Long!
+  $previousWeek1: Long!
+  $previousWeek2: Long!
+  $previousWeek3: Long!
+  $heroIds: [Short]
+) {
+  heroStats {
+    matchUp_Prev_Week_1: matchUp(
+      bracketBasicIds: $bracketBasicIds
+      matchLimit: $matchLimit
+      take: $take
+      week: $currentWeek
+      heroIds: $heroIds
+    ) {
+      heroId
+      vs {
+        heroId2
+        synergy
+        matchCount
+      }
+      with {
+        heroId2
+        synergy
+        matchCount
+      }
+    }
+    matchUp_Prev_Week_2: matchUp(
+      bracketBasicIds: $bracketBasicIds
+      matchLimit: $matchLimit
+      take: $take
+      week: $previousWeek1
+      heroIds: $heroIds
+    ) {
+      heroId
+      vs {
+        heroId2
+        synergy
+        matchCount
+      }
+      with {
+        heroId2
+        synergy
+        matchCount
+      }
+    }
+    matchUp_Prev_Week_3: matchUp(
+      bracketBasicIds: $bracketBasicIds
+      matchLimit: $matchLimit
+      take: $take
+      week: $previousWeek2
+      heroIds: $heroIds
+    ) {
+      heroId
+      vs {
+        heroId2
+        synergy
+        matchCount
+      }
+      with {
+        heroId2
+        synergy
+        matchCount
+      }
+    }
+    matchUp_Prev_Week_4: matchUp(
+      bracketBasicIds: $bracketBasicIds
+      matchLimit: $matchLimit
+      take: $take
+      week: $previousWeek3
+      heroIds: $heroIds
+    ) {
+      heroId
+      vs {
+        heroId2
+        synergy
+        matchCount
+      }
+      with {
+        heroId2
+        synergy
+        matchCount
+      }
+    }
+  }
+}
+GRAPHQL;
+
+        $data = $this->api->query($query, [
+            'bracketBasicIds' => $bracketBasicId,
+            'matchLimit' => 0,
+            'take' => 200,
+            'currentWeek' => $week,
+            'previousWeek1' => $week - 604800,
+            'previousWeek2' => $week - 1209600,
+            'previousWeek3' => $week - 1814400,
+        ]);
+
+        return (array) data_get($data, 'heroStats', []);
+    }
+
     private function mapGameModeToId(string $gameMode): int
     {
         if (isset(self::GAME_MODE_IDS[$gameMode])) {
@@ -346,6 +861,24 @@ GRAPHQL;
         }
 
         throw new \RuntimeException("Unsupported STRATZ game mode '{$gameMode}'.");
+    }
+
+    private function mapBracketToId(int $bracket): string
+    {
+        if (isset(self::BRACKET_IDS[$bracket])) {
+            return self::BRACKET_IDS[$bracket];
+        }
+
+        throw new \RuntimeException("Unsupported STRATZ bracket '{$bracket}'.");
+    }
+
+    private function mapBracketToBasicId(int $bracket): string
+    {
+        if (isset(self::BRACKET_BASIC_IDS[$bracket])) {
+            return self::BRACKET_BASIC_IDS[$bracket];
+        }
+
+        throw new \RuntimeException("Unsupported STRATZ bracket '{$bracket}'.");
     }
 
     /**

@@ -134,6 +134,61 @@
             </section>
 
             <section
+                v-else-if="activeTab === 'rosh'"
+                class="rounded-2xl border border-rose-500/20 bg-slate-900/60 p-5 shadow-xl shadow-slate-950/30"
+            >
+                <div class="mb-5 flex flex-col gap-2">
+                    <p
+                        class="text-xs font-semibold tracking-[0.3em] text-rose-300 uppercase"
+                    >
+                        ROSH
+                    </p>
+                    <h2 class="text-xl font-semibold">ROSH analysis</h2>
+                    <p class="max-w-3xl text-sm text-slate-300">
+                        Введите только ID матча. Backend сам получит match
+                        context, bracket, endDateTime и соберет core ROSH
+                        запросы через STRATZ heroStats и synergy.
+                    </p>
+                </div>
+
+                <form
+                    class="flex flex-col gap-4 md:max-w-xl"
+                    @submit.prevent="submitRosh"
+                >
+                    <label class="flex flex-col gap-2 text-sm">
+                        Match ID
+                        <input
+                            v-model="roshForm.matchId"
+                            type="number"
+                            min="1"
+                            required
+                            class="rounded-md border border-slate-700 bg-slate-950 px-3 py-2"
+                        />
+                    </label>
+
+                    <div
+                        class="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-xs leading-6 text-slate-400"
+                    >
+                        Будут показаны summary, сырой JSON request и raw
+                        response для ROSH-analysis, собранного из match,
+                        heroStats и synergy.
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="w-full rounded-md bg-rose-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-rose-400 disabled:opacity-60 md:w-auto"
+                        :disabled="isLoading('rosh')"
+                    >
+                        {{
+                            isLoading('rosh')
+                                ? 'Загрузка...'
+                                : 'Выполнить ROSH analysis по матчу'
+                        }}
+                    </button>
+                </form>
+            </section>
+
+            <section
                 v-else-if="activeTab === 'league'"
                 class="rounded-2xl border border-sky-500/20 bg-slate-900/60 p-5 shadow-xl shadow-slate-950/30"
             >
@@ -244,39 +299,6 @@
             </section>
 
             <section
-                v-else
-                class="rounded-2xl border border-violet-500/20 bg-slate-900/60 p-5 shadow-xl shadow-slate-950/30"
-            >
-                <div class="mb-5 flex flex-col gap-2">
-                    <p
-                        class="text-xs font-semibold tracking-[0.3em] text-violet-300 uppercase"
-                    >
-                        Про-игроки
-                    </p>
-                    <h2 class="text-xl font-semibold">
-                        Получение про-игроков
-                    </h2>
-                    <p class="max-w-3xl text-sm text-slate-300">
-                        Запросите актуальный список профессиональных игроков
-                        STRATZ с никами, странами, командами и позицией.
-                    </p>
-                </div>
-
-                <button
-                    type="button"
-                    class="w-full rounded-md bg-violet-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-violet-400 disabled:opacity-60 md:w-auto"
-                    :disabled="isLoading('pro_players')"
-                    @click="submitProPlayers"
-                >
-                    {{
-                        isLoading('pro_players')
-                            ? 'Загрузка...'
-                            : 'Получить pro-игроков'
-                    }}
-                </button>
-            </section>
-
-            <section
                 v-if="errorMessage"
                 class="rounded-xl border border-rose-700 bg-rose-950/60 p-4 text-sm text-rose-200"
             >
@@ -384,50 +406,97 @@
                     </div>
                 </div>
 
-                <div v-else-if="result.type === 'pro_players'">
-                    <p class="mb-3 text-sm text-slate-300">
-                        Найдено
-                        {{
-                            Array.isArray(result.data) ? result.data.length : 0
-                        }}
-                        pro-игроков.
-                    </p>
-                    <div class="overflow-auto rounded-lg border border-slate-800">
-                        <table class="w-full min-w-[900px] text-sm">
-                            <thead class="bg-slate-900/80 text-slate-200">
-                                <tr>
-                                    <th class="px-3 py-2 text-left">Player ID</th>
-                                    <th class="px-3 py-2 text-left">Nickname</th>
-                                    <th class="px-3 py-2 text-left">Real Name</th>
-                                    <th class="px-3 py-2 text-left">Team ID</th>
-                                    <th class="px-3 py-2 text-left">Position</th>
-                                    <th class="px-3 py-2 text-left">Countries</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr
-                                    v-for="player in result.data"
-                                    :key="`${player.id}-${player.teamId}`"
-                                    class="border-t border-slate-800"
-                                >
-                                    <td class="px-3 py-2 font-mono text-xs text-slate-300">
-                                        {{ player.id || '—' }}
-                                    </td>
-                                    <td class="px-3 py-2">{{ player.name || '—' }}</td>
-                                    <td class="px-3 py-2">{{ player.realName || '—' }}</td>
-                                    <td class="px-3 py-2">{{ player.teamId || '—' }}</td>
-                                    <td class="px-3 py-2">{{ player.position || '—' }}</td>
-                                    <td class="px-3 py-2">
-                                        {{
-                                            (Array.isArray(player.countries)
-                                                ? player.countries
-                                                : []
-                                            ).join(', ') || '—'
-                                        }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <div v-else-if="result.type === 'rosh' && roshSummary" class="space-y-5">
+                    <div class="rounded-2xl border border-rose-400/20 bg-slate-950/70 p-4">
+                        <div class="mb-3 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <p class="text-xs font-semibold tracking-[0.3em] text-rose-300 uppercase">
+                                    Красивый вид
+                                </p>
+                                <h3 class="text-base font-semibold text-slate-100">
+                                    Сводка по ROSH analysis
+                                </h3>
+                            </div>
+                            <div
+                                class="inline-flex w-fit rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]"
+                                :class="
+                                    roshSummary.winner === 'radiant'
+                                        ? 'text-emerald-300'
+                                        : 'text-rose-300'
+                                "
+                            >
+                                Winner: {{ roshSummary.winner }}
+                            </div>
+                        </div>
+
+                        <div class="overflow-auto rounded-xl border border-slate-800">
+                            <table class="w-full min-w-[1120px] text-sm">
+                                <thead class="bg-slate-900/90 text-slate-200">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">Match ID</th>
+                                        <th class="px-3 py-2 text-left">Winner</th>
+                                        <th class="px-3 py-2 text-left">Radiant team</th>
+                                        <th class="px-3 py-2 text-left">Dire team</th>
+                                        <th class="px-3 py-2 text-left">Bracket</th>
+                                        <th class="px-3 py-2 text-left">Bracket basic</th>
+                                        <th class="px-3 py-2 text-left">Date time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-t border-slate-800 bg-slate-950/60">
+                                        <td class="px-3 py-3 font-mono text-xs text-slate-300">
+                                            {{ roshSummary.match_id }}
+                                        </td>
+                                        <td class="px-3 py-3 capitalize">
+                                            {{ roshSummary.winner }}
+                                        </td>
+                                        <td class="px-3 py-3 text-slate-100">
+                                            {{ roshSummary.radiant_team }}
+                                        </td>
+                                        <td class="px-3 py-3 text-slate-100">
+                                            {{ roshSummary.dire_team }}
+                                        </td>
+                                        <td class="px-3 py-3 font-mono text-xs text-rose-200">
+                                            {{ roshSummary.bracket }}
+                                        </td>
+                                        <td class="px-3 py-3 font-mono text-xs text-rose-200">
+                                            {{ roshSummary.bracket_basic }}
+                                        </td>
+                                        <td class="px-3 py-3 font-mono text-xs text-slate-300">
+                                            {{ formatUnixDate(roshSummary.date_time) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                        <div class="mb-3">
+                            <p class="text-xs font-semibold tracking-[0.3em] text-slate-400 uppercase">
+                                Request
+                            </p>
+                            <h3 class="text-base font-semibold text-slate-100">
+                                Сырой JSON запроса для ROSH analysis
+                            </h3>
+                        </div>
+                        <pre
+                            class="max-h-[50vh] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs text-slate-200"
+                        >{{ formatJson(roshRequestData) }}</pre>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                        <div class="mb-3">
+                            <p class="text-xs font-semibold tracking-[0.3em] text-slate-400 uppercase">
+                                Raw
+                            </p>
+                            <h3 class="text-base font-semibold text-slate-100">
+                                Сырой ответ STRATZ ROSH analysis
+                            </h3>
+                        </div>
+                        <pre
+                            class="max-h-[50vh] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs text-slate-200"
+                        >{{ formatJson(roshRawData) }}</pre>
                     </div>
                 </div>
 
@@ -444,7 +513,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 
-type StratzTab = 'draft' | 'league' | 'match' | 'proPlayers';
+type StratzTab = 'draft' | 'rosh' | 'league' | 'match';
 
 type DraftFormattedResult = {
     match_id: number;
@@ -457,6 +526,22 @@ type DraftFormattedResult = {
 
 type DraftResultPayload = {
     formatted?: DraftFormattedResult;
+    request?: unknown;
+    raw?: unknown;
+};
+
+type RoshFormattedResult = {
+    match_id: number;
+    winner: 'radiant' | 'dire';
+    radiant_team: string;
+    dire_team: string;
+    bracket: string;
+    bracket_basic: string;
+    date_time: number;
+};
+
+type RoshResultPayload = {
+    formatted?: RoshFormattedResult;
     request?: unknown;
     raw?: unknown;
 };
@@ -483,6 +568,14 @@ const tabs: Array<{
         badgeClasses: 'border-amber-300/40 bg-amber-300/10 text-amber-100',
     },
     {
+        id: 'rosh',
+        label: 'Таб ROSH-запроса',
+        shortLabel: 'ROSH',
+        description: 'Собрать ROSH-analysis по одному match ID и получить request/raw ответ.',
+        activeClasses: 'border-rose-400/50 bg-rose-500/10 text-rose-50',
+        badgeClasses: 'border-rose-300/40 bg-rose-300/10 text-rose-100',
+    },
+    {
         id: 'league',
         label: 'Таб получения игр лиги',
         shortLabel: 'League',
@@ -497,14 +590,6 @@ const tabs: Array<{
         description: 'Получить подробную информацию по конкретному match ID.',
         activeClasses: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-50',
         badgeClasses: 'border-emerald-300/40 bg-emerald-300/10 text-emerald-100',
-    },
-    {
-        id: 'proPlayers',
-        label: 'Таб получения Про-игроков',
-        shortLabel: 'Pro',
-        description: 'Выгрузить список профессиональных игроков и их метаданные.',
-        activeClasses: 'border-violet-400/50 bg-violet-500/10 text-violet-50',
-        badgeClasses: 'border-violet-300/40 bg-violet-300/10 text-violet-100',
     },
 ];
 
@@ -521,6 +606,10 @@ const matchForm = reactive({
 });
 
 const draftForm = reactive({
+    matchId: '',
+});
+
+const roshForm = reactive({
     matchId: '',
 });
 
@@ -556,6 +645,30 @@ const draftRequestData = computed(() => {
     return (result.value.data as DraftResultPayload)?.request ?? null;
 });
 
+const roshSummary = computed<RoshFormattedResult | null>(() => {
+    if (result.value?.type !== 'rosh') {
+        return null;
+    }
+
+    return (result.value.data as RoshResultPayload)?.formatted ?? null;
+});
+
+const roshRawData = computed(() => {
+    if (result.value?.type !== 'rosh') {
+        return null;
+    }
+
+    return (result.value.data as RoshResultPayload)?.raw ?? null;
+});
+
+const roshRequestData = computed(() => {
+    if (result.value?.type !== 'rosh') {
+        return null;
+    }
+
+    return (result.value.data as RoshResultPayload)?.request ?? null;
+});
+
 const isLoading = (action: string) => loadingAction.value === action;
 
 const jsonHeaders = () => ({
@@ -572,6 +685,14 @@ const formatOdds = (value: number | null) => {
     }
 
     return `${(value * 100).toFixed(2)}%`;
+};
+
+const formatUnixDate = (value: number) => {
+    if (!Number.isFinite(value)) {
+        return '—';
+    }
+
+    return new Date(value * 1000).toLocaleString('ru-RU');
 };
 
 const request = async (action: string, url: string, payload: unknown) => {
@@ -636,10 +757,6 @@ const submitMatch = async () => {
     });
 };
 
-const submitProPlayers = async () => {
-    await request('pro_players', '/stratz/pro-players', {});
-};
-
 const submitDraft = async () => {
     if (!draftForm.matchId) {
         errorMessage.value = 'Match ID обязателен для draft-расчета';
@@ -648,6 +765,17 @@ const submitDraft = async () => {
 
     await request('draft', '/stratz/draft', {
         match_id: Number(draftForm.matchId),
+    });
+};
+
+const submitRosh = async () => {
+    if (!roshForm.matchId) {
+        errorMessage.value = 'Match ID обязателен для ROSH-анализа';
+        return;
+    }
+
+    await request('rosh', '/stratz/rosh', {
+        match_id: Number(roshForm.matchId),
     });
 };
 </script>

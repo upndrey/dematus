@@ -7,6 +7,7 @@ use App\Http\Requests\Stratz\FetchDraftRequest;
 use App\Http\Requests\Stratz\FetchLeagueMatchesRequest;
 use App\Http\Requests\Stratz\FetchMatchRequest;
 use App\Http\Requests\Stratz\FetchProPlayersRequest;
+use App\Http\Requests\Stratz\FetchRoshRequest;
 use App\Services\Stratz\StratzService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -76,6 +77,17 @@ class StratzController
             $draft = $stratzService->getDraftFromMatchId($request->integer('match_id'));
 
             return $this->respond($request, 'draft', $draft);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function rosh(FetchRoshRequest $request, StratzService $stratzService): JsonResponse|RedirectResponse
+    {
+        try {
+            $rosh = $stratzService->getRoshFromMatchId($request->integer('match_id'));
+
+            return $this->respond($request, 'rosh', $rosh);
         } catch (Throwable $throwable) {
             return $this->respondWithError($request, $throwable);
         }
