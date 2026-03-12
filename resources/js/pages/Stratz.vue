@@ -471,6 +471,86 @@
                         </div>
                     </div>
 
+                    <div
+                        v-if="roshMinuteTable.length > 0"
+                        class="rounded-2xl border border-rose-400/20 bg-slate-950/60 p-4"
+                    >
+                        <div class="mb-3">
+                            <p class="text-xs font-semibold tracking-[0.3em] text-rose-200 uppercase">
+                                Table
+                            </p>
+                            <h3 class="text-base font-semibold text-slate-100">
+                                Minute-by-minute ROSH graph data
+                            </h3>
+                            <p class="mt-1 text-xs leading-5 text-slate-400">
+                                Each row is the exact per-minute value used to draw the ROSH win-probability curve.
+                            </p>
+                        </div>
+
+                        <div class="overflow-auto rounded-xl border border-slate-800">
+                            <table class="w-full min-w-[1200px] text-sm">
+                                <thead class="bg-slate-900/90 text-slate-200">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">Minute</th>
+                                        <th class="px-3 py-2 text-left">Window</th>
+                                        <th class="px-3 py-2 text-left">Side</th>
+                                        <th class="px-3 py-2 text-left">Radiant advantage</th>
+                                        <th class="px-3 py-2 text-left">Dire advantage</th>
+                                        <th class="px-3 py-2 text-left">Match %</th>
+                                        <th class="px-3 py-2 text-left">Graph value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="row in roshMinuteTable"
+                                        :key="`rosh-minute-${row.minute}`"
+                                        class="border-t border-slate-800 bg-slate-950/60 odd:bg-slate-950 even:bg-slate-900/40"
+                                    >
+                                        <td class="px-3 py-3 font-mono text-xs text-slate-300">
+                                            {{ row.minute }}
+                                        </td>
+                                        <td class="px-3 py-3 font-mono text-xs text-slate-300">
+                                            {{ formatMinuteWindow(row.time_start, row.time_end) }}
+                                        </td>
+                                        <td
+                                            class="px-3 py-3 font-semibold"
+                                            :class="
+                                                row.advantage_side === 'radiant'
+                                                    ? 'text-emerald-300'
+                                                    : row.advantage_side === 'dire'
+                                                      ? 'text-rose-300'
+                                                      : 'text-slate-300'
+                                            "
+                                        >
+                                            {{ formatAdvantageSide(row.advantage_side) }}
+                                        </td>
+                                        <td class="px-3 py-3 text-emerald-300">
+                                            {{ formatPercentValue(row.radiant_advantage) }}
+                                        </td>
+                                        <td class="px-3 py-3 text-rose-300">
+                                            {{ formatPercentValue(row.dire_advantage) }}
+                                        </td>
+                                        <td class="px-3 py-3 text-slate-200">
+                                            {{ formatPercentValue(row.match_percentage) }}
+                                        </td>
+                                        <td
+                                            class="px-3 py-3 font-semibold"
+                                            :class="
+                                                row.win_rate_graph > 0
+                                                    ? 'text-emerald-300'
+                                                    : row.win_rate_graph < 0
+                                                      ? 'text-rose-300'
+                                                      : 'text-slate-300'
+                                            "
+                                        >
+                                            {{ formatSignedPercentValue(row.win_rate_graph) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
                         <div class="mb-3">
                             <p class="text-xs font-semibold tracking-[0.3em] text-slate-400 uppercase">
@@ -540,8 +620,21 @@ type RoshFormattedResult = {
     date_time: number;
 };
 
+type RoshMinuteTableRow = {
+    minute: number;
+    time_start: number;
+    time_end: number;
+    advantage_side: 'radiant' | 'dire' | 'even';
+    advantage_percent: number;
+    radiant_advantage: number;
+    dire_advantage: number;
+    match_percentage: number;
+    win_rate_graph: number;
+};
+
 type RoshResultPayload = {
     formatted?: RoshFormattedResult;
+    minute_table?: RoshMinuteTableRow[];
     request?: unknown;
     raw?: unknown;
 };
@@ -669,6 +762,14 @@ const roshRequestData = computed(() => {
     return (result.value.data as RoshResultPayload)?.request ?? null;
 });
 
+const roshMinuteTable = computed<RoshMinuteTableRow[]>(() => {
+    if (result.value?.type !== 'rosh') {
+        return [];
+    }
+
+    return (result.value.data as RoshResultPayload)?.minute_table ?? [];
+});
+
 const isLoading = (action: string) => loadingAction.value === action;
 
 const jsonHeaders = () => ({
@@ -693,6 +794,41 @@ const formatUnixDate = (value: number) => {
     }
 
     return new Date(value * 1000).toLocaleString('ru-RU');
+};
+
+const formatPercentValue = (value: number | null | undefined) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return '—';
+    }
+
+    return `${value.toFixed(1)}%`;
+};
+
+const formatSignedPercentValue = (value: number | null | undefined) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return '—';
+    }
+
+    return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+};
+
+const formatMinuteWindow = (start: number, end: number) => {
+    const startLabel = `${String(start).padStart(2, '0')}:00`;
+    const endLabel = `${String(end).padStart(2, '0')}:00`;
+
+    return start === end ? startLabel : `${startLabel} - ${endLabel}`;
+};
+
+const formatAdvantageSide = (value: RoshMinuteTableRow['advantage_side']) => {
+    if (value === 'radiant') {
+        return 'Radiant';
+    }
+
+    if (value === 'dire') {
+        return 'Dire';
+    }
+
+    return 'Even';
 };
 
 const request = async (action: string, url: string, payload: unknown) => {

@@ -4,6 +4,14 @@ namespace App\Services\Stratz;
 
 class StratzService
 {
+    private const ROSH_MIN_TIME = 20;
+
+    private const ROSH_MAX_TIME = 60;
+
+    private const ROSH_GRAPH_WINDOW_RADIUS = 1;
+
+    private const ROSH_GRAPH_FALLBACK_MATCH_COUNT = 1000;
+
     /**
      * @var array<string, int>
      */
@@ -176,6 +184,7 @@ GRAPHQL;
 
         return [
             'formatted' => $this->buildRoshSummary($matchId, $match, $roshRequest),
+            'minute_table' => $this->buildRoshMinuteTable($match, $rosh),
             'request' => $roshRequest,
             'raw' => [
                 'match' => $match,
@@ -524,6 +533,539 @@ GRAPHQL;
             'bracket_basic' => (string) data_get($request, 'analysis.bracketBasicIds'),
             'date_time' => (int) data_get($request, 'analysis.week'),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $match
+     * @param  array{
+     *     heroes_meta_positions:array<string, mixed>,
+     *     hero_stats_by_time_global:array<string, mixed>,
+     *     hero_stats_by_time_bracket:array<string, mixed>,
+     *     synergy:array<string, mixed>
+     * }  $analysis
+     * @return list<array{
+     *     minute:int,
+     *     time_start:int,
+     *     time_end:int,
+     *     advantage_side:string,
+     *     advantage_percent:float,
+     *     radiant_advantage:float,
+     *     dire_advantage:float,
+     *     match_percentage:float,
+     *     win_rate_graph:float
+     * }>
+     */
+    private function buildRoshMinuteTable(array $match, array $analysis): array
+    {
+        $picks = $this->extractRoshPicksFromMatch($match);
+        $radiantPicks = $picks['radiant'];
+        $direPicks = $picks['dire'];
+        $pickCount = count($radiantPicks) + count($direPicks);
+
+        if ($pickCount === 0) {
+            return [];
+        }
+
+        $globalGraphData = $this->buildRoshComputedGraphData(
+            (array) ($analysis['hero_stats_by_time_global'] ?? []),
+        );
+
+        $computedGraphData = $this->buildRoshComputedGraphData(
+            (array) ($analysis['hero_stats_by_time_bracket'] ?? []),
+            $globalGraphData,
+        );
+
+        if ($computedGraphData === []) {
+            return [];
+        }
+
+        $synergyData = $this->buildRoshSynergyData((array) ($analysis['synergy'] ?? []));
+        $synergyOffset = $this->calculateRoshSynergyOffset(
+            $radiantPicks,
+            $direPicks,
+            $synergyData,
+        );
+
+        ksort($computedGraphData);
+
+        $minuteTable = [];
+
+        foreach ($computedGraphData as $bucket) {
+            $radiantMinuteDiff = 0.0;
+            $direMinuteDiff = 0.0;
+            $minuteMatchCount = 0;
+            $totalMatchCount = 0;
+
+            foreach ($radiantPicks as $pick) {
+                $heroStats = data_get(
+                    $bucket,
+                    'heroes.'.$pick['positionId'].'.'.$pick['heroId'],
+                );
+
+                if (! is_array($heroStats)) {
+                    continue;
+                }
+
+                $radiantMinuteDiff += (float) data_get($heroStats, 'win_rate_diff', 0.0);
+                $minuteMatchCount += (int) data_get($heroStats, 'match_count', 0);
+                $totalMatchCount += (int) data_get($heroStats, 'total_match_count', 0);
+            }
+
+            foreach ($direPicks as $pick) {
+                $heroStats = data_get(
+                    $bucket,
+                    'heroes.'.$pick['positionId'].'.'.$pick['heroId'],
+                );
+
+                if (! is_array($heroStats)) {
+                    continue;
+                }
+
+                $direMinuteDiff += (float) data_get($heroStats, 'win_rate_diff', 0.0);
+                $minuteMatchCount += (int) data_get($heroStats, 'match_count', 0);
+                $totalMatchCount += (int) data_get($heroStats, 'total_match_count', 0);
+            }
+
+            $winRateGraph = round(
+                (($radiantMinuteDiff - $direMinuteDiff) / $pickCount) + $synergyOffset,
+                1,
+            );
+
+            $matchPercentage = $totalMatchCount > 0
+                ? round(($minuteMatchCount / $totalMatchCount) * 100, 1)
+                : 0.0;
+
+            $minuteTable[] = [
+                'minute' => (int) data_get($bucket, 'time'),
+                'time_start' => (int) data_get($bucket, 'time_start'),
+                'time_end' => (int) data_get($bucket, 'time_end'),
+                'advantage_side' => $winRateGraph > 0 ? 'radiant' : ($winRateGraph < 0 ? 'dire' : 'even'),
+                'advantage_percent' => round(abs($winRateGraph), 1),
+                'radiant_advantage' => $winRateGraph > 0 ? round($winRateGraph, 1) : 0.0,
+                'dire_advantage' => $winRateGraph < 0 ? round(abs($winRateGraph), 1) : 0.0,
+                'match_percentage' => $matchPercentage,
+                'win_rate_graph' => $winRateGraph,
+            ];
+        }
+
+        return $minuteTable;
+    }
+
+    /**
+     * @param  array<string, mixed>  $match
+     * @return array{
+     *     radiant:list<array{heroId:int, positionId:int}>,
+     *     dire:list<array{heroId:int, positionId:int}>
+     * }
+     */
+    private function extractRoshPicksFromMatch(array $match): array
+    {
+        $positionIdsByHeroId = [];
+
+        foreach ((array) ($match['players'] ?? []) as $player) {
+            $heroId = data_get($player, 'heroId');
+            $positionId = $this->extractRoshPositionId(data_get($player, 'position'));
+
+            if (! is_int($heroId) || $positionId === null) {
+                continue;
+            }
+
+            $positionIdsByHeroId[$heroId] = $positionId;
+        }
+
+        $radiantPicks = [];
+        $direPicks = [];
+        $pickRows = [];
+
+        foreach ((array) ($match['pickBans'] ?? []) as $pickBan) {
+            $heroId = data_get($pickBan, 'heroId');
+            $positionId = is_int($heroId) ? ($positionIdsByHeroId[$heroId] ?? null) : null;
+
+            if (! (bool) data_get($pickBan, 'isPick') || ! is_int($heroId) || $positionId === null) {
+                continue;
+            }
+
+            $pickRows[] = [
+                'heroId' => $heroId,
+                'positionId' => $positionId,
+                'isRadiant' => (bool) data_get($pickBan, 'isRadiant'),
+                'order' => (int) data_get($pickBan, 'order', PHP_INT_MAX),
+            ];
+        }
+
+        usort(
+            $pickRows,
+            static fn (array $left, array $right): int => $left['order'] <=> $right['order'],
+        );
+
+        foreach ($pickRows as $pickRow) {
+            $pick = [
+                'heroId' => $pickRow['heroId'],
+                'positionId' => $pickRow['positionId'],
+            ];
+
+            if ($pickRow['isRadiant']) {
+                $radiantPicks[] = $pick;
+            } else {
+                $direPicks[] = $pick;
+            }
+        }
+
+        if ($radiantPicks !== [] || $direPicks !== []) {
+            return [
+                'radiant' => $radiantPicks,
+                'dire' => $direPicks,
+            ];
+        }
+
+        $fallbackPlayers = [];
+
+        foreach ((array) ($match['players'] ?? []) as $player) {
+            $heroId = data_get($player, 'heroId');
+            $positionId = $this->extractRoshPositionId(data_get($player, 'position'));
+
+            if (! is_int($heroId) || $positionId === null) {
+                continue;
+            }
+
+            $fallbackPlayers[] = [
+                'heroId' => $heroId,
+                'positionId' => $positionId,
+            ];
+        }
+
+        return [
+            'radiant' => array_slice($fallbackPlayers, 0, 5),
+            'dire' => array_slice($fallbackPlayers, 5, 5),
+        ];
+    }
+
+    private function extractRoshPositionId(mixed $position): ?int
+    {
+        if (! is_string($position) || ! preg_match('/POSITION_(\d+)/', $position, $matches)) {
+            return null;
+        }
+
+        $positionId = (int) $matches[1];
+
+        return $positionId >= 1 && $positionId <= 5 ? $positionId : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $rawSynergy
+     * @return array{
+     *     with:array<int, array<int, array{matchCount:int, synergy:float}>>,
+     *     vs:array<int, array<int, array{matchCount:int, synergy:float}>>
+     * }
+     */
+    private function buildRoshSynergyData(array $rawSynergy): array
+    {
+        $synergyWithData = [];
+        $synergyVsData = [];
+        $weeks = [];
+
+        foreach (range(1, 4) as $weekIndex) {
+            $weeks[] = (array) data_get($rawSynergy, 'matchUp_Prev_Week_'.$weekIndex, []);
+        }
+
+        foreach ($weeks as $weekIndex => $rows) {
+            $isLastWeek = $weekIndex === array_key_last($weeks);
+
+            foreach ($rows as $row) {
+                $heroId = data_get($row, 'heroId');
+
+                if (! is_int($heroId)) {
+                    continue;
+                }
+
+                foreach ((array) data_get($row, 'with', []) as $withRow) {
+                    $heroId2 = data_get($withRow, 'heroId2');
+                    $matchCount = data_get($withRow, 'matchCount');
+                    $synergy = data_get($withRow, 'synergy');
+
+                    if (! is_int($heroId2) || ! is_numeric($matchCount) || ! is_numeric($synergy)) {
+                        continue;
+                    }
+
+                    $this->mergeRoshSynergyEntry(
+                        $synergyWithData,
+                        $heroId,
+                        $heroId2,
+                        (int) $matchCount,
+                        (float) $synergy,
+                        $isLastWeek,
+                    );
+                }
+
+                foreach ((array) data_get($row, 'vs', []) as $vsRow) {
+                    $heroId2 = data_get($vsRow, 'heroId2');
+                    $matchCount = data_get($vsRow, 'matchCount');
+                    $synergy = data_get($vsRow, 'synergy');
+
+                    if (! is_int($heroId2) || ! is_numeric($matchCount) || ! is_numeric($synergy)) {
+                        continue;
+                    }
+
+                    $this->mergeRoshSynergyEntry(
+                        $synergyVsData,
+                        $heroId,
+                        $heroId2,
+                        (int) $matchCount,
+                        (float) $synergy,
+                        $isLastWeek,
+                    );
+                }
+            }
+        }
+
+        return [
+            'with' => $synergyWithData,
+            'vs' => $synergyVsData,
+        ];
+    }
+
+    /**
+     * @param  array<int, array<int, array{matchCount:int, synergy:float}>>  &$lookup
+     */
+    private function mergeRoshSynergyEntry(
+        array &$lookup,
+        int $heroId,
+        int $heroId2,
+        int $matchCount,
+        float $synergy,
+        bool $isLastWeek,
+    ): void {
+        if (! isset($lookup[$heroId][$heroId2])) {
+            $lookup[$heroId][$heroId2] = [
+                'matchCount' => 0,
+                'synergy' => 0.0,
+            ];
+        }
+
+        $currentEntry = $lookup[$heroId][$heroId2];
+
+        if ($currentEntry['matchCount'] >= 100) {
+            return;
+        }
+
+        $totalMatchCount = $currentEntry['matchCount'] + $matchCount;
+
+        if ($totalMatchCount <= 0) {
+            return;
+        }
+
+        $weightedSynergy = ($currentEntry['synergy'] * ($currentEntry['matchCount'] / $totalMatchCount))
+            + ($synergy * ($matchCount / $totalMatchCount));
+
+        $lookup[$heroId][$heroId2] = [
+            'matchCount' => $totalMatchCount,
+            'synergy' => $isLastWeek && $totalMatchCount < 100
+                ? round(($weightedSynergy * $totalMatchCount) / 100, 2)
+                : round($weightedSynergy, 2),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $heroStatsByTime
+     * @param  array<int, array{
+     *     time:int,
+     *     time_start:int,
+     *     time_end:int,
+     *     heroes:array<int, array<int, array{
+     *         hero_id:int,
+     *         win_rate_diff:float,
+     *         match_count:int,
+     *         total_match_count:int
+     *     }>>
+     * }> | null  $fallbackGraphData
+     * @return array<int, array{
+     *     time:int,
+     *     time_start:int,
+     *     time_end:int,
+     *     heroes:array<int, array<int, array{
+     *         hero_id:int,
+     *         win_rate_diff:float,
+     *         match_count:int,
+     *         total_match_count:int
+     *     }>>
+     * }>
+     */
+    private function buildRoshComputedGraphData(array $heroStatsByTime, ?array $fallbackGraphData = null): array
+    {
+        $computedGraphData = [];
+
+        foreach (range(1, 5) as $positionId) {
+            $rows = array_values(array_filter(
+                (array) data_get($heroStatsByTime, 'heroStatsByTime_'.$positionId, []),
+                static function (mixed $row): bool {
+                    return is_array($row)
+                        && is_int(data_get($row, 'heroId'))
+                        && is_numeric(data_get($row, 'time'))
+                        && is_numeric(data_get($row, 'winCount'))
+                        && is_numeric(data_get($row, 'matchCount'));
+                },
+            ));
+
+            usort(
+                $rows,
+                static fn (array $left, array $right): int => [$left['heroId'], $left['time']] <=> [$right['heroId'], $right['time']],
+            );
+
+            $normalizedRows = [];
+            $totalMatchCountByHeroId = [];
+            $rowCount = count($rows);
+
+            foreach ($rows as $index => $row) {
+                $heroId = (int) $row['heroId'];
+                $matchCount = (int) $row['matchCount'];
+                $winCount = (int) $row['winCount'];
+                $nextRow = $rows[$index + 1] ?? null;
+                $sameHeroAsNextRow = is_array($nextRow) && (int) data_get($nextRow, 'heroId') === $heroId;
+                $minuteMatchCount = $sameHeroAsNextRow
+                    ? max(0, $matchCount - (int) data_get($nextRow, 'matchCount', 0))
+                    : $matchCount;
+                $minuteWinCount = $sameHeroAsNextRow
+                    ? max(0, $winCount - (int) data_get($nextRow, 'winCount', 0))
+                    : $winCount;
+
+                $totalMatchCountByHeroId[$heroId] = ($totalMatchCountByHeroId[$heroId] ?? 0) + $minuteMatchCount;
+
+                $normalizedRows[] = [
+                    'heroId' => $heroId,
+                    'time' => (int) $row['time'],
+                    'matchCount' => $minuteMatchCount,
+                    'winCount' => $minuteWinCount,
+                ];
+            }
+
+            $normalizedRowCount = count($normalizedRows);
+
+            foreach ($normalizedRows as $index => $row) {
+                $heroId = $row['heroId'];
+                $time = $row['time'];
+
+                if (! isset($computedGraphData[$time])) {
+                    $computedGraphData[$time] = [
+                        'time' => $time,
+                        'time_start' => max(self::ROSH_MIN_TIME, $time - self::ROSH_GRAPH_WINDOW_RADIUS),
+                        'time_end' => min(self::ROSH_MAX_TIME, $time + self::ROSH_GRAPH_WINDOW_RADIUS),
+                        'heroes' => [],
+                    ];
+                }
+
+                if (! isset($computedGraphData[$time]['heroes'][$positionId])) {
+                    $computedGraphData[$time]['heroes'][$positionId] = [];
+                }
+
+                if (
+                    $row['matchCount'] < self::ROSH_GRAPH_FALLBACK_MATCH_COUNT
+                    && $fallbackGraphData !== null
+                    && isset($fallbackGraphData[$time]['heroes'][$positionId][$heroId])
+                ) {
+                    $computedGraphData[$time]['heroes'][$positionId][$heroId] = $fallbackGraphData[$time]['heroes'][$positionId][$heroId];
+
+                    continue;
+                }
+
+                $windowStart = max(0, $index - self::ROSH_GRAPH_WINDOW_RADIUS);
+                $windowEnd = min($normalizedRowCount, $index + self::ROSH_GRAPH_WINDOW_RADIUS + 1);
+                $windowRows = array_values(array_filter(
+                    array_slice($normalizedRows, $windowStart, $windowEnd - $windowStart),
+                    static fn (array $candidate): bool => $candidate['heroId'] === $heroId,
+                ));
+
+                $windowMatchCount = array_sum(array_column($windowRows, 'matchCount'));
+                $windowWinCount = array_sum(array_column($windowRows, 'winCount'));
+
+                if ($windowMatchCount <= 0) {
+                    continue;
+                }
+
+                $computedGraphData[$time]['heroes'][$positionId][$heroId] = [
+                    'hero_id' => $heroId,
+                    'win_rate_diff' => (($windowWinCount / $windowMatchCount) * 100) - 50,
+                    'match_count' => $row['matchCount'],
+                    'total_match_count' => $totalMatchCountByHeroId[$heroId],
+                ];
+            }
+        }
+
+        return $computedGraphData;
+    }
+
+    /**
+     * @param  list<array{heroId:int, positionId:int}>  $radiantPicks
+     * @param  list<array{heroId:int, positionId:int}>  $direPicks
+     * @param  array{
+     *     with:array<int, array<int, array{matchCount:int, synergy:float}>>,
+     *     vs:array<int, array<int, array{matchCount:int, synergy:float}>>
+     * }  $synergyData
+     */
+    private function calculateRoshSynergyOffset(array $radiantPicks, array $direPicks, array $synergyData): float
+    {
+        $radiantSynergy = 0.0;
+        $direSynergy = 0.0;
+
+        foreach ($radiantPicks as $pick) {
+            $radiantSynergy += $this->calculateRoshHeroSynergy(
+                $radiantPicks,
+                $direPicks,
+                $pick['heroId'],
+                $synergyData,
+            );
+        }
+
+        foreach ($direPicks as $pick) {
+            $direSynergy += $this->calculateRoshHeroSynergy(
+                $direPicks,
+                $radiantPicks,
+                $pick['heroId'],
+                $synergyData,
+            );
+        }
+
+        return $radiantSynergy - $direSynergy;
+    }
+
+    /**
+     * @param  list<array{heroId:int, positionId:int}>  $teamPicks
+     * @param  list<array{heroId:int, positionId:int}>  $enemyPicks
+     * @param  array{
+     *     with:array<int, array<int, array{matchCount:int, synergy:float}>>,
+     *     vs:array<int, array<int, array{matchCount:int, synergy:float}>>
+     * }  $synergyData
+     */
+    private function calculateRoshHeroSynergy(
+        array $teamPicks,
+        array $enemyPicks,
+        int $heroId,
+        array $synergyData,
+    ): float {
+        return $this->sumRoshSynergyValues($teamPicks, $heroId, (array) ($synergyData['with'] ?? []))
+            + $this->sumRoshSynergyValues($enemyPicks, $heroId, (array) ($synergyData['vs'] ?? []));
+    }
+
+    /**
+     * @param  list<array{heroId:int, positionId:int}>  $picks
+     * @param  array<int, array<int, array{matchCount:int, synergy:float}>>  $lookup
+     */
+    private function sumRoshSynergyValues(array $picks, int $heroId, array $lookup): float
+    {
+        if (! isset($lookup[$heroId])) {
+            return 0.0;
+        }
+
+        $synergy = 0.0;
+
+        foreach ($picks as $pick) {
+            if ($pick['heroId'] === $heroId) {
+                continue;
+            }
+
+            $synergy += (float) data_get($lookup, $heroId.'.'.$pick['heroId'].'.synergy', 0.0);
+        }
+
+        return $synergy;
     }
 
     /**
