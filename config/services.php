@@ -41,4 +41,10 @@ return [
         'timeout' => (int) env('STRATZ_TIMEOUT', 20),
     ],
 
+    'google_sheets' => [
+        'spreadsheet_url' => env('GOOGLE_SHEETS_ROSH_SPREADSHEET_URL'),
+        'service_account_credentials' => env('GOOGLE_SHEETS_SERVICE_ACCOUNT_CREDENTIALS'),
+        'timeout' => (int) env('GOOGLE_SHEETS_TIMEOUT', 20),
+    ],
+
 ];

@@ -8,6 +8,7 @@ use App\Http\Requests\Stratz\FetchLeagueMatchesRequest;
 use App\Http\Requests\Stratz\FetchMatchRequest;
 use App\Http\Requests\Stratz\FetchProPlayersRequest;
 use App\Http\Requests\Stratz\FetchRoshRequest;
+use App\Services\GoogleSheets\RoshSheetService;
 use App\Services\Stratz\StratzService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -82,10 +83,20 @@ class StratzController
         }
     }
 
-    public function rosh(FetchRoshRequest $request, StratzService $stratzService): JsonResponse|RedirectResponse
-    {
+    public function rosh(
+        FetchRoshRequest $request,
+        StratzService $stratzService,
+        RoshSheetService $roshSheetService,
+    ): JsonResponse|RedirectResponse {
         try {
             $rosh = $stratzService->getRoshFromMatchId($request->integer('match_id'));
+
+            if ($roshSheetService->isConfigured()) {
+                $rosh['google_sheets'] = $roshSheetService->syncMatchOdds(
+                    $request->integer('match_id'),
+                    (array) data_get($rosh, 'formatted', []),
+                );
+            }
 
             return $this->respond($request, 'rosh', $rosh);
         } catch (Throwable $throwable) {

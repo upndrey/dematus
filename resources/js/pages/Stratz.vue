@@ -430,11 +430,15 @@
                         </div>
 
                         <div class="overflow-auto rounded-xl border border-slate-800">
-                            <table class="w-full min-w-[1120px] text-sm">
+                            <table class="w-full min-w-[1440px] text-sm">
                                 <thead class="bg-slate-900/90 text-slate-200">
                                     <tr>
                                         <th class="px-3 py-2 text-left">Match ID</th>
                                         <th class="px-3 py-2 text-left">Winner</th>
+                                        <th class="px-3 py-2 text-left">Radiant odds 1</th>
+                                        <th class="px-3 py-2 text-left">Radiant odds 2</th>
+                                        <th class="px-3 py-2 text-left">Dire odds 1</th>
+                                        <th class="px-3 py-2 text-left">Dire odds 2</th>
                                         <th class="px-3 py-2 text-left">Radiant team</th>
                                         <th class="px-3 py-2 text-left">Dire team</th>
                                         <th class="px-3 py-2 text-left">Bracket</th>
@@ -450,6 +454,18 @@
                                         <td class="px-3 py-3 capitalize">
                                             {{ roshSummary.winner }}
                                         </td>
+                                        <td class="px-3 py-3 text-emerald-300">
+                                            {{ formatPercentValue(roshSummary.radiant_odds_1) }}
+                                        </td>
+                                        <td class="px-3 py-3 text-emerald-300">
+                                            {{ formatPercentValue(roshSummary.radiant_odds_2) }}
+                                        </td>
+                                        <td class="px-3 py-3 text-rose-300">
+                                            {{ formatPercentValue(roshSummary.dire_odds_1) }}
+                                        </td>
+                                        <td class="px-3 py-3 text-rose-300">
+                                            {{ formatPercentValue(roshSummary.dire_odds_2) }}
+                                        </td>
                                         <td class="px-3 py-3 text-slate-100">
                                             {{ roshSummary.radiant_team }}
                                         </td>
@@ -464,6 +480,49 @@
                                         </td>
                                         <td class="px-3 py-3 font-mono text-xs text-slate-300">
                                             {{ formatUnixDate(roshSummary.date_time) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div
+                        v-if="roshGoogleSheets"
+                        class="rounded-2xl border border-cyan-400/20 bg-slate-950/60 p-4"
+                    >
+                        <div class="mb-3">
+                            <p class="text-xs font-semibold tracking-[0.3em] text-cyan-200 uppercase">
+                                Sync
+                            </p>
+                            <h3 class="text-base font-semibold text-slate-100">
+                                Google Sheets write-back
+                            </h3>
+                            <p class="mt-1 text-xs leading-5 text-slate-400">
+                                Sheet {{ roshGoogleSheets.sheet_title }}, row
+                                {{ roshGoogleSheets.row }} was updated after the ROSH calculation.
+                            </p>
+                        </div>
+
+                        <div class="overflow-auto rounded-xl border border-slate-800">
+                            <table class="w-full min-w-[640px] text-sm">
+                                <thead class="bg-slate-900/90 text-slate-200">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">Cell</th>
+                                        <th class="px-3 py-2 text-left">Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="(value, cell) in roshGoogleSheets.cells"
+                                        :key="cell"
+                                        class="border-t border-slate-800 bg-slate-950/60 odd:bg-slate-950 even:bg-slate-900/40"
+                                    >
+                                        <td class="px-3 py-3 font-mono text-xs text-cyan-200">
+                                            {{ cell }}
+                                        </td>
+                                        <td class="px-3 py-3 text-slate-100">
+                                            {{ value || '—' }}
                                         </td>
                                     </tr>
                                 </tbody>
@@ -618,6 +677,10 @@ type RoshFormattedResult = {
     bracket: string;
     bracket_basic: string;
     date_time: number;
+    radiant_odds_1: number | null;
+    radiant_odds_2: number | null;
+    dire_odds_1: number | null;
+    dire_odds_2: number | null;
 };
 
 type RoshMinuteTableRow = {
@@ -632,9 +695,17 @@ type RoshMinuteTableRow = {
     win_rate_graph: number;
 };
 
+type RoshGoogleSheetsResult = {
+    spreadsheet_id: string;
+    sheet_title: string;
+    row: number;
+    cells: Record<string, string>;
+};
+
 type RoshResultPayload = {
     formatted?: RoshFormattedResult;
     minute_table?: RoshMinuteTableRow[];
+    google_sheets?: RoshGoogleSheetsResult;
     request?: unknown;
     raw?: unknown;
 };
@@ -768,6 +839,14 @@ const roshMinuteTable = computed<RoshMinuteTableRow[]>(() => {
     }
 
     return (result.value.data as RoshResultPayload)?.minute_table ?? [];
+});
+
+const roshGoogleSheets = computed<RoshGoogleSheetsResult | null>(() => {
+    if (result.value?.type !== 'rosh') {
+        return null;
+    }
+
+    return (result.value.data as RoshResultPayload)?.google_sheets ?? null;
 });
 
 const isLoading = (action: string) => loadingAction.value === action;

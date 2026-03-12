@@ -181,14 +181,15 @@ GRAPHQL;
         $match = $this->getRoshMatchContextById($matchId);
         $roshRequest = $this->buildRoshRequestFromMatch($matchId, $match);
         $rosh = $this->getRosh($roshRequest);
+        $minuteTable = $this->buildRoshMinuteTable($match, $rosh);
 
         return [
-            'formatted' => $this->buildRoshSummary($matchId, $match, $roshRequest),
-            'minute_table' => $this->buildRoshMinuteTable($match, $rosh),
+            'formatted' => $this->buildRoshSummary($matchId, $match, $roshRequest, $minuteTable),
+            'minute_table' => $minuteTable,
             'request' => $roshRequest,
             'raw' => [
                 'match' => $match,
-                'analysis' => $rosh,
+                'analysis_summary' => $this->buildRoshRawAnalysisSummary($rosh),
             ],
         ];
     }
@@ -519,11 +520,22 @@ GRAPHQL;
      *     dire_team:string,
      *     bracket:string,
      *     bracket_basic:string,
-     *     date_time:int
+     *     date_time:int,
+     *     radiant_odds_1:?float,
+     *     radiant_odds_2:?float,
+     *     dire_odds_1:?float,
+     *     dire_odds_2:?float
      * }
      */
-    private function buildRoshSummary(int $matchId, array $match, array $request): array
+    private function buildRoshSummary(int $matchId, array $match, array $request, array $minuteTable): array
     {
+        $firstMinute = $minuteTable[0] ?? null;
+        $lastMinute = $minuteTable[array_key_last($minuteTable)] ?? null;
+        $radiantOddsStart = $this->normalizePercentMetric(data_get($firstMinute, 'radiant_advantage'));
+        $radiantOddsEnd = $this->normalizePercentMetric(data_get($lastMinute, 'radiant_advantage'));
+        $direOddsStart = $this->normalizePercentMetric(data_get($firstMinute, 'dire_advantage'));
+        $direOddsEnd = $this->normalizePercentMetric(data_get($lastMinute, 'dire_advantage'));
+
         return [
             'match_id' => $matchId,
             'winner' => (bool) data_get($match, 'didRadiantWin') ? 'radiant' : 'dire',
@@ -532,6 +544,10 @@ GRAPHQL;
             'bracket' => (string) data_get($request, 'analysis.bracket'),
             'bracket_basic' => (string) data_get($request, 'analysis.bracketBasicIds'),
             'date_time' => (int) data_get($request, 'analysis.week'),
+            'radiant_odds_1' => $radiantOddsStart,
+            'radiant_odds_2' => $radiantOddsEnd,
+            'dire_odds_1' => $direOddsStart,
+            'dire_odds_2' => $direOddsEnd,
         ];
     }
 
@@ -1454,6 +1470,94 @@ GRAPHQL;
         }
 
         return round((float) $value, 4);
+    }
+
+    private function normalizePercentMetric(mixed $value): ?float
+    {
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        return round((float) $value, 1);
+    }
+
+    /**
+     * @param  array{
+     *     heroes_meta_positions:array<string, mixed>,
+     *     hero_stats_by_time_global:array<string, mixed>,
+     *     hero_stats_by_time_bracket:array<string, mixed>,
+     *     synergy:array<string, mixed>
+     * }  $analysis
+     * @return array<string, mixed>
+     */
+    private function buildRoshRawAnalysisSummary(array $analysis): array
+    {
+        return [
+            'heroes_meta_positions' => $this->summarizeRoshFlatBuckets(
+                (array) ($analysis['heroes_meta_positions'] ?? []),
+                [
+                    'heroesPos_1',
+                    'heroesPos_2',
+                    'heroesPos_3',
+                    'heroesPos_4',
+                    'heroesPos_5',
+                    'heroes',
+                ],
+            ),
+            'hero_stats_by_time_global' => $this->summarizeRoshFlatBuckets(
+                (array) ($analysis['hero_stats_by_time_global'] ?? []),
+                [
+                    'heroStatsByTime_1',
+                    'heroStatsByTime_2',
+                    'heroStatsByTime_3',
+                    'heroStatsByTime_4',
+                    'heroStatsByTime_5',
+                ],
+            ),
+            'hero_stats_by_time_bracket' => $this->summarizeRoshFlatBuckets(
+                (array) ($analysis['hero_stats_by_time_bracket'] ?? []),
+                [
+                    'heroStatsByTime_1',
+                    'heroStatsByTime_2',
+                    'heroStatsByTime_3',
+                    'heroStatsByTime_4',
+                    'heroStatsByTime_5',
+                ],
+            ),
+            'synergy' => $this->summarizeRoshFlatBuckets(
+                (array) ($analysis['synergy'] ?? []),
+                [
+                    'matchUp_Prev_Week_1',
+                    'matchUp_Prev_Week_2',
+                    'matchUp_Prev_Week_3',
+                    'matchUp_Prev_Week_4',
+                ],
+            ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $buckets
+     * @param  list<string>  $keys
+     * @return array<string, array{count:int, sample:array<int, mixed>}>
+     */
+    private function summarizeRoshFlatBuckets(array $buckets, array $keys): array
+    {
+        $summary = [];
+
+        foreach ($keys as $key) {
+            $rows = array_values(array_filter(
+                (array) data_get($buckets, $key, []),
+                static fn (mixed $row): bool => is_array($row),
+            ));
+
+            $summary[$key] = [
+                'count' => count($rows),
+                'sample' => array_slice($rows, 0, 3),
+            ];
+        }
+
+        return $summary;
     }
 
     private function invertProbability(?float $value): ?float
