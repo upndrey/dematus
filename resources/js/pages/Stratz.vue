@@ -661,6 +661,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 import { rosh as roshAction, roshHeroes as roshHeroesAction } from '@/actions/App/Http/Controllers/StratzController';
+import { getHeroSearchAliases } from '@/lib/hero-aliases';
 
 type HeroOption = {
     id: number;
@@ -674,6 +675,7 @@ type SearchableHeroOption = {
     searchableTitle: string;
     searchableName: string;
     searchableId: string;
+    searchableAliases: string[];
 };
 
 type HeroSide = 'radiant' | 'dire';
@@ -800,6 +802,7 @@ const searchableHeroes = computed<SearchableHeroOption[]>(() =>
         searchableTitle: normalizeHeroQuery(hero.title),
         searchableName: normalizeHeroQuery(hero.name),
         searchableId: String(hero.id),
+        searchableAliases: getHeroSearchAliases(hero).map(normalizeHeroQuery),
     })),
 );
 
@@ -941,28 +944,44 @@ const getHeroMatchScore = (hero: SearchableHeroOption, query: string): number | 
         return 0;
     }
 
-    if (hero.searchableTitle.startsWith(query)) {
+    if (hero.searchableAliases.includes(query)) {
         return 1;
     }
 
-    if (hero.searchableTitle.split(' ').some((word) => word.startsWith(query))) {
+    if (hero.searchableTitle.startsWith(query)) {
         return 2;
     }
 
-    if (hero.searchableTitle.includes(query)) {
+    if (hero.searchableTitle.split(' ').some((word) => word.startsWith(query))) {
         return 3;
     }
 
-    if (hero.searchableName.startsWith(query)) {
+    if (hero.searchableAliases.some((alias) => alias.startsWith(query))) {
         return 4;
     }
 
-    if (hero.searchableName.includes(query)) {
+    if (hero.searchableTitle.includes(query)) {
         return 5;
     }
 
-    if (hero.searchableId.startsWith(query)) {
+    if (hero.searchableName.startsWith(query)) {
         return 6;
+    }
+
+    if (hero.searchableAliases.some((alias) => alias.split(' ').some((word) => word.startsWith(query)))) {
+        return 7;
+    }
+
+    if (hero.searchableName.includes(query)) {
+        return 8;
+    }
+
+    if (hero.searchableAliases.some((alias) => alias.includes(query))) {
+        return 9;
+    }
+
+    if (hero.searchableId.startsWith(query)) {
+        return 10;
     }
 
     return null;
