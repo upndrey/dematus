@@ -3,13 +3,8 @@
 use App\Http\Controllers\StratzController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Laravel\Fortify\Features;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canRegister' => Features::enabled(Features::registration()),
-    ]);
-})->name('home');
+Route::get('/', [StratzController::class, 'index'])->name('home');
 
 Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
@@ -17,7 +12,7 @@ Route::get('dashboard', function () {
 
 require __DIR__.'/settings.php';
 
-Route::get('/stratz', [StratzController::class, 'index'])->name('stratz.index');
+Route::redirect('/stratz', '/')->name('stratz.index');
 Route::post('/stratz/league-matches', [StratzController::class, 'leagueMatches'])->name('stratz.league-matches');
 Route::post('/stratz/match', [StratzController::class, 'match'])->name('stratz.match');
 Route::post('/stratz/pro-players', [StratzController::class, 'proPlayers'])->name('stratz.pro-players');

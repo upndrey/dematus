@@ -757,7 +757,16 @@ const tabs: Array<{
     },
 ];
 
-const activeTab = ref<StratzTab>('draft');
+tabs.splice(0, tabs.length, {
+    id: 'rosh',
+    label: 'ROSH',
+    shortLabel: 'ROSH',
+    description: 'Run ROSH analysis for a single match ID.',
+    activeClasses: 'border-rose-400/50 bg-rose-500/10 text-rose-50',
+    badgeClasses: 'border-rose-300/40 bg-rose-300/10 text-rose-100',
+});
+
+const activeTab = ref<StratzTab>('rosh');
 
 const leagueForm = reactive({
     leagueId: '',
