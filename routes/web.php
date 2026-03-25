@@ -18,3 +18,4 @@ Route::post('/stratz/match', [StratzController::class, 'match'])->name('stratz.m
 Route::post('/stratz/pro-players', [StratzController::class, 'proPlayers'])->name('stratz.pro-players');
 Route::post('/stratz/draft', [StratzController::class, 'draft'])->name('stratz.draft');
 Route::post('/stratz/rosh', [StratzController::class, 'rosh'])->name('stratz.rosh');
+Route::post('/stratz/rosh-heroes', [StratzController::class, 'roshHeroes'])->name('stratz.rosh-heroes');

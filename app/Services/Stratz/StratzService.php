@@ -194,6 +194,33 @@ GRAPHQL;
         ];
     }
 
+    /**
+     * @param  array{
+     *     radiant_team:string,
+     *     dire_team:string,
+     *     radiant_heroes:list<int>,
+     *     dire_heroes:list<int>
+     * }  $payload
+     */
+    public function getRoshFromHeroes(array $payload): array
+    {
+        $week = now()->timestamp;
+        $match = $this->buildRoshHeroMatchContext($payload, $week);
+        $roshRequest = $this->buildRoshRequestFromHeroes($match, $week);
+        $rosh = $this->getRosh($roshRequest);
+        $minuteTable = $this->buildRoshMinuteTable($match, $rosh);
+
+        return [
+            'formatted' => $this->buildRoshSummary('LIVE', $match, $roshRequest, $minuteTable),
+            'minute_table' => $minuteTable,
+            'request' => $roshRequest,
+            'raw' => [
+                'match' => $match,
+                'analysis_summary' => $this->buildRoshRawAnalysisSummary($rosh),
+            ],
+        ];
+    }
+
     public function getProPlayers(): array
     {
         $query = <<<'GRAPHQL'
@@ -474,6 +501,97 @@ GRAPHQL;
 
     /**
      * @param  array<string, mixed>  $match
+     * @return array{
+     *     input: array{
+     *         mode:string,
+     *         matchId:string,
+     *         radiantTeam:string,
+     *         direTeam:string,
+     *         radiantHeroes:list<int>,
+     *         direHeroes:list<int>
+     *     },
+     *     analysis: array{
+     *         bracket:string,
+     *         bracketBasicIds:string,
+     *         week:int,
+     *         operations:array<int, array{key:string, operationName:string, variables:array<string, int|string>}>
+     *     }
+     * }
+     */
+    private function buildRoshRequestFromHeroes(array $match, int $week): array
+    {
+        $bracket = $this->mapBracketToId(8);
+        $bracketBasicId = $this->mapBracketToBasicId(8);
+
+        return [
+            'input' => [
+                'mode' => 'heroes',
+                'matchId' => 'LIVE',
+                'radiantTeam' => (string) data_get($match, 'radiantTeam.name', 'Radiant'),
+                'direTeam' => (string) data_get($match, 'direTeam.name', 'Dire'),
+                'radiantHeroes' => array_values(array_map(
+                    static fn (array $player): int => (int) $player['heroId'],
+                    array_filter(
+                        (array) data_get($match, 'players', []),
+                        static fn (mixed $player): bool => (bool) data_get($player, 'isRadiant'),
+                    ),
+                )),
+                'direHeroes' => array_values(array_map(
+                    static fn (array $player): int => (int) $player['heroId'],
+                    array_filter(
+                        (array) data_get($match, 'players', []),
+                        static fn (mixed $player): bool => ! (bool) data_get($player, 'isRadiant'),
+                    ),
+                )),
+            ],
+            'analysis' => [
+                'bracket' => $bracket,
+                'bracketBasicIds' => $bracketBasicId,
+                'week' => $week,
+                'operations' => [
+                    [
+                        'key' => 'heroes_meta_positions',
+                        'operationName' => 'HeroesMetaPositionsByWeek',
+                        'variables' => [
+                            'bracketBasicIds' => $bracketBasicId,
+                            'week' => $week,
+                        ],
+                    ],
+                    [
+                        'key' => 'hero_stats_by_time_global',
+                        'operationName' => 'GetHeroStatsByTime',
+                        'variables' => [
+                            'week' => $week,
+                        ],
+                    ],
+                    [
+                        'key' => 'hero_stats_by_time_bracket',
+                        'operationName' => 'GetHeroStatsByTime',
+                        'variables' => [
+                            'bracketBasicIds' => $bracketBasicId,
+                            'week' => $week,
+                        ],
+                    ],
+                    [
+                        'key' => 'synergy',
+                        'operationName' => 'Synergy',
+                        'variables' => [
+                            'bracketBasicIds' => $bracketBasicId,
+                            'matchLimit' => 0,
+                            'take' => 200,
+                            'currentWeek' => $week,
+                            'previousWeek1' => $week - 604800,
+                            'previousWeek2' => $week - 1209600,
+                            'previousWeek3' => $week - 1814400,
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $match
      * @param  array<string, mixed>  $draft
      * @return array{
      *     match_id:int,
@@ -514,7 +632,7 @@ GRAPHQL;
      *     }
      * }  $request
      * @return array{
-     *     match_id:int,
+     *     match_id:int|string,
      *     winner:string,
      *     radiant_team:string,
      *     dire_team:string,
@@ -527,7 +645,7 @@ GRAPHQL;
      *     dire_odds_2:?float
      * }
      */
-    private function buildRoshSummary(int $matchId, array $match, array $request, array $minuteTable): array
+    private function buildRoshSummary(int|string $matchId, array $match, array $request, array $minuteTable): array
     {
         $firstMinute = $minuteTable[0] ?? null;
         $lastMinute = $minuteTable[array_key_last($minuteTable)] ?? null;
@@ -535,10 +653,14 @@ GRAPHQL;
         $radiantOddsEnd = $this->normalizePercentMetric(data_get($lastMinute, 'radiant_advantage'));
         $direOddsStart = $this->normalizePercentMetric(data_get($firstMinute, 'dire_advantage'));
         $direOddsEnd = $this->normalizePercentMetric(data_get($lastMinute, 'dire_advantage'));
+        $didRadiantWin = data_get($match, 'didRadiantWin');
+        $winner = is_bool($didRadiantWin)
+            ? ($didRadiantWin ? 'radiant' : 'dire')
+            : $this->resolveRoshWinnerFromMinuteTable($minuteTable);
 
         return [
             'match_id' => $matchId,
-            'winner' => (bool) data_get($match, 'didRadiantWin') ? 'radiant' : 'dire',
+            'winner' => $winner,
             'radiant_team' => (string) data_get($match, 'radiantTeam.name', 'Radiant'),
             'dire_team' => (string) data_get($match, 'direTeam.name', 'Dire'),
             'bracket' => (string) data_get($request, 'analysis.bracket'),
@@ -548,6 +670,73 @@ GRAPHQL;
             'radiant_odds_2' => $radiantOddsEnd,
             'dire_odds_1' => $direOddsStart,
             'dire_odds_2' => $direOddsEnd,
+        ];
+    }
+
+    /**
+     * @param  array{
+     *     radiant_team:string,
+     *     dire_team:string,
+     *     radiant_heroes:list<int>,
+     *     dire_heroes:list<int>
+     * }  $payload
+     * @return array<string, mixed>
+     */
+    private function buildRoshHeroMatchContext(array $payload, int $week): array
+    {
+        $players = [];
+        $pickBans = [];
+        $order = 0;
+
+        foreach ((array) ($payload['radiant_heroes'] ?? []) as $index => $heroId) {
+            $positionId = $index + 1;
+
+            $players[] = [
+                'heroId' => (int) $heroId,
+                'position' => 'POSITION_'.$positionId,
+                'isRadiant' => true,
+            ];
+            $pickBans[] = [
+                'heroId' => (int) $heroId,
+                'order' => $order++,
+                'isPick' => true,
+                'isRadiant' => true,
+                'bannedHeroId' => null,
+                'wasBannedSuccessfully' => null,
+            ];
+        }
+
+        foreach ((array) ($payload['dire_heroes'] ?? []) as $index => $heroId) {
+            $positionId = $index + 1;
+
+            $players[] = [
+                'heroId' => (int) $heroId,
+                'position' => 'POSITION_'.$positionId,
+                'isRadiant' => false,
+            ];
+            $pickBans[] = [
+                'heroId' => (int) $heroId,
+                'order' => $order++,
+                'isPick' => true,
+                'isRadiant' => false,
+                'bannedHeroId' => null,
+                'wasBannedSuccessfully' => null,
+            ];
+        }
+
+        return [
+            'id' => 'LIVE',
+            'endDateTime' => $week,
+            'bracket' => 8,
+            'didRadiantWin' => null,
+            'radiantTeam' => [
+                'name' => (string) ($payload['radiant_team'] ?? 'Radiant'),
+            ],
+            'direTeam' => [
+                'name' => (string) ($payload['dire_team'] ?? 'Dire'),
+            ],
+            'players' => $players,
+            'pickBans' => $pickBans,
         ];
     }
 
@@ -1479,6 +1668,28 @@ GRAPHQL;
         }
 
         return round((float) $value, 1);
+    }
+
+    /**
+     * @param  list<array{
+     *     minute:int,
+     *     time_start:int,
+     *     time_end:int,
+     *     advantage_side:string,
+     *     advantage_percent:float,
+     *     radiant_advantage:float,
+     *     dire_advantage:float,
+     *     match_percentage:float,
+     *     win_rate_graph:float
+     * }>  $minuteTable
+     */
+    private function resolveRoshWinnerFromMinuteTable(array $minuteTable): string
+    {
+        $lastMinute = $minuteTable[array_key_last($minuteTable)] ?? null;
+        $radiantAdvantage = (float) data_get($lastMinute, 'radiant_advantage', 0.0);
+        $direAdvantage = (float) data_get($lastMinute, 'dire_advantage', 0.0);
+
+        return $direAdvantage > $radiantAdvantage ? 'dire' : 'radiant';
     }
 
     /**

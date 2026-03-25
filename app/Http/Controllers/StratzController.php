@@ -7,6 +7,7 @@ use App\Http\Requests\Stratz\FetchDraftRequest;
 use App\Http\Requests\Stratz\FetchLeagueMatchesRequest;
 use App\Http\Requests\Stratz\FetchMatchRequest;
 use App\Http\Requests\Stratz\FetchProPlayersRequest;
+use App\Http\Requests\Stratz\FetchRoshHeroesRequest;
 use App\Http\Requests\Stratz\FetchRoshRequest;
 use App\Services\GoogleSheets\RoshSheetService;
 use App\Services\Stratz\StratzService;
@@ -94,6 +95,26 @@ class StratzController
             if ($roshSheetService->isConfigured()) {
                 $rosh['google_sheets'] = $roshSheetService->syncMatchOdds(
                     $request->integer('match_id'),
+                    (array) data_get($rosh, 'formatted', []),
+                );
+            }
+
+            return $this->respond($request, 'rosh', $rosh);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function roshHeroes(
+        FetchRoshHeroesRequest $request,
+        StratzService $stratzService,
+        RoshSheetService $roshSheetService,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $rosh = $stratzService->getRoshFromHeroes($request->validated());
+
+            if ($roshSheetService->isConfigured()) {
+                $rosh['google_sheets'] = $roshSheetService->appendLiveOdds(
                     (array) data_get($rosh, 'formatted', []),
                 );
             }

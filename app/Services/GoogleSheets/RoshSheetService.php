@@ -57,6 +57,52 @@ class RoshSheetService
      */
     public function syncMatchOdds(int $matchId, array $formatted): array
     {
+        return $this->syncOdds((string) $matchId, $formatted);
+    }
+
+    /**
+     * @param  array{
+     *     match_id?:int|string,
+     *     winner?:string,
+     *     radiant_team?:string,
+     *     dire_team?:string,
+     *     radiant_odds_1:?float,
+     *     radiant_odds_2:?float,
+     *     dire_odds_1:?float,
+     *     dire_odds_2:?float
+     * }  $formatted
+     * @return array{
+     *     spreadsheet_id:string,
+     *     sheet_title:string,
+     *     row:int,
+     *     cells:array<string, string>
+     * }
+     */
+    public function appendLiveOdds(array $formatted): array
+    {
+        return $this->syncOdds('LIVE', $formatted, true);
+    }
+
+    /**
+     * @param  array{
+     *     match_id?:int|string,
+     *     winner?:string,
+     *     radiant_team?:string,
+     *     dire_team?:string,
+     *     radiant_odds_1:?float,
+     *     radiant_odds_2:?float,
+     *     dire_odds_1:?float,
+     *     dire_odds_2:?float
+     * }  $formatted
+     * @return array{
+     *     spreadsheet_id:string,
+     *     sheet_title:string,
+     *     row:int,
+     *     cells:array<string, string>
+     * }
+     */
+    private function syncOdds(string $matchIdValue, array $formatted, bool $alwaysAppend = false): array
+    {
         if (! $this->isConfigured()) {
             throw new RuntimeException('Google Sheets ROSH sync is not configured.');
         }
@@ -74,10 +120,11 @@ class RoshSheetService
             $accessToken,
             $spreadsheet['spreadsheet_id'],
             $sheetTitle,
-            $matchId,
+            $matchIdValue,
+            $alwaysAppend,
         );
         $matchMetadata = [
-            (string) $matchId,
+            $matchIdValue,
             $this->formatSheetTextValue($formatted['radiant_team'] ?? null),
             $this->formatSheetTextValue($formatted['dire_team'] ?? null),
             $this->formatWinnerValue($formatted['winner'] ?? null),
@@ -244,19 +291,26 @@ class RoshSheetService
         return $fallbackTitle;
     }
 
-    private function findOrNextMatchRow(string $accessToken, string $spreadsheetId, string $sheetTitle, int $matchId): int
-    {
+    private function findOrNextMatchRow(
+        string $accessToken,
+        string $spreadsheetId,
+        string $sheetTitle,
+        string $matchIdValue,
+        bool $alwaysAppend = false,
+    ): int {
         $range = $this->sheetRange($sheetTitle, self::MATCH_ID_COLUMN.':'.self::MATCH_ID_COLUMN);
         $response = $this->authorizedRequest($accessToken)
             ->get(self::SHEETS_API_BASE.'/'.$spreadsheetId.'/values/'.rawurlencode($range));
         $data = $this->decodeResponse($response, 'Google Sheets match lookup request failed.');
         $rows = (array) data_get($data, 'values', []);
 
-        foreach ($rows as $index => $row) {
-            $value = trim((string) data_get($row, '0', ''));
+        if (! $alwaysAppend) {
+            foreach ($rows as $index => $row) {
+                $value = trim((string) data_get($row, '0', ''));
 
-            if ($value === (string) $matchId) {
-                return $index + 1;
+                if ($value === $matchIdValue) {
+                    return $index + 1;
+                }
             }
         }
 
