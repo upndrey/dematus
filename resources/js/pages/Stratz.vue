@@ -210,7 +210,7 @@
                                             </div>
 
                                             <div
-                                                v-if="isHeroPickerOpen('radiant', role.position - 1)"
+                                                v-if="shouldShowHeroPicker('radiant', role.position - 1)"
                                                 class="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/98 shadow-2xl shadow-slate-950/70"
                                             >
                                                 <div class="border-b border-slate-800 px-3 py-2 text-[11px] font-semibold tracking-[0.22em] text-slate-400 uppercase">
@@ -352,7 +352,7 @@
                                             </div>
 
                                             <div
-                                                v-if="isHeroPickerOpen('dire', role.position - 1)"
+                                                v-if="shouldShowHeroPicker('dire', role.position - 1)"
                                                 class="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/98 shadow-2xl shadow-slate-950/70"
                                             >
                                                 <div class="border-b border-slate-800 px-3 py-2 text-[11px] font-semibold tracking-[0.22em] text-slate-400 uppercase">
@@ -1012,6 +1012,25 @@ const getHeroMatches = (side: HeroSide, index: number): HeroOption[] => {
         .slice(0, 5)
         .map((hero) => hero.hero);
 };
+
+const shouldHideResolvedHeroDropdown = (side: HeroSide, index: number): boolean => {
+    const selectedHero = selectedHeroFor(side, index);
+
+    if (! selectedHero) {
+        return false;
+    }
+
+    const matches = getHeroMatches(side, index);
+
+    return (
+        matches.length === 1
+        && matches[0].id === selectedHero.id
+        && normalizeHeroQuery(getHeroValue(side, index)) === normalizeHeroQuery(selectedHero.title)
+    );
+};
+
+const shouldShowHeroPicker = (side: HeroSide, index: number): boolean =>
+    isHeroPickerOpen(side, index) && ! shouldHideResolvedHeroDropdown(side, index);
 
 const getDefaultActiveHeroMatchIndex = (side: HeroSide, index: number): number => {
     const matches = getHeroMatches(side, index);
