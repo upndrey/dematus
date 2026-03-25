@@ -27,6 +27,7 @@ class StratzController
                 'id' => $hero->value,
                 'name' => $hero->name,
                 'title' => $hero->title(),
+                'image' => asset("images/heroes/icons/{$hero->value}.png"),
             ],
             Hero::cases(),
         );

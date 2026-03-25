@@ -114,9 +114,9 @@
                     </p>
                     <h2 class="text-xl font-semibold text-white">По Героям</h2>
                     <p class="max-w-3xl text-sm leading-6 text-slate-300">
-                        Соберите live-драфт вручную: названия команд, по 5 героев на каждую сторону и роли Pos 1-5.
-                        После расчёта результат также уйдёт в Google Sheets, а в колонку Match ID будет записано
-                        <code>LIVE</code>.
+                        Соберите live-драфт вручную: названия команд и по 5 героев на каждую сторону с ролями Керри,
+                        Мидер, Оффлейнер, Четвёрка и Пятёрка. После расчёта результат также уйдёт в Google Sheets, а в
+                        колонку Match ID будет записано <code>LIVE</code>.
                     </p>
                 </div>
 
@@ -142,24 +142,139 @@
                                 </label>
 
                                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                                    <label
+                                    <div
                                         v-for="role in roles"
                                         :key="`radiant-${role.position}`"
-                                        class="flex flex-col gap-2 text-sm text-slate-200"
+                                        class="space-y-2 text-sm text-slate-200"
                                     >
-                                        <span class="font-medium text-emerald-200">{{ role.label }}</span>
-                                        <input
-                                            v-model="heroForm.radiantHeroes[role.position - 1]"
-                                            type="text"
-                                            list="stratz-hero-options"
-                                            required
-                                            class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-400"
-                                            :placeholder="`Выберите героя для ${role.label}`"
-                                        />
-                                        <span class="text-xs text-slate-500">
-                                            {{ formatMatchedHero(heroForm.radiantHeroes[role.position - 1]) }}
-                                        </span>
-                                    </label>
+                                        <div class="flex items-center justify-between gap-3">
+                                            <span class="font-medium text-emerald-200">{{ role.label }}</span>
+                                            <span
+                                                v-if="formatMatchedHero(getHeroValue('radiant', role.position - 1))"
+                                                class="text-xs text-slate-500"
+                                            >
+                                                {{ formatMatchedHero(getHeroValue('radiant', role.position - 1)) }}
+                                            </span>
+                                        </div>
+
+                                        <div class="relative" data-hero-picker>
+                                            <div
+                                                class="flex items-center gap-3 rounded-2xl border px-3 py-2 transition"
+                                                :class="
+                                                    isHeroPickerOpen('radiant', role.position - 1)
+                                                        ? 'border-emerald-400/70 bg-emerald-500/8 shadow-[0_0_0_1px_rgba(52,211,153,0.18)]'
+                                                        : 'border-slate-700 bg-slate-900/90 hover:border-slate-600'
+                                                "
+                                            >
+                                                <div
+                                                    class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border"
+                                                    :class="
+                                                        selectedHeroFor('radiant', role.position - 1)
+                                                            ? 'border-emerald-400/30 bg-slate-950'
+                                                            : 'border-slate-700 bg-slate-950 text-emerald-200'
+                                                    "
+                                                >
+                                                    <img
+                                                        v-if="selectedHeroFor('radiant', role.position - 1)"
+                                                        :src="selectedHeroFor('radiant', role.position - 1)?.image"
+                                                        :alt="selectedHeroFor('radiant', role.position - 1)?.title"
+                                                        class="h-full w-full object-cover"
+                                                    />
+                                                    <span v-else class="text-xs font-semibold uppercase">
+                                                        {{ role.position }}
+                                                    </span>
+                                                </div>
+
+                                                <div class="min-w-0 flex-1">
+                                                    <input
+                                                        :value="getHeroValue('radiant', role.position - 1)"
+                                                        :data-hero-input="heroPickerKey('radiant', role.position - 1)"
+                                                        type="text"
+                                                        autocomplete="off"
+                                                        required
+                                                        class="w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500"
+                                                        :placeholder="`Выберите героя для ${role.label}`"
+                                                        @focus="openHeroPicker('radiant', role.position - 1)"
+                                                        @click="openHeroPicker('radiant', role.position - 1)"
+                                                        @input="handleHeroInput('radiant', role.position - 1, $event)"
+                                                        @keydown.down.prevent="handleHeroArrowDown('radiant', role.position - 1)"
+                                                        @keydown.up.prevent="handleHeroArrowUp('radiant', role.position - 1)"
+                                                        @keydown.enter.prevent="selectActiveHeroMatch('radiant', role.position - 1)"
+                                                        @keydown.escape="closeHeroPicker"
+                                                    />
+                                                    <p
+                                                        v-if="formatMatchedHero(getHeroValue('radiant', role.position - 1))"
+                                                        class="mt-1 text-xs text-slate-500"
+                                                    >
+                                                        {{ formatMatchedHero(getHeroValue('radiant', role.position - 1)) }}
+                                                    </p>
+                                                </div>
+
+                                                <button
+                                                    v-if="getHeroValue('radiant', role.position - 1)"
+                                                    type="button"
+                                                    tabindex="-1"
+                                                    class="rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
+                                                    @click="clearHeroSelection('radiant', role.position - 1)"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+
+                                            <div
+                                                v-if="isHeroPickerOpen('radiant', role.position - 1)"
+                                                class="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/98 shadow-2xl shadow-slate-950/70"
+                                            >
+                                                <div class="border-b border-slate-800 px-3 py-2 text-[11px] font-semibold tracking-[0.22em] text-slate-400 uppercase">
+                                                    Первые 5 героев
+                                                </div>
+
+                                                <div class="max-h-72 overflow-y-auto p-2">
+                                                    <button
+                                                        v-for="(hero, optionIndex) in getHeroMatches('radiant', role.position - 1)"
+                                                        :key="hero.id"
+                                                        type="button"
+                                                        :data-hero-option="`${heroPickerKey('radiant', role.position - 1)}-${optionIndex}`"
+                                                        class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
+                                                        :class="
+                                                            getActiveHeroMatchIndex('radiant', role.position - 1) === optionIndex
+                                                                ? 'bg-emerald-500/15 text-white ring-1 ring-emerald-400/40'
+                                                                : selectedHeroFor('radiant', role.position - 1)?.id === hero.id
+                                                                  ? 'bg-emerald-500/10 text-white'
+                                                                  : 'text-slate-200 hover:bg-slate-900 hover:text-white'
+                                                        "
+                                                        @mouseenter="setActiveHeroMatchIndex('radiant', role.position - 1, optionIndex)"
+                                                        @focus="setActiveHeroMatchIndex('radiant', role.position - 1, optionIndex)"
+                                                        @keydown.down.prevent="handleHeroOptionArrowDown('radiant', role.position - 1)"
+                                                        @keydown.up.prevent="handleHeroOptionArrowUp('radiant', role.position - 1)"
+                                                        @keydown.enter.prevent="selectActiveHeroMatch('radiant', role.position - 1)"
+                                                        @mousedown.prevent="selectHero('radiant', role.position - 1, hero)"
+                                                    >
+                                                        <img
+                                                            :src="hero.image"
+                                                            :alt="hero.title"
+                                                            class="h-9 w-9 shrink-0 rounded-lg border border-slate-700 object-cover"
+                                                        />
+                                                        <div class="min-w-0 flex-1">
+                                                            <div class="truncate font-semibold">
+                                                                {{ hero.title }}
+                                                            </div>
+                                                            <div class="text-xs text-slate-500">
+                                                                ID {{ hero.id }}
+                                                            </div>
+                                                        </div>
+                                                    </button>
+
+                                                    <div
+                                                        v-if="getHeroMatches('radiant', role.position - 1).length === 0"
+                                                        class="px-3 py-4 text-sm text-slate-500"
+                                                    >
+                                                        Ничего не найдено. Попробуйте другую часть имени героя.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -184,24 +299,139 @@
                                 </label>
 
                                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                                    <label
+                                    <div
                                         v-for="role in roles"
                                         :key="`dire-${role.position}`"
-                                        class="flex flex-col gap-2 text-sm text-slate-200"
+                                        class="space-y-2 text-sm text-slate-200"
                                     >
-                                        <span class="font-medium text-rose-200">{{ role.label }}</span>
-                                        <input
-                                            v-model="heroForm.direHeroes[role.position - 1]"
-                                            type="text"
-                                            list="stratz-hero-options"
-                                            required
-                                            class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-rose-400"
-                                            :placeholder="`Выберите героя для ${role.label}`"
-                                        />
-                                        <span class="text-xs text-slate-500">
-                                            {{ formatMatchedHero(heroForm.direHeroes[role.position - 1]) }}
-                                        </span>
-                                    </label>
+                                        <div class="flex items-center justify-between gap-3">
+                                            <span class="font-medium text-rose-200">{{ role.label }}</span>
+                                            <span
+                                                v-if="formatMatchedHero(getHeroValue('dire', role.position - 1))"
+                                                class="text-xs text-slate-500"
+                                            >
+                                                {{ formatMatchedHero(getHeroValue('dire', role.position - 1)) }}
+                                            </span>
+                                        </div>
+
+                                        <div class="relative" data-hero-picker>
+                                            <div
+                                                class="flex items-center gap-3 rounded-2xl border px-3 py-2 transition"
+                                                :class="
+                                                    isHeroPickerOpen('dire', role.position - 1)
+                                                        ? 'border-rose-400/70 bg-rose-500/8 shadow-[0_0_0_1px_rgba(251,113,133,0.18)]'
+                                                        : 'border-slate-700 bg-slate-900/90 hover:border-slate-600'
+                                                "
+                                            >
+                                                <div
+                                                    class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border"
+                                                    :class="
+                                                        selectedHeroFor('dire', role.position - 1)
+                                                            ? 'border-rose-400/30 bg-slate-950'
+                                                            : 'border-slate-700 bg-slate-950 text-rose-200'
+                                                    "
+                                                >
+                                                    <img
+                                                        v-if="selectedHeroFor('dire', role.position - 1)"
+                                                        :src="selectedHeroFor('dire', role.position - 1)?.image"
+                                                        :alt="selectedHeroFor('dire', role.position - 1)?.title"
+                                                        class="h-full w-full object-cover"
+                                                    />
+                                                    <span v-else class="text-xs font-semibold uppercase">
+                                                        {{ role.position }}
+                                                    </span>
+                                                </div>
+
+                                                <div class="min-w-0 flex-1">
+                                                    <input
+                                                        :value="getHeroValue('dire', role.position - 1)"
+                                                        :data-hero-input="heroPickerKey('dire', role.position - 1)"
+                                                        type="text"
+                                                        autocomplete="off"
+                                                        required
+                                                        class="w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500"
+                                                        :placeholder="`Выберите героя для ${role.label}`"
+                                                        @focus="openHeroPicker('dire', role.position - 1)"
+                                                        @click="openHeroPicker('dire', role.position - 1)"
+                                                        @input="handleHeroInput('dire', role.position - 1, $event)"
+                                                        @keydown.down.prevent="handleHeroArrowDown('dire', role.position - 1)"
+                                                        @keydown.up.prevent="handleHeroArrowUp('dire', role.position - 1)"
+                                                        @keydown.enter.prevent="selectActiveHeroMatch('dire', role.position - 1)"
+                                                        @keydown.escape="closeHeroPicker"
+                                                    />
+                                                    <p
+                                                        v-if="formatMatchedHero(getHeroValue('dire', role.position - 1))"
+                                                        class="mt-1 text-xs text-slate-500"
+                                                    >
+                                                        {{ formatMatchedHero(getHeroValue('dire', role.position - 1)) }}
+                                                    </p>
+                                                </div>
+
+                                                <button
+                                                    v-if="getHeroValue('dire', role.position - 1)"
+                                                    type="button"
+                                                    tabindex="-1"
+                                                    class="rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
+                                                    @click="clearHeroSelection('dire', role.position - 1)"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+
+                                            <div
+                                                v-if="isHeroPickerOpen('dire', role.position - 1)"
+                                                class="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/98 shadow-2xl shadow-slate-950/70"
+                                            >
+                                                <div class="border-b border-slate-800 px-3 py-2 text-[11px] font-semibold tracking-[0.22em] text-slate-400 uppercase">
+                                                    Первые 5 героев
+                                                </div>
+
+                                                <div class="max-h-72 overflow-y-auto p-2">
+                                                    <button
+                                                        v-for="(hero, optionIndex) in getHeroMatches('dire', role.position - 1)"
+                                                        :key="hero.id"
+                                                        type="button"
+                                                        :data-hero-option="`${heroPickerKey('dire', role.position - 1)}-${optionIndex}`"
+                                                        class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
+                                                        :class="
+                                                            getActiveHeroMatchIndex('dire', role.position - 1) === optionIndex
+                                                                ? 'bg-rose-500/15 text-white ring-1 ring-rose-400/40'
+                                                                : selectedHeroFor('dire', role.position - 1)?.id === hero.id
+                                                                  ? 'bg-rose-500/10 text-white'
+                                                                  : 'text-slate-200 hover:bg-slate-900 hover:text-white'
+                                                        "
+                                                        @mouseenter="setActiveHeroMatchIndex('dire', role.position - 1, optionIndex)"
+                                                        @focus="setActiveHeroMatchIndex('dire', role.position - 1, optionIndex)"
+                                                        @keydown.down.prevent="handleHeroOptionArrowDown('dire', role.position - 1)"
+                                                        @keydown.up.prevent="handleHeroOptionArrowUp('dire', role.position - 1)"
+                                                        @keydown.enter.prevent="selectActiveHeroMatch('dire', role.position - 1)"
+                                                        @mousedown.prevent="selectHero('dire', role.position - 1, hero)"
+                                                    >
+                                                        <img
+                                                            :src="hero.image"
+                                                            :alt="hero.title"
+                                                            class="h-9 w-9 shrink-0 rounded-lg border border-slate-700 object-cover"
+                                                        />
+                                                        <div class="min-w-0 flex-1">
+                                                            <div class="truncate font-semibold">
+                                                                {{ hero.title }}
+                                                            </div>
+                                                            <div class="text-xs text-slate-500">
+                                                                ID {{ hero.id }}
+                                                            </div>
+                                                        </div>
+                                                    </button>
+
+                                                    <div
+                                                        v-if="getHeroMatches('dire', role.position - 1).length === 0"
+                                                        class="px-3 py-4 text-sm text-slate-500"
+                                                    >
+                                                        Ничего не найдено. Попробуйте другую часть имени героя.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -220,12 +450,6 @@
                         {{ isLoading('rosh-heroes') ? 'Считаем...' : 'Рассчитать' }}
                     </button>
                 </form>
-
-                <datalist id="stratz-hero-options">
-                    <option v-for="hero in sortedHeroes" :key="hero.id" :value="hero.title">
-                        {{ hero.title }}
-                    </option>
-                </datalist>
             </section>
 
             <section
@@ -464,7 +688,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 import { rosh as roshAction, roshHeroes as roshHeroesAction } from '@/actions/App/Http/Controllers/StratzController';
 
@@ -472,8 +696,18 @@ type HeroOption = {
     id: number;
     name: string;
     title: string;
+    image: string;
 };
 
+type SearchableHeroOption = {
+    hero: HeroOption;
+    searchableTitle: string;
+    searchableName: string;
+    searchableId: string;
+};
+
+type HeroSide = 'radiant' | 'dire';
+type HeroPickerKey = `${HeroSide}-${number}`;
 type StratzTab = 'matchId' | 'heroes';
 
 type RoshFormattedResult = {
@@ -578,6 +812,8 @@ const heroForm = reactive({
     direHeroes: Array.from({ length: 5 }, () => ''),
 });
 
+const openHeroPickerKey = ref<HeroPickerKey | null>(null);
+const activeHeroOptionIndex = ref(0);
 const loadingAction = ref<string | null>(null);
 const errorMessage = ref('');
 const result = ref<StratzResult | null>(null);
@@ -586,6 +822,15 @@ const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token
 
 const sortedHeroes = computed(() =>
     [...props.heroes].sort((left, right) => left.title.localeCompare(right.title, 'ru')),
+);
+
+const searchableHeroes = computed<SearchableHeroOption[]>(() =>
+    sortedHeroes.value.map((hero) => ({
+        hero,
+        searchableTitle: normalizeHeroQuery(hero.title),
+        searchableName: normalizeHeroQuery(hero.name),
+        searchableId: String(hero.id),
+    })),
 );
 
 const heroLookup = computed(() => {
@@ -652,7 +897,34 @@ const normalizeHeroQuery = (value: string): string =>
     value
         .trim()
         .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
         .replace(/\s+/g, ' ');
+
+const heroPickerKey = (side: HeroSide, index: number): HeroPickerKey => `${side}-${index}` as HeroPickerKey;
+
+const getHeroValue = (side: HeroSide, index: number): string =>
+    side === 'radiant' ? heroForm.radiantHeroes[index] : heroForm.direHeroes[index];
+
+const setHeroValue = (side: HeroSide, index: number, value: string): void => {
+    if (side === 'radiant') {
+        heroForm.radiantHeroes[index] = value;
+        return;
+    }
+
+    heroForm.direHeroes[index] = value;
+};
+
+const openHeroPicker = (side: HeroSide, index: number): void => {
+    openHeroPickerKey.value = heroPickerKey(side, index);
+    activeHeroOptionIndex.value = Math.max(getDefaultActiveHeroMatchIndex(side, index), 0);
+};
+
+const closeHeroPicker = (): void => {
+    openHeroPickerKey.value = null;
+};
+
+const isHeroPickerOpen = (side: HeroSide, index: number): boolean =>
+    openHeroPickerKey.value === heroPickerKey(side, index);
 
 const resolveHero = (value: string): HeroOption | null => {
     if (value.trim() === '') {
@@ -662,15 +934,224 @@ const resolveHero = (value: string): HeroOption | null => {
     return heroLookup.value.get(normalizeHeroQuery(value)) ?? null;
 };
 
+const selectedHeroFor = (side: HeroSide, index: number): HeroOption | null => resolveHero(getHeroValue(side, index));
+
 const formatMatchedHero = (value: string): string => {
     const hero = resolveHero(value);
 
     if (! hero) {
-        return value.trim() === '' ? 'Начните вводить имя героя' : 'Герой не распознан';
+        return '';
     }
 
     return `ID ${hero.id}`;
 };
+
+const getHeroMatchScore = (hero: SearchableHeroOption, query: string): number | null => {
+    if ([hero.searchableTitle, hero.searchableName, hero.searchableId].includes(query)) {
+        return 0;
+    }
+
+    if (hero.searchableTitle.startsWith(query)) {
+        return 1;
+    }
+
+    if (hero.searchableTitle.split(' ').some((word) => word.startsWith(query))) {
+        return 2;
+    }
+
+    if (hero.searchableTitle.includes(query)) {
+        return 3;
+    }
+
+    if (hero.searchableName.startsWith(query)) {
+        return 4;
+    }
+
+    if (hero.searchableName.includes(query)) {
+        return 5;
+    }
+
+    if (hero.searchableId.startsWith(query)) {
+        return 6;
+    }
+
+    return null;
+};
+
+const getHeroMatches = (side: HeroSide, index: number): HeroOption[] => {
+    const query = normalizeHeroQuery(getHeroValue(side, index));
+
+    if (query === '') {
+        return sortedHeroes.value.slice(0, 5);
+    }
+
+    return searchableHeroes.value
+        .map((hero) => ({
+            hero: hero.hero,
+            score: getHeroMatchScore(hero, query),
+        }))
+        .filter((hero): hero is { hero: HeroOption; score: number } => hero.score !== null)
+        .sort((left, right) => {
+            if (left.score !== right.score) {
+                return left.score - right.score;
+            }
+
+            return left.hero.title.localeCompare(right.hero.title, 'en');
+        })
+        .slice(0, 5)
+        .map((hero) => hero.hero);
+};
+
+const getDefaultActiveHeroMatchIndex = (side: HeroSide, index: number): number => {
+    const matches = getHeroMatches(side, index);
+    const selectedHero = selectedHeroFor(side, index);
+
+    if (matches.length === 0) {
+        return -1;
+    }
+
+    if (! selectedHero) {
+        return 0;
+    }
+
+    const selectedIndex = matches.findIndex((hero) => hero.id === selectedHero.id);
+
+    return selectedIndex >= 0 ? selectedIndex : 0;
+};
+
+const getActiveHeroMatchIndex = (side: HeroSide, index: number): number => {
+    const matches = getHeroMatches(side, index);
+
+    if (matches.length === 0) {
+        return -1;
+    }
+
+    return Math.min(activeHeroOptionIndex.value, matches.length - 1);
+};
+
+const setActiveHeroMatchIndex = (side: HeroSide, index: number, nextIndex: number): void => {
+    const matches = getHeroMatches(side, index);
+
+    if (matches.length === 0) {
+        activeHeroOptionIndex.value = 0;
+        return;
+    }
+
+    const normalizedIndex = ((nextIndex % matches.length) + matches.length) % matches.length;
+
+    activeHeroOptionIndex.value = normalizedIndex;
+};
+
+const focusActiveHeroOption = (side: HeroSide, index: number): void => {
+    const activeIndex = getActiveHeroMatchIndex(side, index);
+
+    if (activeIndex < 0) {
+        return;
+    }
+
+    requestAnimationFrame(() => {
+        const option = document.querySelector<HTMLElement>(
+            `[data-hero-option="${heroPickerKey(side, index)}-${activeIndex}"]`,
+        );
+
+        option?.focus();
+    });
+};
+
+const focusNextHeroInput = (side: HeroSide, index: number): void => {
+    requestAnimationFrame(() => {
+        const currentKey = heroPickerKey(side, index);
+        const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-hero-input]'));
+        const currentInputIndex = inputs.findIndex((input) => input.dataset.heroInput === currentKey);
+
+        if (currentInputIndex < 0) {
+            return;
+        }
+
+        const nextInput = inputs[currentInputIndex + 1] ?? inputs[currentInputIndex];
+
+        nextInput?.focus();
+    });
+};
+
+const moveActiveHeroMatch = (side: HeroSide, index: number, direction: 1 | -1): void => {
+    if (! isHeroPickerOpen(side, index)) {
+        openHeroPicker(side, index);
+        return;
+    }
+
+    setActiveHeroMatchIndex(side, index, getActiveHeroMatchIndex(side, index) + direction);
+};
+
+const selectHero = (side: HeroSide, index: number, hero: HeroOption): void => {
+    setHeroValue(side, index, hero.title);
+    closeHeroPicker();
+    focusNextHeroInput(side, index);
+};
+
+const selectActiveHeroMatch = (side: HeroSide, index: number): void => {
+    const matches = getHeroMatches(side, index);
+    const activeIndex = getActiveHeroMatchIndex(side, index);
+    const activeHero = activeIndex >= 0 ? matches[activeIndex] : matches[0];
+
+    if (! activeHero) {
+        return;
+    }
+
+    selectHero(side, index, activeHero);
+};
+
+const handleHeroArrowDown = (side: HeroSide, index: number): void => {
+    moveActiveHeroMatch(side, index, 1);
+};
+
+const handleHeroArrowUp = (side: HeroSide, index: number): void => {
+    moveActiveHeroMatch(side, index, -1);
+};
+
+const handleHeroOptionArrowDown = (side: HeroSide, index: number): void => {
+    moveActiveHeroMatch(side, index, 1);
+    focusActiveHeroOption(side, index);
+};
+
+const handleHeroOptionArrowUp = (side: HeroSide, index: number): void => {
+    moveActiveHeroMatch(side, index, -1);
+    focusActiveHeroOption(side, index);
+};
+
+const updateHeroSearch = (side: HeroSide, index: number, value: string): void => {
+    setHeroValue(side, index, value);
+    openHeroPicker(side, index);
+};
+
+const clearHeroSelection = (side: HeroSide, index: number): void => {
+    setHeroValue(side, index, '');
+    openHeroPicker(side, index);
+};
+
+const handleHeroInput = (side: HeroSide, index: number, event: Event): void => {
+    const value = event.target instanceof HTMLInputElement ? event.target.value : '';
+
+    updateHeroSearch(side, index, value);
+};
+
+const handleDocumentPointerDown = (event: PointerEvent): void => {
+    const target = event.target;
+
+    if (target instanceof Element && target.closest('[data-hero-picker]')) {
+        return;
+    }
+
+    closeHeroPicker();
+};
+
+onMounted(() => {
+    document.addEventListener('pointerdown', handleDocumentPointerDown);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('pointerdown', handleDocumentPointerDown);
+});
 
 const request = async (action: string, route: RouteTarget, payload: unknown): Promise<void> => {
     loadingAction.value = action;
