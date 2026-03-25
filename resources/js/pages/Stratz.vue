@@ -149,12 +149,6 @@
                                     >
                                         <div class="flex items-center justify-between gap-3">
                                             <span class="font-medium text-emerald-200">{{ role.label }}</span>
-                                            <span
-                                                v-if="formatMatchedHero(getHeroValue('radiant', role.position - 1))"
-                                                class="text-xs text-slate-500"
-                                            >
-                                                {{ formatMatchedHero(getHeroValue('radiant', role.position - 1)) }}
-                                            </span>
                                         </div>
 
                                         <div class="relative" data-hero-picker>
@@ -202,12 +196,6 @@
                                                         @keydown.enter.prevent="selectActiveHeroMatch('radiant', role.position - 1)"
                                                         @keydown.escape="closeHeroPicker"
                                                     />
-                                                    <p
-                                                        v-if="formatMatchedHero(getHeroValue('radiant', role.position - 1))"
-                                                        class="mt-1 text-xs text-slate-500"
-                                                    >
-                                                        {{ formatMatchedHero(getHeroValue('radiant', role.position - 1)) }}
-                                                    </p>
                                                 </div>
 
                                                 <button
@@ -259,9 +247,6 @@
                                                             <div class="truncate font-semibold">
                                                                 {{ hero.title }}
                                                             </div>
-                                                            <div class="text-xs text-slate-500">
-                                                                ID {{ hero.id }}
-                                                            </div>
                                                         </div>
                                                     </button>
 
@@ -306,12 +291,6 @@
                                     >
                                         <div class="flex items-center justify-between gap-3">
                                             <span class="font-medium text-rose-200">{{ role.label }}</span>
-                                            <span
-                                                v-if="formatMatchedHero(getHeroValue('dire', role.position - 1))"
-                                                class="text-xs text-slate-500"
-                                            >
-                                                {{ formatMatchedHero(getHeroValue('dire', role.position - 1)) }}
-                                            </span>
                                         </div>
 
                                         <div class="relative" data-hero-picker>
@@ -359,12 +338,6 @@
                                                         @keydown.enter.prevent="selectActiveHeroMatch('dire', role.position - 1)"
                                                         @keydown.escape="closeHeroPicker"
                                                     />
-                                                    <p
-                                                        v-if="formatMatchedHero(getHeroValue('dire', role.position - 1))"
-                                                        class="mt-1 text-xs text-slate-500"
-                                                    >
-                                                        {{ formatMatchedHero(getHeroValue('dire', role.position - 1)) }}
-                                                    </p>
                                                 </div>
 
                                                 <button
@@ -415,9 +388,6 @@
                                                         <div class="min-w-0 flex-1">
                                                             <div class="truncate font-semibold">
                                                                 {{ hero.title }}
-                                                            </div>
-                                                            <div class="text-xs text-slate-500">
-                                                                ID {{ hero.id }}
                                                             </div>
                                                         </div>
                                                     </button>
@@ -936,14 +906,34 @@ const resolveHero = (value: string): HeroOption | null => {
 
 const selectedHeroFor = (side: HeroSide, index: number): HeroOption | null => resolveHero(getHeroValue(side, index));
 
-const formatMatchedHero = (value: string): string => {
-    const hero = resolveHero(value);
+const getOccupiedHeroIds = (side: HeroSide, index: number): Set<number> => {
+    const occupiedHeroIds = new Set<number>();
 
-    if (! hero) {
-        return '';
+    for (const [heroIndex, heroValue] of heroForm.radiantHeroes.entries()) {
+        if (side === 'radiant' && heroIndex === index) {
+            continue;
+        }
+
+        const hero = resolveHero(heroValue);
+
+        if (hero) {
+            occupiedHeroIds.add(hero.id);
+        }
     }
 
-    return `ID ${hero.id}`;
+    for (const [heroIndex, heroValue] of heroForm.direHeroes.entries()) {
+        if (side === 'dire' && heroIndex === index) {
+            continue;
+        }
+
+        const hero = resolveHero(heroValue);
+
+        if (hero) {
+            occupiedHeroIds.add(hero.id);
+        }
+    }
+
+    return occupiedHeroIds;
 };
 
 const getHeroMatchScore = (hero: SearchableHeroOption, query: string): number | null => {
@@ -980,9 +970,10 @@ const getHeroMatchScore = (hero: SearchableHeroOption, query: string): number | 
 
 const getHeroMatches = (side: HeroSide, index: number): HeroOption[] => {
     const query = normalizeHeroQuery(getHeroValue(side, index));
+    const occupiedHeroIds = getOccupiedHeroIds(side, index);
 
     if (query === '') {
-        return sortedHeroes.value.slice(0, 5);
+        return sortedHeroes.value.filter((hero) => ! occupiedHeroIds.has(hero.id)).slice(0, 5);
     }
 
     return searchableHeroes.value
@@ -990,6 +981,7 @@ const getHeroMatches = (side: HeroSide, index: number): HeroOption[] => {
             hero: hero.hero,
             score: getHeroMatchScore(hero, query),
         }))
+        .filter((hero) => ! occupiedHeroIds.has(hero.hero.id))
         .filter((hero): hero is { hero: HeroOption; score: number } => hero.score !== null)
         .sort((left, right) => {
             if (left.score !== right.score) {
