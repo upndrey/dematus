@@ -130,6 +130,7 @@ enum Hero: int
     case PrimalBeast = 137;
     case Muerta = 138;
     case Kez = 145;
+    case Largo = 155;
 
     public function title(): string
     {
@@ -260,6 +261,7 @@ enum Hero: int
             self::PrimalBeast => 'Primal Beast',
             self::Muerta => 'Muerta',
             self::Kez => 'Kez',
+            self::Largo => 'Largo',
         };
     }
 }
