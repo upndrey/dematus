@@ -939,7 +939,13 @@
                                     v-else
                                     class="mt-4 rounded-xl border border-amber-400/20 bg-amber-500/8 px-3 py-3 text-sm text-amber-100"
                                 >
-                                    {{ formatPlayerFallbackReason(slot.fallbackReason) }}
+                                    <div>{{ formatPlayerFallbackReason(slot.fallbackReason) }}</div>
+                                    <div
+                                        v-if="slot.fallbackMessage"
+                                        class="mt-2 text-xs leading-5 text-amber-200/80"
+                                    >
+                                        {{ slot.fallbackMessage }}
+                                    </div>
                                 </div>
                             </article>
                         </div>
@@ -1278,6 +1284,7 @@ type RoshMatchPlayer = {
     playerHeroStats?: RoshPlayerHeroStats | null;
     playerImpact?: number;
     playerFallbackReason?: string | null;
+    playerFallbackMessage?: string | null;
 };
 
 type RoshRawPayload = {
@@ -1303,6 +1310,7 @@ type RoshPlayerSlotSummary = {
     isAnonymous: boolean | null;
     impact: number;
     fallbackReason: string | null;
+    fallbackMessage: string | null;
     stats: RoshPlayerHeroStats | null;
 };
 
@@ -1524,6 +1532,7 @@ const roshPlayerSlots = computed<RoshPlayerSlotSummary[]>(() => {
                 isAnonymous: player.isAnonymous ?? null,
                 impact: player.playerImpact ?? 0,
                 fallbackReason: player.playerFallbackReason ?? null,
+                fallbackMessage: player.playerFallbackMessage ?? null,
                 stats: player.playerHeroStats ?? null,
             };
         });

@@ -1066,9 +1066,11 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.raw.match.players.0.playerHeroStats.matchCount', 60)
             ->assertJsonPath('data.raw.match.players.0.playerImpact', 1.5)
             ->assertJsonPath('data.raw.match.players.0.playerFallbackReason', null)
+            ->assertJsonPath('data.raw.match.players.0.playerFallbackMessage', null)
             ->assertJsonPath('data.raw.match.players.5.playerHeroStats', null)
             ->assertJsonPath('data.raw.match.players.5.playerImpact', 0)
             ->assertJsonPath('data.raw.match.players.5.playerFallbackReason', 'player_stats_request_failed')
+            ->assertJsonPath('data.raw.match.players.5.playerFallbackMessage', 'STRATZ GraphQL error: Player Id is missing or anonymous.')
             ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.selected_count', 2)
             ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.resolved_count', 1)
             ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.fallback_count', 1)
@@ -1089,6 +1091,155 @@ class StratzRoshTest extends TestCase
             return str_contains((string) $request['query'], 'query PlayerHeroHighlight')
                 && ($request['variables']['steamAccountId'] ?? null) === 222222
                 && ($request['variables']['heroId'] ?? null) === 70;
+        });
+
+        Carbon::setTestNow();
+    }
+
+    public function test_rosh_heroes_request_keeps_partial_batch_player_highlights_and_does_not_retry_permanent_alias_errors(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-25 12:00:00 UTC'));
+
+        config()->set('services.stratz.token', 'test-token');
+        config()->set('services.google_sheets.spreadsheet_url', null);
+        config()->set('services.google_sheets.service_account_credentials', null);
+
+        $week = now()->timestamp;
+        $picks = $this->roshPicks();
+        $metaPositions = $this->fakeRoshMetaPositions($picks);
+        $globalTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [37 => 0.0],
+            [37 => [20 => 2100, 21 => 1000]],
+        );
+        $bracketTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [],
+            [37 => [20 => 2100, 21 => 900]],
+        );
+
+        Http::fake(function (Request $request) use ($metaPositions, $globalTimeStats, $bracketTimeStats) {
+            $query = $request->offsetExists('query')
+                ? (string) $request['query']
+                : '';
+
+            if (str_contains($query, 'query HeroesMetaPositionsByWeek')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $metaPositions,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query GetHeroStatsByTime')) {
+                $heroStats = isset($request['variables']['bracketBasicIds'])
+                    ? $bracketTimeStats
+                    : $globalTimeStats;
+
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $heroStats,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query Synergy')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => [
+                            'matchUp_Prev_Week_1' => [],
+                            'matchUp_Prev_Week_2' => [],
+                            'matchUp_Prev_Week_3' => [],
+                            'matchUp_Prev_Week_4' => [],
+                        ],
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query PlayerHeroHighlights')) {
+                return Http::response([
+                    'data' => [
+                        'plus' => [
+                            'player_0' => $this->fakePlayerHeroHighlight(
+                                matchCount: 60,
+                                winCount: 48,
+                                matchCountLastMonth: 12,
+                                winCountLastMonth: 12,
+                                impAllTime: 30.0,
+                                impLastMonth: 30.0,
+                                impLastSixMonths: 30.0,
+                            ),
+                        ],
+                    ],
+                    'errors' => [
+                        [
+                            'message' => 'Player Id is missing or anonymous.',
+                            'path' => ['plus', 'player_5'],
+                        ],
+                    ],
+                ]);
+            }
+
+            return Http::response([], 500);
+        });
+
+        $response = $this->postJson(route('stratz.rosh-heroes'), [
+            'radiant_team' => 'Team Liquid',
+            'dire_team' => 'GamerLegion',
+            'consider_players' => true,
+            'radiant_heroes' => [114, 25, 23, 79, 112],
+            'dire_heroes' => [70, 59, 39, 83, 37],
+            'radiant_players' => [
+                [
+                    'steam_account_id' => 111111,
+                    'name' => 'miCKe',
+                    'pro_name' => 'miCKe',
+                    'is_anonymous' => false,
+                    'is_stratz_public' => true,
+                    'team_name' => 'Team Liquid',
+                ],
+                null,
+                null,
+                null,
+                null,
+            ],
+            'dire_players' => [
+                [
+                    'steam_account_id' => 222222,
+                    'name' => 'watson',
+                    'pro_name' => 'watson',
+                    'is_anonymous' => false,
+                    'is_stratz_public' => true,
+                    'team_name' => 'GamerLegion',
+                ],
+                null,
+                null,
+                null,
+                null,
+            ],
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('type', 'rosh')
+            ->assertJsonPath('data.minute_table.0.player_adjustment', 0.3)
+            ->assertJsonPath('data.minute_table.1.player_adjustment', 0.3)
+            ->assertJsonPath('data.raw.match.players.0.playerHeroStats.matchCount', 60)
+            ->assertJsonPath('data.raw.match.players.0.playerFallbackReason', null)
+            ->assertJsonPath('data.raw.match.players.0.playerFallbackMessage', null)
+            ->assertJsonPath('data.raw.match.players.5.playerHeroStats', null)
+            ->assertJsonPath('data.raw.match.players.5.playerFallbackReason', 'player_stats_request_failed')
+            ->assertJsonPath('data.raw.match.players.5.playerFallbackMessage', 'STRATZ GraphQL error: Player Id is missing or anonymous.')
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.resolved_count', 1)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.fallback_count', 1)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.request_error', null);
+
+        Http::assertSent(function (Request $request): bool {
+            return str_contains((string) $request['query'], 'query PlayerHeroHighlights');
+        });
+
+        Http::assertNotSent(function (Request $request): bool {
+            return str_contains((string) $request['query'], 'query PlayerHeroHighlight(');
         });
 
         Carbon::setTestNow();

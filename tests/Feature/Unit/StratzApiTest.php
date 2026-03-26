@@ -54,4 +54,36 @@ class StratzApiTest extends TestCase
 
         $api->query('query SearchProPlayers { stratz { search(request: { query: "mi" }) { proPlayers { id } } } }');
     }
+
+    public function test_it_can_return_partial_graphql_payload_without_throwing(): void
+    {
+        config()->set('services.stratz.token', 'test-token');
+        config()->set('services.stratz.endpoint', 'https://api.stratz.com/graphql');
+
+        Http::fake([
+            'https://api.stratz.com/graphql' => Http::response([
+                'data' => [
+                    'plus' => [
+                        'player_0' => [
+                            'matchCount' => 12,
+                        ],
+                    ],
+                ],
+                'errors' => [
+                    [
+                        'message' => 'Player Id is missing or anonymous.',
+                        'path' => ['plus', 'player_5'],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $api = app(Api::class);
+
+        $payload = $api->queryAllowPartial('query PlayerHeroHighlights { plus { player_0: playerHeroHighlight { matchCount } } }');
+
+        $this->assertSame(12, data_get($payload, 'data.plus.player_0.matchCount'));
+        $this->assertSame('Player Id is missing or anonymous.', data_get($payload, 'errors.0.message'));
+        $this->assertSame(['plus', 'player_5'], data_get($payload, 'errors.0.path'));
+    }
 }

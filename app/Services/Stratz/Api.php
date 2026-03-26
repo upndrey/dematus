@@ -14,6 +14,22 @@ class Api
 
     public function query(string $query, array $variables = []): array
     {
+        return $this->queryPayload($query, $variables)['data'];
+    }
+
+    /**
+     * @return array{data: array<string, mixed>, errors: list<array<string, mixed>>}
+     */
+    public function queryAllowPartial(string $query, array $variables = []): array
+    {
+        return $this->queryPayload($query, $variables, true);
+    }
+
+    /**
+     * @return array{data: array<string, mixed>, errors: list<array<string, mixed>>}
+     */
+    private function queryPayload(string $query, array $variables = [], bool $allowGraphQLErrors = false): array
+    {
         $token = config('services.stratz.token');
 
         if (! is_string($token) || $token === '') {
@@ -32,10 +48,13 @@ class Api
                 'variables' => $variables,
             ]);
 
-        return $this->parseResponse($response);
+        return $this->parseResponse($response, $allowGraphQLErrors);
     }
 
-    protected function parseResponse(Response $response): array
+    /**
+     * @return array{data: array<string, mixed>, errors: list<array<string, mixed>>}
+     */
+    protected function parseResponse(Response $response, bool $allowGraphQLErrors = false): array
     {
         if ($response->failed()) {
             throw new RuntimeException($this->resolveErrorMessage($response));
@@ -47,12 +66,19 @@ class Api
             throw new RuntimeException('Invalid STRATZ response format.');
         }
 
-        if (isset($payload['errors']) && is_array($payload['errors']) && $payload['errors'] !== []) {
-            $firstErrorMessage = (string) data_get($payload, 'errors.0.message', 'Unknown GraphQL error');
-            throw new RuntimeException('STRATZ GraphQL error: '.$firstErrorMessage);
+        $errors = array_values(array_filter(
+            is_array($payload['errors'] ?? null) ? $payload['errors'] : [],
+            static fn (mixed $error): bool => is_array($error),
+        ));
+
+        if (! $allowGraphQLErrors && $errors !== []) {
+            throw new RuntimeException('STRATZ GraphQL error: '.$this->firstGraphQLErrorMessage($errors));
         }
 
-        return (array) ($payload['data'] ?? []);
+        return [
+            'data' => (array) ($payload['data'] ?? []),
+            'errors' => $errors,
+        ];
     }
 
     protected function resolveErrorMessage(Response $response): string
@@ -70,9 +96,7 @@ class Api
         $payload = $response->json();
 
         if (is_array($payload) && isset($payload['errors']) && is_array($payload['errors']) && $payload['errors'] !== []) {
-            $firstErrorMessage = (string) data_get($payload, 'errors.0.message', 'Unknown GraphQL error');
-
-            return 'STRATZ GraphQL error: '.$firstErrorMessage;
+            return 'STRATZ GraphQL error: '.$this->firstGraphQLErrorMessage($payload['errors']);
         }
 
         $exception = $response->toException();
@@ -82,5 +106,13 @@ class Api
         }
 
         return 'STRATZ request failed with HTTP '.$response->status().'.';
+    }
+
+    /**
+     * @param  list<mixed>  $errors
+     */
+    private function firstGraphQLErrorMessage(array $errors): string
+    {
+        return (string) data_get($errors, '0.message', 'Unknown GraphQL error');
     }
 }

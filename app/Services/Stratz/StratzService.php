@@ -802,6 +802,7 @@ GRAPHQL;
             'playerHeroStats' => null,
             'playerImpact' => 0.0,
             'playerFallbackReason' => is_numeric($steamAccountId) ? null : 'player_not_selected',
+            'playerFallbackMessage' => null,
         ];
     }
 
@@ -872,7 +873,7 @@ GRAPHQL;
             '}';
 
         try {
-            $response = $this->api->query($query, $variables);
+            $response = $this->api->queryAllowPartial($query, $variables);
         } catch (\Throwable $throwable) {
             return $this->hydrateRoshPlayerHeroHighlightsIndividually(
                 $match,
@@ -882,24 +883,68 @@ GRAPHQL;
             );
         }
 
-        $plus = (array) data_get($response, 'plus', []);
+        $plus = (array) data_get($response, 'data.plus', []);
+        $batchErrorMessages = $this->mapRoshPlayerHighlightErrorsByAlias(
+            (array) data_get($response, 'errors', []),
+        );
+        $genericBatchErrorMessage = $this->firstRoshPlayerHighlightErrorMessage(
+            (array) data_get($response, 'errors', []),
+        );
+        $aliasesToRetry = [];
 
         foreach ($aliasesByIndex as $alias => $index) {
             $rawHighlight = data_get($plus, $alias);
 
-            if (! is_array($rawHighlight)) {
-                $players[$index]['playerFallbackReason'] = 'player_hero_stats_missing';
-                $players[$index]['playerHeroStats'] = null;
-                $players[$index]['playerImpact'] = 0.0;
+            if (is_array($rawHighlight)) {
+                $normalizedHighlight = $this->normalizeRoshPlayerHeroHighlight($rawHighlight);
+
+                $players[$index]['playerHeroStats'] = $normalizedHighlight;
+                $players[$index]['playerImpact'] = $this->calculateRoshPlayerImpact($normalizedHighlight);
+                $players[$index]['playerFallbackReason'] = null;
+                $players[$index]['playerFallbackMessage'] = null;
 
                 continue;
             }
 
-            $normalizedHighlight = $this->normalizeRoshPlayerHeroHighlight($rawHighlight);
+            $aliasBatchErrorMessage = $batchErrorMessages[$alias] ?? null;
 
-            $players[$index]['playerHeroStats'] = $normalizedHighlight;
-            $players[$index]['playerImpact'] = $this->calculateRoshPlayerImpact($normalizedHighlight);
-            $players[$index]['playerFallbackReason'] = null;
+            if (is_string($aliasBatchErrorMessage) && $aliasBatchErrorMessage !== '') {
+                $this->markRoshPlayerHighlightFailure(
+                    $players,
+                    $index,
+                    $this->resolveRoshPlayerHighlightFallbackReason($aliasBatchErrorMessage),
+                    $aliasBatchErrorMessage,
+                );
+
+                if ($this->shouldRetryRoshPlayerHighlightBatchError($aliasBatchErrorMessage)) {
+                    $aliasesToRetry[$alias] = $index;
+                }
+
+                continue;
+            }
+
+            if (is_string($genericBatchErrorMessage) && $genericBatchErrorMessage !== '') {
+                $this->markRoshPlayerHighlightFailure(
+                    $players,
+                    $index,
+                    $this->resolveRoshPlayerHighlightFallbackReason($genericBatchErrorMessage),
+                    $genericBatchErrorMessage,
+                );
+                $aliasesToRetry[$alias] = $index;
+
+                continue;
+            }
+
+            $this->markRoshPlayerHighlightFailure($players, $index, 'player_hero_stats_missing');
+        }
+
+        if ($aliasesToRetry !== []) {
+            return $this->hydrateRoshPlayerHeroHighlightsIndividually(
+                $match,
+                $players,
+                $aliasesToRetry,
+                $genericBatchErrorMessage,
+            );
         }
 
         return $this->finalizeRoshPlayerAnalysis($match, $players);
@@ -915,19 +960,20 @@ GRAPHQL;
         array $match,
         array $players,
         array $aliasesByIndex,
-        string $batchErrorMessage,
+        ?string $batchErrorMessage = null,
     ): array {
         $requestErrors = [];
-        $resolvedPlayers = 0;
+        $resolvedPlayers = count(array_filter(
+            $players,
+            static fn (mixed $player): bool => is_array(data_get($player, 'playerHeroStats')),
+        ));
 
         foreach ($aliasesByIndex as $index) {
             $steamAccountId = data_get($players, $index.'.steamAccountId');
             $heroId = data_get($players, $index.'.heroId');
 
             if (! is_int($steamAccountId) || ! is_int($heroId)) {
-                $players[$index]['playerFallbackReason'] = 'player_stats_request_failed';
-                $players[$index]['playerHeroStats'] = null;
-                $players[$index]['playerImpact'] = 0.0;
+                $this->markRoshPlayerHighlightFailure($players, $index, 'player_stats_request_failed');
 
                 continue;
             }
@@ -935,18 +981,21 @@ GRAPHQL;
             try {
                 $rawHighlight = $this->fetchRoshPlayerHeroHighlight($steamAccountId, $heroId);
             } catch (\Throwable $throwable) {
-                $players[$index]['playerFallbackReason'] = 'player_stats_request_failed';
-                $players[$index]['playerHeroStats'] = null;
-                $players[$index]['playerImpact'] = 0.0;
-                $requestErrors[] = $throwable->getMessage();
+                $fallbackMessage = $throwable->getMessage();
+
+                $this->markRoshPlayerHighlightFailure(
+                    $players,
+                    $index,
+                    $this->resolveRoshPlayerHighlightFallbackReason($fallbackMessage),
+                    $fallbackMessage,
+                );
+                $requestErrors[] = $fallbackMessage;
 
                 continue;
             }
 
             if (! is_array($rawHighlight)) {
-                $players[$index]['playerFallbackReason'] = 'player_hero_stats_missing';
-                $players[$index]['playerHeroStats'] = null;
-                $players[$index]['playerImpact'] = 0.0;
+                $this->markRoshPlayerHighlightFailure($players, $index, 'player_hero_stats_missing');
 
                 continue;
             }
@@ -956,6 +1005,7 @@ GRAPHQL;
             $players[$index]['playerHeroStats'] = $normalizedHighlight;
             $players[$index]['playerImpact'] = $this->calculateRoshPlayerImpact($normalizedHighlight);
             $players[$index]['playerFallbackReason'] = null;
+            $players[$index]['playerFallbackMessage'] = null;
             $resolvedPlayers++;
         }
 
@@ -968,6 +1018,91 @@ GRAPHQL;
         }
 
         return $this->finalizeRoshPlayerAnalysis($match, $players, $requestError);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $errors
+     * @return array<string, string>
+     */
+    private function mapRoshPlayerHighlightErrorsByAlias(array $errors): array
+    {
+        $messagesByAlias = [];
+
+        foreach ($errors as $error) {
+            $alias = data_get($error, 'path.1');
+            $message = data_get($error, 'message');
+
+            if (! is_string($alias) || $alias === '' || ! is_string($message) || $message === '') {
+                continue;
+            }
+
+            $messagesByAlias[$alias] = $this->normalizeRoshPlayerHighlightErrorMessage($message);
+        }
+
+        return $messagesByAlias;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $errors
+     */
+    private function firstRoshPlayerHighlightErrorMessage(array $errors): ?string
+    {
+        $message = data_get($errors, '0.message');
+
+        if (! is_string($message) || $message === '') {
+            return null;
+        }
+
+        return $this->normalizeRoshPlayerHighlightErrorMessage($message);
+    }
+
+    private function normalizeRoshPlayerHighlightErrorMessage(string $message): string
+    {
+        return str_starts_with($message, 'STRATZ ')
+            ? $message
+            : 'STRATZ GraphQL error: '.$message;
+    }
+
+    private function resolveRoshPlayerHighlightFallbackReason(string $message): string
+    {
+        $normalizedMessage = mb_strtolower($message);
+
+        if (str_contains($normalizedMessage, 'player id is missing or anonymous')) {
+            return 'player_missing_or_anonymous_in_stratz';
+        }
+
+        return 'player_stats_request_failed';
+    }
+
+    private function shouldRetryRoshPlayerHighlightBatchError(string $message): bool
+    {
+        $normalizedMessage = mb_strtolower($message);
+
+        foreach ([
+            'player id is missing or anonymous',
+            'unsupported value',
+        ] as $permanentFragment) {
+            if (str_contains($normalizedMessage, $permanentFragment)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $players
+     */
+    private function markRoshPlayerHighlightFailure(
+        array &$players,
+        int $index,
+        string $fallbackReason,
+        ?string $fallbackMessage = null,
+    ): void {
+        $players[$index]['playerFallbackReason'] = $fallbackReason;
+        $players[$index]['playerFallbackMessage'] = $fallbackMessage;
+        $players[$index]['playerHeroStats'] = null;
+        $players[$index]['playerImpact'] = 0.0;
     }
 
     /**
