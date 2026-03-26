@@ -627,6 +627,7 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.request.input.matchId', 'LIVE')
             ->assertJsonPath('data.request.input.radiantTeam', 'Team Liquid')
             ->assertJsonPath('data.request.input.direTeam', 'GamerLegion')
+            ->assertJsonPath('data.request.input.considerPlayers', false)
             ->assertJsonPath('data.request.input.radiantHeroes.0', 114)
             ->assertJsonPath('data.request.input.direHeroes.4', 37)
             ->assertJsonPath('data.request.analysis.week', $week)
@@ -680,6 +681,416 @@ class StratzRoshTest extends TestCase
                 && str_contains((string) $request['query'], 'query GetMatchPicksBans');
         });
 
+        Http::assertNotSent(function (Request $request): bool {
+            return $request->url() === 'https://api.stratz.com/graphql'
+                && str_contains((string) $request['query'], 'query PlayerHeroHighlights');
+        });
+
+        Carbon::setTestNow();
+    }
+
+    public function test_rosh_heroes_request_can_apply_pro_player_adjustment_when_player_mode_is_enabled(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-25 12:00:00 UTC'));
+
+        config()->set('services.stratz.token', 'test-token');
+        config()->set('services.google_sheets.spreadsheet_url', 'https://docs.google.com/spreadsheets/d/test-sheet-id/edit?gid=0');
+        config()->set('services.google_sheets.service_account_credentials', $this->fakeGoogleCredentialsPath());
+        config()->set('services.google_sheets.timeout', 20);
+
+        $week = now()->timestamp;
+        $picks = $this->roshPicks();
+        $metaPositions = $this->fakeRoshMetaPositions($picks);
+        $globalTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [37 => 0.0],
+            [37 => [20 => 2100, 21 => 1000]],
+        );
+        $bracketTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [],
+            [37 => [20 => 2100, 21 => 900]],
+        );
+
+        Http::fake(function (Request $request) use ($metaPositions, $globalTimeStats, $bracketTimeStats) {
+            if ($request->url() === 'https://oauth2.googleapis.com/token') {
+                return Http::response([
+                    'access_token' => 'google-access-token',
+                    'expires_in' => 3600,
+                    'token_type' => 'Bearer',
+                ]);
+            }
+
+            if (
+                str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id')
+                && str_contains($request->url(), 'fields=')
+                && ! str_contains($request->url(), 'values:')
+            ) {
+                return Http::response([
+                    'sheets' => [
+                        [
+                            'properties' => [
+                                'sheetId' => 0,
+                                'title' => 'BLAST SLAM VI',
+                                'index' => 0,
+                            ],
+                        ],
+                    ],
+                ]);
+            }
+
+            if (str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!B:B")) {
+                return Http::response([
+                    'range' => "'BLAST SLAM VI'!B:B",
+                    'values' => [
+                        ['ROSH Winrate'],
+                        ['Match ID'],
+                        ['8678737586'],
+                        ['8678680298'],
+                        ['8678799687'],
+                        ['8678990124'],
+                        ['8679012467'],
+                        ['8683333901'],
+                    ],
+                ]);
+            }
+
+            if (str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchUpdate')) {
+                return Http::response([
+                    'totalUpdatedRows' => 3,
+                ]);
+            }
+
+            if (str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchGet')) {
+                return Http::response([
+                    'valueRanges' => [
+                        ['range' => "'BLAST SLAM VI'!B9", 'values' => [['LIVE']]],
+                        ['range' => "'BLAST SLAM VI'!C9", 'values' => [['Team Liquid']]],
+                        ['range' => "'BLAST SLAM VI'!D9", 'values' => [['GamerLegion']]],
+                        ['range' => "'BLAST SLAM VI'!E9", 'values' => [['Radiant']]],
+                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['3,9%']]],
+                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['3,4%']]],
+                        ['range' => "'BLAST SLAM VI'!J9", 'values' => [['0,0%']]],
+                        ['range' => "'BLAST SLAM VI'!K9", 'values' => [['0,0%']]],
+                    ],
+                ]);
+            }
+
+            $query = $request->offsetExists('query')
+                ? (string) $request['query']
+                : '';
+
+            if (str_contains($query, 'query HeroesMetaPositionsByWeek')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $metaPositions,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query GetHeroStatsByTime')) {
+                $heroStats = isset($request['variables']['bracketBasicIds'])
+                    ? $bracketTimeStats
+                    : $globalTimeStats;
+
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $heroStats,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query Synergy')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => [
+                            'matchUp_Prev_Week_1' => [],
+                            'matchUp_Prev_Week_2' => [],
+                            'matchUp_Prev_Week_3' => [],
+                            'matchUp_Prev_Week_4' => [],
+                        ],
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query PlayerHeroHighlights')) {
+                return Http::response([
+                    'data' => [
+                        'plus' => [
+                            'player_0' => $this->fakePlayerHeroHighlight(
+                                matchCount: 60,
+                                winCount: 48,
+                                matchCountLastMonth: 12,
+                                winCountLastMonth: 12,
+                                impAllTime: 30.0,
+                                impLastMonth: 30.0,
+                                impLastSixMonths: 30.0,
+                            ),
+                            'player_5' => $this->fakePlayerHeroHighlight(
+                                matchCount: 60,
+                                winCount: 12,
+                                matchCountLastMonth: 12,
+                                winCountLastMonth: 0,
+                                impAllTime: -30.0,
+                                impLastMonth: -30.0,
+                                impLastSixMonths: -30.0,
+                            ),
+                        ],
+                    ],
+                ]);
+            }
+
+            return Http::response([], 500);
+        });
+
+        $response = $this->postJson(route('stratz.rosh-heroes'), [
+            'radiant_team' => 'Team Liquid',
+            'dire_team' => 'GamerLegion',
+            'consider_players' => true,
+            'radiant_heroes' => [114, 25, 23, 79, 112],
+            'dire_heroes' => [70, 59, 39, 83, 37],
+            'radiant_players' => [
+                [
+                    'steam_account_id' => 111111,
+                    'name' => 'miCKe',
+                    'pro_name' => 'miCKe',
+                    'is_anonymous' => false,
+                    'is_stratz_public' => true,
+                    'team_name' => 'Team Liquid',
+                ],
+                null,
+                null,
+                null,
+                null,
+            ],
+            'dire_players' => [
+                [
+                    'steam_account_id' => 222222,
+                    'name' => 'watson',
+                    'pro_name' => 'watson',
+                    'is_anonymous' => false,
+                    'is_stratz_public' => true,
+                    'team_name' => 'GamerLegion',
+                ],
+                null,
+                null,
+                null,
+                null,
+            ],
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('type', 'rosh')
+            ->assertJsonPath('data.formatted.match_id', 'LIVE')
+            ->assertJsonPath('data.formatted.radiant_odds_1', 3.9)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 3.4)
+            ->assertJsonPath('data.formatted.dire_odds_1', 0)
+            ->assertJsonPath('data.formatted.dire_odds_2', 0)
+            ->assertJsonPath('data.request.input.considerPlayers', true)
+            ->assertJsonPath('data.request.input.radiantPlayers.0.steamAccountId', 111111)
+            ->assertJsonPath('data.request.input.radiantPlayers.1', null)
+            ->assertJsonPath('data.request.input.direPlayers.0.steamAccountId', 222222)
+            ->assertJsonPath('data.minute_table.0.player_adjustment', 0.6)
+            ->assertJsonPath('data.minute_table.1.player_adjustment', 0.6)
+            ->assertJsonPath('data.raw.match.considerPlayers', true)
+            ->assertJsonPath('data.raw.match.players.0.steamAccountId', 111111)
+            ->assertJsonPath('data.raw.match.players.0.playerHeroStats.matchCount', 60)
+            ->assertJsonPath('data.raw.match.players.0.playerHeroStats.recentWindow', 'last_month')
+            ->assertJsonPath('data.raw.match.players.0.playerImpact', 1.5)
+            ->assertJsonPath('data.raw.match.players.5.steamAccountId', 222222)
+            ->assertJsonPath('data.raw.match.players.5.playerImpact', -1.5)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.enabled', true)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.selected_count', 2)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.resolved_count', 2)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.fallback_count', 0)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.net_adjustment', 0.6);
+
+        Http::assertSent(function (Request $request): bool {
+            if ($request->url() !== 'https://api.stratz.com/graphql') {
+                return false;
+            }
+
+            return str_contains((string) $request['query'], 'query PlayerHeroHighlights')
+                && $request['variables']['player_0SteamAccountId'] === 111111
+                && $request['variables']['player_0HeroId'] === 114
+                && $request['variables']['player_5SteamAccountId'] === 222222
+                && $request['variables']['player_5HeroId'] === 70;
+        });
+
+        Carbon::setTestNow();
+    }
+
+    public function test_rosh_heroes_request_recovers_with_individual_player_queries_when_batch_highlight_request_fails(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-25 12:00:00 UTC'));
+
+        config()->set('services.stratz.token', 'test-token');
+        config()->set('services.google_sheets.spreadsheet_url', null);
+        config()->set('services.google_sheets.service_account_credentials', null);
+
+        $week = now()->timestamp;
+        $picks = $this->roshPicks();
+        $metaPositions = $this->fakeRoshMetaPositions($picks);
+        $globalTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [37 => 0.0],
+            [37 => [20 => 2100, 21 => 1000]],
+        );
+        $bracketTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [],
+            [37 => [20 => 2100, 21 => 900]],
+        );
+
+        Http::fake(function (Request $request) use ($metaPositions, $globalTimeStats, $bracketTimeStats) {
+            $query = $request->offsetExists('query')
+                ? (string) $request['query']
+                : '';
+
+            if (str_contains($query, 'query HeroesMetaPositionsByWeek')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $metaPositions,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query GetHeroStatsByTime')) {
+                $heroStats = isset($request['variables']['bracketBasicIds'])
+                    ? $bracketTimeStats
+                    : $globalTimeStats;
+
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $heroStats,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query Synergy')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => [
+                            'matchUp_Prev_Week_1' => [],
+                            'matchUp_Prev_Week_2' => [],
+                            'matchUp_Prev_Week_3' => [],
+                            'matchUp_Prev_Week_4' => [],
+                        ],
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query PlayerHeroHighlights')) {
+                return Http::response([
+                    'errors' => [
+                        [
+                            'message' => 'Player Id is missing or anonymous.',
+                        ],
+                    ],
+                ], 200);
+            }
+
+            if (str_contains($query, 'query PlayerHeroHighlight')) {
+                if (($request['variables']['steamAccountId'] ?? null) === 111111) {
+                    return Http::response([
+                        'data' => [
+                            'plus' => [
+                                'playerHeroHighlight' => $this->fakePlayerHeroHighlight(
+                                    matchCount: 60,
+                                    winCount: 48,
+                                    matchCountLastMonth: 12,
+                                    winCountLastMonth: 12,
+                                    impAllTime: 30.0,
+                                    impLastMonth: 30.0,
+                                    impLastSixMonths: 30.0,
+                                ),
+                            ],
+                        ],
+                    ]);
+                }
+
+                return Http::response([
+                    'errors' => [
+                        [
+                            'message' => 'Player Id is missing or anonymous.',
+                        ],
+                    ],
+                ], 200);
+            }
+
+            return Http::response([], 500);
+        });
+
+        $response = $this->postJson(route('stratz.rosh-heroes'), [
+            'radiant_team' => 'Team Liquid',
+            'dire_team' => 'GamerLegion',
+            'consider_players' => true,
+            'radiant_heroes' => [114, 25, 23, 79, 112],
+            'dire_heroes' => [70, 59, 39, 83, 37],
+            'radiant_players' => [
+                [
+                    'steam_account_id' => 111111,
+                    'name' => 'miCKe',
+                    'pro_name' => 'miCKe',
+                    'is_anonymous' => false,
+                    'is_stratz_public' => true,
+                    'team_name' => 'Team Liquid',
+                ],
+                null,
+                null,
+                null,
+                null,
+            ],
+            'dire_players' => [
+                [
+                    'steam_account_id' => 222222,
+                    'name' => 'watson',
+                    'pro_name' => 'watson',
+                    'is_anonymous' => false,
+                    'is_stratz_public' => true,
+                    'team_name' => 'GamerLegion',
+                ],
+                null,
+                null,
+                null,
+                null,
+            ],
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('type', 'rosh')
+            ->assertJsonPath('data.minute_table.0.player_adjustment', 0.3)
+            ->assertJsonPath('data.minute_table.1.player_adjustment', 0.3)
+            ->assertJsonPath('data.raw.match.players.0.playerHeroStats.matchCount', 60)
+            ->assertJsonPath('data.raw.match.players.0.playerImpact', 1.5)
+            ->assertJsonPath('data.raw.match.players.0.playerFallbackReason', null)
+            ->assertJsonPath('data.raw.match.players.5.playerHeroStats', null)
+            ->assertJsonPath('data.raw.match.players.5.playerImpact', 0)
+            ->assertJsonPath('data.raw.match.players.5.playerFallbackReason', 'player_stats_request_failed')
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.selected_count', 2)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.resolved_count', 1)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.fallback_count', 1)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.net_adjustment', 0.3)
+            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.request_error', null);
+
+        Http::assertSent(function (Request $request): bool {
+            return str_contains((string) $request['query'], 'query PlayerHeroHighlights');
+        });
+
+        Http::assertSent(function (Request $request): bool {
+            return str_contains((string) $request['query'], 'query PlayerHeroHighlight')
+                && ($request['variables']['steamAccountId'] ?? null) === 111111
+                && ($request['variables']['heroId'] ?? null) === 114;
+        });
+
+        Http::assertSent(function (Request $request): bool {
+            return str_contains((string) $request['query'], 'query PlayerHeroHighlight')
+                && ($request['variables']['steamAccountId'] ?? null) === 222222
+                && ($request['variables']['heroId'] ?? null) === 70;
+        });
+
         Carbon::setTestNow();
     }
 
@@ -695,6 +1106,36 @@ class StratzRoshTest extends TestCase
         $response
             ->assertStatus(422)
             ->assertJsonValidationErrors(['radiant_heroes']);
+    }
+
+    public function test_rosh_heroes_request_validates_selected_pro_player_payload_when_player_mode_is_enabled(): void
+    {
+        $response = $this->postJson(route('stratz.rosh-heroes'), [
+            'radiant_team' => 'Radiant',
+            'dire_team' => 'Dire',
+            'consider_players' => true,
+            'radiant_heroes' => [114, 25, 23, 79, 112],
+            'dire_heroes' => [70, 59, 39, 83, 37],
+            'radiant_players' => [
+                [
+                    'steam_account_id' => 'invalid-id',
+                    'name' => 'miCKe',
+                    'pro_name' => 'miCKe',
+                    'is_anonymous' => false,
+                    'is_stratz_public' => true,
+                    'team_name' => 'Team Liquid',
+                ],
+                null,
+                null,
+                null,
+                null,
+            ],
+            'dire_players' => array_fill(0, 5, null),
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['radiant_players.0.steam_account_id']);
     }
 
     /**
@@ -841,6 +1282,35 @@ class StratzRoshTest extends TestCase
         }
 
         return $heroStats;
+    }
+
+    /**
+     * @return array<string, int|float>
+     */
+    private function fakePlayerHeroHighlight(
+        int $matchCount,
+        int $winCount,
+        int $matchCountLastMonth,
+        int $winCountLastMonth,
+        float $impAllTime,
+        float $impLastMonth,
+        float $impLastSixMonths,
+        ?int $lastPlayed = 1_711_577_600,
+        ?int $matchCountLastSixMonths = null,
+        ?int $winCountLastSixMonths = null,
+    ): array {
+        return [
+            'lastPlayed' => $lastPlayed,
+            'matchCount' => $matchCount,
+            'winCount' => $winCount,
+            'impAllTime' => $impAllTime,
+            'matchCountLastMonth' => $matchCountLastMonth,
+            'winCountLastMonth' => $winCountLastMonth,
+            'impLastMonth' => $impLastMonth,
+            'matchCountLastSixMonths' => $matchCountLastSixMonths ?? $matchCount,
+            'winCountLastSixMonths' => $winCountLastSixMonths ?? $winCount,
+            'impLastSixMonths' => $impLastSixMonths,
+        ];
     }
 
     private function fakeGoogleCredentialsPath(): string

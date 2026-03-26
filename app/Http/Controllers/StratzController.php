@@ -9,7 +9,9 @@ use App\Http\Requests\Stratz\FetchMatchRequest;
 use App\Http\Requests\Stratz\FetchProPlayersRequest;
 use App\Http\Requests\Stratz\FetchRoshHeroesRequest;
 use App\Http\Requests\Stratz\FetchRoshRequest;
+use App\Http\Requests\Stratz\SearchProPlayersRequest;
 use App\Services\GoogleSheets\RoshSheetService;
+use App\Services\Liquipedia\LiquipediaService;
 use App\Services\Stratz\StratzService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -63,12 +65,28 @@ class StratzController
         }
     }
 
-    public function proPlayers(FetchProPlayersRequest $request, StratzService $stratzService): JsonResponse|RedirectResponse
+    public function proPlayers(FetchProPlayersRequest $request, LiquipediaService $liquipediaService): JsonResponse|RedirectResponse
     {
         try {
-            $proPlayers = $stratzService->getProPlayers();
+            $proPlayers = $liquipediaService->getProPlayers();
 
             return $this->respond($request, 'pro_players', $proPlayers);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function searchProPlayers(
+        SearchProPlayersRequest $request,
+        LiquipediaService $liquipediaService,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $proPlayers = $liquipediaService->searchProPlayers(
+                $request->searchQuery(),
+                $request->resultLimit(),
+            );
+
+            return $this->respond($request, 'pro_players_search', $proPlayers);
         } catch (Throwable $throwable) {
             return $this->respondWithError($request, $throwable);
         }
