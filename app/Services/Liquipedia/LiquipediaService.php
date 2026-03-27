@@ -99,10 +99,10 @@ class LiquipediaService
                     ];
                 });
 
-                return array_values(array_map(
+                return $this->deduplicateNormalizedPlayers(array_values(array_map(
                     fn (array $match): array => $this->normalizePlayer($match['player']),
-                    array_slice($matches, 0, $take),
-                ));
+                    array_slice($matches, 0, $take * 2),
+                )), $take);
             },
         );
 
@@ -114,7 +114,14 @@ class LiquipediaService
      */
     private function searchPlayerTitles(string $query, int $limit): array
     {
-        $titles = $this->requestPrefixSearchTitles($query, $limit);
+        $titles = [];
+        $exactTitle = $this->filterTitle($query);
+
+        if ($exactTitle !== null) {
+            $titles[] = $exactTitle;
+        }
+
+        $titles = $this->mergeTitles($titles, $this->requestPrefixSearchTitles($query, $limit), $limit);
 
         if (count($titles) < min($limit, $this->minimumPrefixMatches())) {
             $titles = $this->mergeTitles(
@@ -254,9 +261,9 @@ class LiquipediaService
 
                 if (is_array($cachedPlayer)) {
                     $resolvedPlayers[$title] = $cachedPlayer;
-                }
 
-                continue;
+                    continue;
+                }
             }
 
             $missingTitles[] = $title;
@@ -482,6 +489,53 @@ class LiquipediaService
             'aliases' => $player['aliases'],
             'team' => null,
         ];
+    }
+
+    /**
+     * @param  list<array{
+     *     steam_account_id:int,
+     *     name:string,
+     *     is_anonymous:bool,
+     *     is_stratz_public:bool,
+     *     last_match_date_time:int|null,
+     *     season_rank:int|null,
+     *     season_leaderboard_rank:int|null,
+     *     pro_name:string|null,
+     *     aliases:list<string>,
+     *     team:array{id:int, name:string}|null
+     * }>  $players
+     * @return list<array{
+     *     steam_account_id:int,
+     *     name:string,
+     *     is_anonymous:bool,
+     *     is_stratz_public:bool,
+     *     last_match_date_time:int|null,
+     *     season_rank:int|null,
+     *     season_leaderboard_rank:int|null,
+     *     pro_name:string|null,
+     *     aliases:list<string>,
+     *     team:array{id:int, name:string}|null
+     * }>
+     */
+    private function deduplicateNormalizedPlayers(array $players, int $take): array
+    {
+        $uniquePlayers = [];
+
+        foreach ($players as $player) {
+            $steamAccountId = $player['steam_account_id'];
+
+            if (isset($uniquePlayers[$steamAccountId])) {
+                continue;
+            }
+
+            $uniquePlayers[$steamAccountId] = $player;
+
+            if (count($uniquePlayers) >= $take) {
+                break;
+            }
+        }
+
+        return array_values($uniquePlayers);
     }
 
     /**

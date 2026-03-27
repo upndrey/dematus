@@ -136,6 +136,189 @@ class StratzProPlayersSearchTest extends TestCase
         Http::assertSentCount(3);
     }
 
+    public function test_pro_players_search_prefers_an_exact_liquipedia_page_title_over_noisy_prefix_results(): void
+    {
+        config()->set('services.liquipedia.endpoint', 'https://liquipedia.net/dota2/api.php');
+        Cache::flush();
+
+        Http::fake(function (Request $request) {
+            $query = $this->queryParameters($request);
+
+            if (($query['list'] ?? null) === 'prefixsearch') {
+                return Http::response([
+                    'query' => [
+                        'prefixsearch' => [
+                            ['ns' => 0, 'title' => 'Flyfly', 'pageid' => 111],
+                            ['ns' => 0, 'title' => 'Flywheel', 'pageid' => 222],
+                            ['ns' => 0, 'title' => 'FlyQuest', 'pageid' => 333],
+                        ],
+                    ],
+                ]);
+            }
+
+            if (($query['prop'] ?? null) === 'revisions') {
+                return Http::response([
+                    'query' => [
+                        'pages' => [
+                            '6945' => $this->playerPage(
+                                'Fly',
+                                94155156,
+                                'Fly',
+                                'Simbaaa, FlyMyShnekel, FreshFriFly',
+                                'Tal Aizik',
+                            ),
+                            '111' => $this->playerPage(
+                                'Flyfly',
+                                168028715,
+                                'flyfly',
+                                '影, zhizhizhi',
+                                'Jin Zhiyi',
+                            ),
+                            '222' => $this->nonPlayerPage('Flywheel', '{{Infobox item|id=Flywheel}}'),
+                            '333' => $this->nonPlayerPage('FlyQuest', '{{Infobox team|id=FlyQuest}}'),
+                        ],
+                    ],
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->postJson(route('stratz.pro-players.search'), [
+            'query' => 'Fly',
+            'take' => 5,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
+        $response->assertJsonPath('data.0.steam_account_id', 94155156);
+        $response->assertJsonPath('data.0.pro_name', 'Fly');
+        $response->assertJsonPath('data.0.name', 'Tal Aizik');
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_pro_players_search_deduplicates_the_same_player_when_titles_overlap(): void
+    {
+        config()->set('services.liquipedia.endpoint', 'https://liquipedia.net/dota2/api.php');
+        Cache::flush();
+
+        Http::fake(function (Request $request) {
+            $query = $this->queryParameters($request);
+
+            if (($query['list'] ?? null) === 'prefixsearch') {
+                return Http::response([
+                    'query' => [
+                        'prefixsearch' => [
+                            ['ns' => 0, 'title' => 'Yopaj', 'pageid' => 118264],
+                            ['ns' => 0, 'title' => 'Yopaj-', 'pageid' => 118265],
+                            ['ns' => 0, 'title' => 'Yopaj clips', 'pageid' => 118266],
+                        ],
+                    ],
+                ]);
+            }
+
+            if (($query['prop'] ?? null) === 'revisions') {
+                return Http::response([
+                    'query' => [
+                        'pages' => [
+                            '118264' => $this->playerPage(
+                                'Yopaj',
+                                324277900,
+                                'Yopaj',
+                                'Japoy, Yopaj-',
+                                'Erin Jasper Ferrer',
+                            ),
+                            '118265' => $this->playerPage(
+                                'Yopaj-',
+                                324277900,
+                                'Yopaj',
+                                'Japoy, Yopaj-',
+                                'Erin Jasper Ferrer',
+                            ),
+                            '118266' => $this->nonPlayerPage('Yopaj clips', '{{Infobox tournament|id=Yopaj clips}}'),
+                        ],
+                    ],
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->postJson(route('stratz.pro-players.search'), [
+            'query' => 'Yopaj-',
+            'take' => 5,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.steam_account_id', 324277900);
+        $response->assertJsonPath('data.0.pro_name', 'Yopaj');
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_pro_players_search_refreshes_a_negative_page_cache_for_an_exact_title(): void
+    {
+        config()->set('services.liquipedia.endpoint', 'https://liquipedia.net/dota2/api.php');
+        Cache::flush();
+        Cache::put('liquipedia.pro_player_page.'.sha1('fly'), false, now()->addHour());
+
+        Http::fake(function (Request $request) {
+            $query = $this->queryParameters($request);
+
+            if (($query['list'] ?? null) === 'prefixsearch') {
+                return Http::response([
+                    'query' => [
+                        'prefixsearch' => [
+                            ['ns' => 0, 'title' => 'Flyfly', 'pageid' => 111],
+                            ['ns' => 0, 'title' => 'Flywheel', 'pageid' => 222],
+                            ['ns' => 0, 'title' => 'FlyQuest', 'pageid' => 333],
+                        ],
+                    ],
+                ]);
+            }
+
+            if (($query['prop'] ?? null) === 'revisions') {
+                return Http::response([
+                    'query' => [
+                        'pages' => [
+                            '6945' => $this->playerPage(
+                                'Fly',
+                                94155156,
+                                'Fly',
+                                'Simbaaa, FlyMyShnekel, FreshFriFly',
+                                'Tal Aizik',
+                            ),
+                            '111' => $this->playerPage(
+                                'Flyfly',
+                                168028715,
+                                'flyfly',
+                                '影, zhizhizhi',
+                                'Jin Zhiyi',
+                            ),
+                            '222' => $this->nonPlayerPage('Flywheel', '{{Infobox item|id=Flywheel}}'),
+                            '333' => $this->nonPlayerPage('FlyQuest', '{{Infobox team|id=FlyQuest}}'),
+                        ],
+                    ],
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->postJson(route('stratz.pro-players.search'), [
+            'query' => 'Fly',
+            'take' => 5,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.0.steam_account_id', 94155156);
+        $response->assertJsonPath('data.0.pro_name', 'Fly');
+
+        Http::assertSentCount(2);
+    }
+
     public function test_pro_players_endpoint_returns_an_empty_bulk_list_in_liquipedia_mode(): void
     {
         $response = $this->postJson(route('stratz.pro-players'));

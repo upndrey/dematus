@@ -59,6 +59,27 @@ class TeamRosterRepository
     }
 
     /**
+     * @return array{
+     *     slug:string,
+     *     name:string,
+     *     players:list<array<string, mixed>|null>,
+     *     updated_at:string
+     * }|null
+     */
+    public function findByName(string $name): ?array
+    {
+        $normalizedName = mb_strtolower(trim($name));
+
+        foreach ($this->all() as $team) {
+            if (mb_strtolower($team['name']) === $normalizedName) {
+                return $team;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param  array{name:string, players:list<array<string, mixed>|null>}  $attributes
      * @return array{
      *     slug:string,

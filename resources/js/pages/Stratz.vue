@@ -429,17 +429,6 @@
 
                             <div class="space-y-4">
                                 <label class="flex flex-col gap-2 text-sm text-slate-200">
-                                    Название команды Dire
-                                    <input
-                                        v-model="heroForm.direTeam"
-                                        type="text"
-                                        required
-                                        class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-rose-400"
-                                        placeholder="GamerLegion"
-                                    />
-                                </label>
-
-                                <label class="flex flex-col gap-2 text-sm text-slate-200">
                                     Сохраненный состав Dire
                                     <select
                                         v-model="heroTeamPresets.dire"
@@ -458,6 +447,17 @@
                                     <span class="text-xs leading-5 text-slate-500">
                                         Подставляет название команды и игроков по ролям. Герои остаются без изменений.
                                     </span>
+                                </label>
+
+                                <label class="flex flex-col gap-2 text-sm text-slate-200">
+                                    Название команды Dire
+                                    <input
+                                        v-model="heroForm.direTeam"
+                                        type="text"
+                                        required
+                                        class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-rose-400"
+                                        placeholder="GamerLegion"
+                                    />
                                 </label>
 
                                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">

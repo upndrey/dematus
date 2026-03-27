@@ -1,3 +1,145 @@
 {
-    "teams": []
+    "teams": [
+        {
+            "slug": "og",
+            "name": "OG",
+            "players": [
+                {
+                    "steam_account_id": 355168766,
+                    "name": "John Anthony Vargas",
+                    "pro_name": "Natsumi-",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 324277900,
+                    "name": "Erin Jasper Ferrer",
+                    "pro_name": "Yopaj",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 146711951,
+                    "name": "Nikko Bilocura",
+                    "pro_name": "Nikko",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 155494381,
+                    "name": "Timothy John Randrup",
+                    "pro_name": "TIMS",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 100594231,
+                    "name": "Rolen Andrei Gabriel Ong",
+                    "pro_name": "skem",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                }
+            ],
+            "updated_at": "2026-03-27T12:37:50+00:00"
+        },
+        {
+            "slug": "team-spirit",
+            "name": "Team Spirit",
+            "players": [
+                {
+                    "steam_account_id": 321580662,
+                    "name": "Ілля Мулярчук",
+                    "pro_name": "Yatoro",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 106305042,
+                    "name": "Денис Сигитов",
+                    "pro_name": "Larl",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 302214028,
+                    "name": "Магомед Халилов",
+                    "pro_name": "Collapse",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 847565596,
+                    "name": "Александр Филин",
+                    "pro_name": "rue",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 108958769,
+                    "name": "Никита Балаганин",
+                    "pro_name": "panto",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                }
+            ],
+            "updated_at": "2026-03-27T12:43:28+00:00"
+        },
+        {
+            "slug": "virtuspro",
+            "name": "Virtus.pro",
+            "players": [
+                {
+                    "steam_account_id": 97658618,
+                    "name": "Enzo Gianoli O'Connor",
+                    "pro_name": "Timado",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 154715080,
+                    "name": "Abed Azel Limpasan Yusop",
+                    "pro_name": "Abed",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 126212866,
+                    "name": "Jonáš Volek",
+                    "pro_name": "SabeRLight-",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 241884166,
+                    "name": "Кирилл Лагутик",
+                    "pro_name": "Hellscream",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                },
+                {
+                    "steam_account_id": 94155156,
+                    "name": "טל אייזיק",
+                    "pro_name": "Fly",
+                    "team_name": null,
+                    "is_anonymous": false,
+                    "is_stratz_public": false
+                }
+            ],
+            "updated_at": "2026-03-27T12:44:40+00:00"
+        }
+    ]
 }
