@@ -10,9 +10,12 @@ use App\Http\Requests\Stratz\FetchProPlayersRequest;
 use App\Http\Requests\Stratz\FetchRoshHeroesRequest;
 use App\Http\Requests\Stratz\FetchRoshRequest;
 use App\Http\Requests\Stratz\SearchProPlayersRequest;
+use App\Http\Requests\Stratz\StoreTeamRosterRequest;
+use App\Http\Requests\Stratz\UpdateTeamRosterRequest;
 use App\Services\GoogleSheets\RoshSheetService;
 use App\Services\Liquipedia\LiquipediaService;
 use App\Services\Stratz\StratzService;
+use App\Services\Stratz\TeamRosterRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,7 +25,7 @@ use Throwable;
 
 class StratzController
 {
-    public function index(): Response
+    public function index(TeamRosterRepository $teamRosterRepository): Response
     {
         $heroes = array_map(
             fn (Hero $hero) => [
@@ -36,6 +39,7 @@ class StratzController
 
         return Inertia::render('Stratz', [
             'heroes' => $heroes,
+            'savedTeams' => $teamRosterRepository->all(),
         ]);
     }
 
@@ -139,6 +143,58 @@ class StratzController
             }
 
             return $this->respond($request, 'rosh', $rosh);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function teamRosters(Request $request, TeamRosterRepository $teamRosterRepository): JsonResponse|RedirectResponse
+    {
+        try {
+            return $this->respond($request, 'team_rosters', $teamRosterRepository->all());
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function storeTeamRoster(
+        StoreTeamRosterRequest $request,
+        TeamRosterRepository $teamRosterRepository,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $teamRoster = $teamRosterRepository->create($request->validated());
+
+            return $this->respond($request, 'team_roster', $teamRoster);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function updateTeamRoster(
+        UpdateTeamRosterRequest $request,
+        string $teamRoster,
+        TeamRosterRepository $teamRosterRepository,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $updatedTeamRoster = $teamRosterRepository->update($teamRoster, $request->validated());
+
+            return $this->respond($request, 'team_roster', $updatedTeamRoster);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function destroyTeamRoster(
+        Request $request,
+        string $teamRoster,
+        TeamRosterRepository $teamRosterRepository,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $teamRosterRepository->delete($teamRoster);
+
+            return $this->respond($request, 'team_roster_deleted', [
+                'slug' => $teamRoster,
+            ]);
         } catch (Throwable $throwable) {
             return $this->respondWithError($request, $throwable);
         }

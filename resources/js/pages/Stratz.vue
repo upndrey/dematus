@@ -105,7 +105,7 @@
             </section>
 
             <section
-                v-else
+                v-else-if="activeTab === 'heroes'"
                 class="rounded-3xl border border-cyan-500/20 bg-slate-900/60 p-6 shadow-xl shadow-slate-950/30"
             >
                 <div class="mb-5 flex flex-col gap-2">
@@ -148,6 +148,27 @@
                             </div>
 
                             <div class="space-y-4">
+                                <label class="flex flex-col gap-2 text-sm text-slate-200">
+                                    Сохраненный состав Radiant
+                                    <select
+                                        v-model="heroTeamPresets.radiant"
+                                        class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                                        @change="handleSavedTeamSelection('radiant', $event)"
+                                    >
+                                        <option value="">Ручной ввод</option>
+                                        <option
+                                            v-for="team in savedTeamsSorted"
+                                            :key="`radiant-team-${team.slug}`"
+                                            :value="team.slug"
+                                        >
+                                            {{ team.name }} · {{ countFilledSavedTeamSlots(team) }}/5
+                                        </option>
+                                    </select>
+                                    <span class="text-xs leading-5 text-slate-500">
+                                        Подставляет название команды и игроков по ролям. Герои остаются без изменений.
+                                    </span>
+                                </label>
+
                                 <label class="flex flex-col gap-2 text-sm text-slate-200">
                                     Название команды Radiant
                                     <input
@@ -418,6 +439,27 @@
                                     />
                                 </label>
 
+                                <label class="flex flex-col gap-2 text-sm text-slate-200">
+                                    Сохраненный состав Dire
+                                    <select
+                                        v-model="heroTeamPresets.dire"
+                                        class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-rose-400"
+                                        @change="handleSavedTeamSelection('dire', $event)"
+                                    >
+                                        <option value="">Ручной ввод</option>
+                                        <option
+                                            v-for="team in savedTeamsSorted"
+                                            :key="`dire-team-${team.slug}`"
+                                            :value="team.slug"
+                                        >
+                                            {{ team.name }} · {{ countFilledSavedTeamSlots(team) }}/5
+                                        </option>
+                                    </select>
+                                    <span class="text-xs leading-5 text-slate-500">
+                                        Подставляет название команды и игроков по ролям. Герои остаются без изменений.
+                                    </span>
+                                </label>
+
                                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                                     <div
                                         v-for="role in roles"
@@ -672,6 +714,278 @@
                         {{ isLoading('rosh-heroes') ? 'Считаем...' : 'Рассчитать' }}
                     </button>
                 </form>
+            </section>
+
+            <section
+                v-else-if="activeTab === 'teams'"
+                class="rounded-3xl border border-amber-500/20 bg-slate-900/60 p-6 shadow-xl shadow-slate-950/30"
+            >
+                <div class="mb-5 flex flex-col gap-2">
+                    <p class="text-xs font-semibold tracking-[0.3em] text-amber-300 uppercase">
+                        Teams
+                    </p>
+                    <h2 class="text-xl font-semibold text-white">Сохраненные составы</h2>
+                    <p class="max-w-3xl text-sm leading-6 text-slate-300">
+                        Здесь можно вручную собрать и сохранить команду по ролям, выбирая игроков через тот же Liquipedia
+                        lookup. Сохраненный состав затем подставляется в hero-based ROSH одним кликом.
+                    </p>
+                </div>
+
+                <div class="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                    <section class="rounded-2xl border border-slate-800 bg-slate-950/70 p-5">
+                        <div class="mb-4 flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-semibold tracking-[0.3em] text-amber-300 uppercase">
+                                    Library
+                                </p>
+                                <h3 class="mt-1 text-lg font-semibold text-white">Команды из репозитория</h3>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-100 transition hover:border-amber-300/50 hover:bg-amber-500/15"
+                                @click="startCreatingTeamRoster"
+                            >
+                                Новая команда
+                            </button>
+                        </div>
+
+                        <div
+                            v-if="savedTeamsSorted.length === 0"
+                            class="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 px-4 py-6 text-sm leading-6 text-slate-400"
+                        >
+                            Пока нет сохраненных составов. Создайте первый справа и сохраните его в репозиторий.
+                        </div>
+
+                        <div v-else class="space-y-3">
+                            <article
+                                v-for="team in savedTeamsSorted"
+                                :key="team.slug"
+                                class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"
+                            >
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <div class="text-base font-semibold text-white">{{ team.name }}</div>
+                                        <div class="mt-1 text-xs leading-5 text-slate-400">
+                                            {{ countFilledSavedTeamSlots(team) }}/5 слотов · обновлено {{ formatSavedTeamUpdatedAt(team.updated_at) }}
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        class="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-amber-300/50 hover:text-white"
+                                        @click="startEditingTeamRoster(team)"
+                                    >
+                                        Редактировать
+                                    </button>
+                                </div>
+
+                                <div class="mt-4 grid gap-2 sm:grid-cols-2">
+                                    <div
+                                        v-for="(role, index) in roles"
+                                        :key="`${team.slug}-${role.position}`"
+                                        class="rounded-xl border border-slate-800/80 bg-slate-950/70 px-3 py-2"
+                                    >
+                                        <div class="text-[11px] font-semibold tracking-[0.18em] text-slate-500 uppercase">
+                                            {{ role.label }}
+                                        </div>
+                                        <div class="mt-1 truncate text-sm text-slate-200">
+                                            {{ getSavedTeamPlayerDisplayName(team.players[index] ?? null) }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        class="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-500/15"
+                                        @click="useSavedTeamInHeroForm('radiant', team.slug)"
+                                    >
+                                        В Radiant
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/15"
+                                        @click="useSavedTeamInHeroForm('dire', team.slug)"
+                                    >
+                                        В Dire
+                                    </button>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
+
+                    <section class="rounded-2xl border border-amber-500/20 bg-slate-950/70 p-5">
+                        <div class="mb-4 space-y-2">
+                            <p class="text-xs font-semibold tracking-[0.3em] text-amber-300 uppercase">
+                                Editor
+                            </p>
+                            <h3 class="text-lg font-semibold text-white">{{ teamEditorTitle }}</h3>
+                            <p class="max-w-2xl text-sm leading-6 text-slate-400">
+                                Выбирайте игроков по ролям через Liquipedia. Пустые слоты можно сохранить, если состав еще не подтвержден полностью.
+                            </p>
+                        </div>
+
+                        <form class="space-y-5" @submit.prevent="saveTeamRoster">
+                            <label class="flex flex-col gap-2 text-sm text-slate-200">
+                                Название команды
+                                <input
+                                    v-model="teamEditor.name"
+                                    type="text"
+                                    required
+                                    class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-amber-400"
+                                    placeholder="OG"
+                                />
+                            </label>
+
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <div
+                                    v-for="role in roles"
+                                    :key="`team-editor-${role.position}`"
+                                    class="relative space-y-2"
+                                    data-team-player-picker
+                                >
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="font-medium text-amber-100">{{ role.label }}</span>
+                                        <span class="text-[11px] text-slate-500">Liquipedia PRO</span>
+                                    </div>
+
+                                    <div class="rounded-2xl border border-slate-700/80 bg-slate-900/80 px-3 py-3 transition focus-within:border-amber-400/60">
+                                        <div class="flex items-center gap-3">
+                                            <div class="min-w-0 flex-1">
+                                                <input
+                                                    :value="getTeamEditorPlayerValue(role.position - 1)"
+                                                    :data-team-player-input="role.position - 1"
+                                                    type="text"
+                                                    autocomplete="off"
+                                                    class="w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500"
+                                                    :placeholder="`Игрок для роли ${role.label}`"
+                                                    @focus="handleTeamEditorPlayerFocus(role.position - 1)"
+                                                    @input="handleTeamEditorPlayerInput(role.position - 1, $event)"
+                                                    @keydown.escape="closeTeamEditorPlayerPicker"
+                                                />
+                                            </div>
+
+                                            <button
+                                                v-if="getTeamEditorPlayerValue(role.position - 1)"
+                                                type="button"
+                                                tabindex="-1"
+                                                class="rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
+                                                @click="clearTeamEditorPlayerSelection(role.position - 1)"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+
+                                        <p
+                                            class="mt-2 text-[11px] leading-5"
+                                            :class="getTeamEditorPlayerHintClass(role.position - 1)"
+                                        >
+                                            {{ getTeamEditorPlayerHint(role.position - 1) }}
+                                        </p>
+                                    </div>
+
+                                    <div
+                                        v-if="getTeamEditorSelectedPlayer(role.position - 1)"
+                                        class="rounded-2xl border border-amber-500/20 bg-amber-500/8 px-3 py-3 text-xs text-slate-200"
+                                    >
+                                        <div class="font-semibold text-amber-100">
+                                            {{ getPlayerDisplayName(getTeamEditorSelectedPlayer(role.position - 1)!) }}
+                                        </div>
+                                        <div class="mt-1 text-slate-300">
+                                            {{ getPlayerMetaLine(getTeamEditorSelectedPlayer(role.position - 1)!) }}
+                                        </div>
+                                        <div
+                                            v-if="getTeamEditorSelectedPlayer(role.position - 1)!.aliases.length > 0"
+                                            class="mt-1 text-slate-400"
+                                        >
+                                            Aliases: {{ getTeamEditorSelectedPlayer(role.position - 1)!.aliases.join(', ') }}
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        v-if="shouldShowTeamEditorPlayerPicker(role.position - 1)"
+                                        class="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/98 shadow-2xl shadow-slate-950/70"
+                                    >
+                                        <div class="border-b border-slate-800 px-3 py-2 text-[11px] font-semibold tracking-[0.22em] text-slate-400 uppercase">
+                                            Кандидаты Liquipedia
+                                        </div>
+
+                                        <div
+                                            v-if="getTeamEditorPlayerSlotState(role.position - 1).status === 'searching'"
+                                            class="px-3 py-4 text-sm text-slate-400"
+                                        >
+                                            Ищем про-игроков...
+                                        </div>
+
+                                        <div
+                                            v-else-if="getTeamEditorPlayerSlotState(role.position - 1).status === 'error'"
+                                            class="px-3 py-4 text-sm text-rose-300"
+                                        >
+                                            {{ getTeamEditorPlayerSlotState(role.position - 1).error }}
+                                        </div>
+
+                                        <div
+                                            v-else-if="getTeamEditorPlayerSlotState(role.position - 1).candidates.length === 0"
+                                            class="px-3 py-4 text-sm text-slate-500"
+                                        >
+                                            Ничего не найдено. Попробуйте другой ник или alias.
+                                        </div>
+
+                                        <div v-else class="max-h-72 overflow-y-auto p-2">
+                                            <button
+                                                v-for="player in getTeamEditorPlayerSlotState(role.position - 1).candidates"
+                                                :key="`team-editor-player-${role.position}-${player.steam_account_id}`"
+                                                type="button"
+                                                class="flex w-full flex-col gap-1 rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-900 hover:text-white"
+                                                @mousedown.prevent="selectTeamEditorPlayer(role.position - 1, player)"
+                                            >
+                                                <div class="font-semibold text-white">
+                                                    {{ getPlayerDisplayName(player) }}
+                                                </div>
+                                                <div class="text-xs text-slate-300">
+                                                    {{ getPlayerMetaLine(player) }}
+                                                </div>
+                                                <div v-if="player.aliases.length > 0" class="text-[11px] text-slate-500">
+                                                    Aliases: {{ player.aliases.join(', ') }}
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap gap-3">
+                                <button
+                                    type="submit"
+                                    class="rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                                    :disabled="isLoading('team-roster-save')"
+                                >
+                                    {{ isLoading('team-roster-save') ? 'Сохраняем...' : teamEditorSubmitLabel }}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="rounded-xl border border-slate-700 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white"
+                                    @click="startCreatingTeamRoster"
+                                >
+                                    Очистить
+                                </button>
+
+                                <button
+                                    v-if="teamEditor.slug"
+                                    type="button"
+                                    class="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                                    :disabled="isLoading('team-roster-delete')"
+                                    @click="deleteTeamRoster"
+                                >
+                                    {{ isLoading('team-roster-delete') ? 'Удаляем...' : 'Удалить состав' }}
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
             </section>
 
             <section
@@ -1146,9 +1460,12 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import {
+    destroyTeamRoster as destroyTeamRosterAction,
     rosh as roshAction,
     roshHeroes as roshHeroesAction,
     searchProPlayers as searchProPlayersAction,
+    storeTeamRoster as storeTeamRosterAction,
+    updateTeamRoster as updateTeamRosterAction,
 } from '@/actions/App/Http/Controllers/StratzController';
 import { getHeroSearchAliases } from '@/lib/hero-aliases';
 
@@ -1170,9 +1487,25 @@ type ProPlayerCandidate = {
     pro_name: string | null;
     aliases: string[];
     team: {
-        id: number;
+        id: number | null;
         name: string;
     } | null;
+};
+
+type SavedTeamPlayer = {
+    steam_account_id: number | null;
+    name: string | null;
+    pro_name: string | null;
+    is_anonymous: boolean | null;
+    is_stratz_public: boolean | null;
+    team_name: string | null;
+} | null;
+
+type SavedTeamRoster = {
+    slug: string;
+    name: string;
+    players: SavedTeamPlayer[];
+    updated_at: string;
 };
 
 type RoshPlayerPayload = {
@@ -1195,7 +1528,7 @@ type SearchableHeroOption = {
 type HeroSide = 'radiant' | 'dire';
 type HeroPickerKey = `${HeroSide}-${number}`;
 type PlayerPickerKey = `${HeroSide}-${number}`;
-type StratzTab = 'matchId' | 'heroes';
+type StratzTab = 'matchId' | 'heroes' | 'teams';
 type PlayerSearchStatus = 'idle' | 'searching' | 'ready' | 'empty' | 'error';
 
 type RoshFormattedResult = {
@@ -1347,8 +1680,16 @@ type PlayerSlotState = {
     searchToken: number;
 };
 
+type TeamRosterFormState = {
+    slug: string | null;
+    name: string;
+    playerQueries: string[];
+    selectedPlayers: Array<ProPlayerCandidate | null>;
+};
+
 const props = defineProps<{
     heroes: HeroOption[];
+    savedTeams: SavedTeamRoster[];
 }>();
 
 const tabs: Array<{
@@ -1374,6 +1715,14 @@ const tabs: Array<{
         description: 'Повторить ROSH-расчёт по существующему матчу STRATZ.',
         activeClasses: 'border-rose-400/50 bg-rose-500/10 text-rose-50',
         badgeClasses: 'border-rose-300/40 bg-rose-300/10 text-rose-100',
+    },
+    {
+        id: 'teams',
+        label: 'Команды',
+        shortLabel: 'Teams',
+        description: 'Сохраненные составы для быстрой подстановки про-игроков в hero-based ROSH.',
+        activeClasses: 'border-amber-400/50 bg-amber-500/10 text-amber-50',
+        badgeClasses: 'border-amber-300/40 bg-amber-300/10 text-amber-100',
     },
 ];
 
@@ -1401,6 +1750,11 @@ const heroForm = reactive({
     direPlayers: Array.from({ length: 5 }, () => ''),
 });
 
+const heroTeamPresets = reactive<Record<HeroSide, string>>({
+    radiant: '',
+    dire: '',
+});
+
 const openHeroPickerKey = ref<HeroPickerKey | null>(null);
 const openPlayerPickerKey = ref<PlayerPickerKey | null>(null);
 const activeHeroOptionIndex = ref(0);
@@ -1408,6 +1762,7 @@ const loadingAction = ref<string | null>(null);
 const errorMessage = ref('');
 const result = ref<StratzResult | null>(null);
 const proPlayerSearchCache = new Map<string, ProPlayerCandidate[]>();
+const savedTeams = ref<SavedTeamRoster[]>(props.savedTeams);
 
 const createPlayerSlotState = (): PlayerSlotState => ({
     selected: null,
@@ -1423,7 +1778,78 @@ const playerSearchState = reactive<Record<HeroSide, PlayerSlotState[]>>({
     dire: Array.from({ length: 5 }, () => createPlayerSlotState()),
 });
 
+const teamEditor = reactive<TeamRosterFormState>({
+    slug: null,
+    name: '',
+    playerQueries: Array.from({ length: 5 }, () => ''),
+    selectedPlayers: Array.from({ length: 5 }, () => null),
+});
+
+const teamEditorPlayerSearchState = reactive<PlayerSlotState[]>(
+    Array.from({ length: 5 }, () => createPlayerSlotState()),
+);
+
+const openTeamEditorPlayerPickerIndex = ref<number | null>(null);
+
 const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+
+const normalizeSavedTeamPlayer = (player: SavedTeamPlayer): SavedTeamPlayer => {
+    if (! player) {
+        return null;
+    }
+
+    return {
+        steam_account_id: typeof player.steam_account_id === 'number' ? player.steam_account_id : null,
+        name: player.name ?? null,
+        pro_name: player.pro_name ?? null,
+        is_anonymous: typeof player.is_anonymous === 'boolean' ? player.is_anonymous : null,
+        is_stratz_public: typeof player.is_stratz_public === 'boolean' ? player.is_stratz_public : null,
+        team_name: player.team_name ?? null,
+    };
+};
+
+const normalizeSavedTeamRoster = (team: SavedTeamRoster): SavedTeamRoster => ({
+    slug: team.slug,
+    name: team.name,
+    players: Array.from({ length: roles.length }, (_, index) => normalizeSavedTeamPlayer(team.players[index] ?? null)),
+    updated_at: team.updated_at,
+});
+
+const sortSavedTeamRosters = (teams: SavedTeamRoster[]): SavedTeamRoster[] =>
+    [...teams]
+        .map(normalizeSavedTeamRoster)
+        .sort((left, right) => left.name.localeCompare(right.name, 'ru'));
+
+savedTeams.value = sortSavedTeamRosters(savedTeams.value);
+
+const savedTeamsSorted = computed<SavedTeamRoster[]>(() => sortSavedTeamRosters(savedTeams.value));
+
+const hydrateProPlayerCandidate = (player: SavedTeamPlayer): ProPlayerCandidate | null => {
+    if (! player || player.steam_account_id === null) {
+        return null;
+    }
+
+    return {
+        steam_account_id: player.steam_account_id,
+        name: player.name ?? `#${player.steam_account_id}`,
+        is_anonymous: player.is_anonymous ?? false,
+        is_stratz_public: player.is_stratz_public ?? false,
+        last_match_date_time: null,
+        season_rank: null,
+        season_leaderboard_rank: null,
+        pro_name: player.pro_name ?? null,
+        aliases: [],
+        team: player.team_name
+            ? {
+                  id: null,
+                  name: player.team_name,
+              }
+            : null,
+    };
+};
+
+const findSavedTeamRoster = (slug: string): SavedTeamRoster | null =>
+    savedTeams.value.find((team) => team.slug === slug) ?? null;
 
 const sortedHeroes = computed(() =>
     [...props.heroes].sort((left, right) => left.title.localeCompare(right.title, 'ru')),
@@ -1618,6 +2044,18 @@ const setPlayerValue = (side: HeroSide, index: number, value: string): void => {
 
 const getPlayerSlotState = (side: HeroSide, index: number): PlayerSlotState => playerSearchState[side][index];
 
+const setHeroPlayerSelection = (side: HeroSide, index: number, player: ProPlayerCandidate | null): void => {
+    const slot = getPlayerSlotState(side, index);
+
+    clearPlayerSearchTimer(slot);
+    slot.selected = player;
+    slot.candidates = [];
+    slot.status = player ? 'ready' : 'idle';
+    slot.error = '';
+    slot.searchToken += 1;
+    setPlayerValue(side, index, player ? getPlayerDisplayName(player) : '');
+};
+
 const openPlayerPicker = (side: HeroSide, index: number): void => {
     closeHeroPicker();
     openPlayerPickerKey.value = playerPickerKey(side, index);
@@ -1755,6 +2193,187 @@ const fetchProPlayerCandidates = async (query: string): Promise<ProPlayerCandida
     return candidates;
 };
 
+const getTeamEditorPlayerSlotState = (index: number): PlayerSlotState => teamEditorPlayerSearchState[index];
+
+const getTeamEditorPlayerValue = (index: number): string => teamEditor.playerQueries[index];
+
+const getTeamEditorSelectedPlayer = (index: number): ProPlayerCandidate | null => teamEditor.selectedPlayers[index];
+
+const openTeamEditorPlayerPicker = (index: number): void => {
+    closeHeroPicker();
+    closePlayerPicker();
+    openTeamEditorPlayerPickerIndex.value = index;
+};
+
+const closeTeamEditorPlayerPicker = (): void => {
+    openTeamEditorPlayerPickerIndex.value = null;
+};
+
+const isTeamEditorPlayerPickerOpen = (index: number): boolean => openTeamEditorPlayerPickerIndex.value === index;
+
+const setTeamEditorPlayerSelection = (index: number, player: ProPlayerCandidate | null): void => {
+    const slot = getTeamEditorPlayerSlotState(index);
+
+    clearPlayerSearchTimer(slot);
+    teamEditor.selectedPlayers[index] = player;
+    teamEditor.playerQueries[index] = player ? getPlayerDisplayName(player) : '';
+    slot.selected = player;
+    slot.candidates = [];
+    slot.status = player ? 'ready' : 'idle';
+    slot.error = '';
+    slot.searchToken += 1;
+};
+
+const focusNextTeamEditorPlayerInput = (index: number): void => {
+    requestAnimationFrame(() => {
+        const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-team-player-input]'));
+        const currentInputIndex = inputs.findIndex((input) => Number(input.dataset.teamPlayerInput) === index);
+
+        if (currentInputIndex < 0) {
+            return;
+        }
+
+        const nextInput = inputs[currentInputIndex + 1] ?? inputs[currentInputIndex];
+
+        nextInput?.focus();
+    });
+};
+
+const scheduleTeamEditorPlayerSearch = (index: number, value: string): void => {
+    const slot = getTeamEditorPlayerSlotState(index);
+    const normalizedQuery = normalizePlayerQuery(value);
+
+    clearPlayerSearchTimer(slot);
+    teamEditor.selectedPlayers[index] = null;
+    slot.selected = null;
+    slot.error = '';
+
+    if (normalizedQuery.length < 2) {
+        slot.candidates = [];
+        slot.status = 'idle';
+        return;
+    }
+
+    slot.status = 'searching';
+    openTeamEditorPlayerPicker(index);
+    slot.searchToken += 1;
+    const currentToken = slot.searchToken;
+
+    slot.debounceTimer = window.setTimeout(async () => {
+        try {
+            const candidates = await fetchProPlayerCandidates(value);
+
+            if (slot.searchToken !== currentToken) {
+                return;
+            }
+
+            slot.candidates = candidates;
+            slot.status = candidates.length > 0 ? 'ready' : 'empty';
+        } catch (error) {
+            if (slot.searchToken !== currentToken) {
+                return;
+            }
+
+            slot.candidates = [];
+            slot.status = 'error';
+            slot.error = error instanceof Error ? error.message : String(error);
+        }
+    }, 500);
+};
+
+const shouldShowTeamEditorPlayerPicker = (index: number): boolean => {
+    if (! isTeamEditorPlayerPickerOpen(index)) {
+        return false;
+    }
+
+    const slot = getTeamEditorPlayerSlotState(index);
+
+    if (slot.status === 'searching' || slot.status === 'error' || slot.candidates.length > 0) {
+        return true;
+    }
+
+    if (slot.selected) {
+        return false;
+    }
+
+    return normalizePlayerQuery(getTeamEditorPlayerValue(index)).length >= 2;
+};
+
+const getTeamEditorPlayerHint = (index: number): string => {
+    const slot = getTeamEditorPlayerSlotState(index);
+    const query = normalizePlayerQuery(getTeamEditorPlayerValue(index));
+
+    if (slot.selected) {
+        return `Выбран ${getPlayerDisplayName(slot.selected)}.`;
+    }
+
+    if (slot.status === 'searching') {
+        return 'Ищем про-игроков Liquipedia...';
+    }
+
+    if (slot.status === 'error') {
+        return slot.error;
+    }
+
+    if (slot.status === 'empty' && query.length >= 2) {
+        return 'Совпадений не найдено. Попробуйте другой ник или alias.';
+    }
+
+    if (query !== '' && query.length < 2) {
+        return 'Для поиска нужно минимум 2 символа.';
+    }
+
+    return 'Поиск ограничен pro-игроками Liquipedia.';
+};
+
+const getTeamEditorPlayerHintClass = (index: number): string => {
+    const slot = getTeamEditorPlayerSlotState(index);
+
+    if (slot.status === 'error') {
+        return 'text-rose-300';
+    }
+
+    if (slot.selected) {
+        return 'text-amber-200';
+    }
+
+    return 'text-slate-500';
+};
+
+const handleTeamEditorPlayerFocus = (index: number): void => {
+    openTeamEditorPlayerPicker(index);
+
+    const slot = getTeamEditorPlayerSlotState(index);
+
+    if (slot.selected || slot.status === 'searching' || slot.candidates.length > 0) {
+        return;
+    }
+
+    const value = getTeamEditorPlayerValue(index);
+
+    if (normalizePlayerQuery(value).length >= 2) {
+        scheduleTeamEditorPlayerSearch(index, value);
+    }
+};
+
+const handleTeamEditorPlayerInput = (index: number, event: Event): void => {
+    const value = event.target instanceof HTMLInputElement ? event.target.value : '';
+
+    teamEditor.playerQueries[index] = value;
+    scheduleTeamEditorPlayerSearch(index, value);
+};
+
+const selectTeamEditorPlayer = (index: number, player: ProPlayerCandidate): void => {
+    setTeamEditorPlayerSelection(index, player);
+    closeTeamEditorPlayerPicker();
+    focusNextTeamEditorPlayerInput(index);
+};
+
+const clearTeamEditorPlayerSelection = (index: number): void => {
+    setTeamEditorPlayerSelection(index, null);
+    openTeamEditorPlayerPicker(index);
+};
+
 const schedulePlayerSearch = (side: HeroSide, index: number, value: string): void => {
     const slot = getPlayerSlotState(side, index);
     const normalizedQuery = normalizePlayerQuery(value);
@@ -1797,27 +2416,13 @@ const schedulePlayerSearch = (side: HeroSide, index: number, value: string): voi
 };
 
 const selectPlayer = (side: HeroSide, index: number, player: ProPlayerCandidate): void => {
-    const slot = getPlayerSlotState(side, index);
-
-    clearPlayerSearchTimer(slot);
-    slot.selected = player;
-    slot.candidates = [];
-    slot.status = 'ready';
-    slot.error = '';
-    setPlayerValue(side, index, getPlayerDisplayName(player));
+    setHeroPlayerSelection(side, index, player);
     closePlayerPicker();
     focusNextPlayerInput(side, index);
 };
 
 const clearPlayerSelection = (side: HeroSide, index: number): void => {
-    const slot = getPlayerSlotState(side, index);
-
-    clearPlayerSearchTimer(slot);
-    slot.selected = null;
-    slot.candidates = [];
-    slot.status = 'idle';
-    slot.error = '';
-    setPlayerValue(side, index, '');
+    setHeroPlayerSelection(side, index, null);
     openPlayerPicker(side, index);
 };
 
@@ -1838,6 +2443,167 @@ const serializeSelectedPlayer = (player: ProPlayerCandidate | null): RoshPlayerP
 
 const buildSelectedPlayersPayload = (side: HeroSide): RoshPlayerPayload[] =>
     Array.from({ length: 5 }, (_, index) => serializeSelectedPlayer(selectedPlayerFor(side, index)));
+
+const applySavedTeamToHeroForm = (side: HeroSide, slug: string): void => {
+    const team = findSavedTeamRoster(slug);
+
+    if (! team) {
+        return;
+    }
+
+    if (side === 'radiant') {
+        heroForm.radiantTeam = team.name;
+    } else {
+        heroForm.direTeam = team.name;
+    }
+
+    team.players.forEach((player, index) => {
+        setHeroPlayerSelection(side, index, hydrateProPlayerCandidate(player));
+    });
+
+    heroTeamPresets[side] = slug;
+};
+
+const handleSavedTeamSelection = (side: HeroSide, event: Event): void => {
+    const slug = event.target instanceof HTMLSelectElement ? event.target.value : '';
+
+    heroTeamPresets[side] = slug;
+
+    if (slug !== '') {
+        applySavedTeamToHeroForm(side, slug);
+    }
+};
+
+const buildTeamEditorPlayersPayload = (): RoshPlayerPayload[] =>
+    Array.from({ length: roles.length }, (_, index) => serializeSelectedPlayer(getTeamEditorSelectedPlayer(index)));
+
+const startCreatingTeamRoster = (): void => {
+    teamEditor.slug = null;
+    teamEditor.name = '';
+    closeTeamEditorPlayerPicker();
+
+    for (let index = 0; index < roles.length; index += 1) {
+        setTeamEditorPlayerSelection(index, null);
+    }
+};
+
+const startEditingTeamRoster = (team: SavedTeamRoster): void => {
+    const normalizedTeam = normalizeSavedTeamRoster(team);
+
+    teamEditor.slug = normalizedTeam.slug;
+    teamEditor.name = normalizedTeam.name;
+    closeTeamEditorPlayerPicker();
+
+    normalizedTeam.players.forEach((player, index) => {
+        setTeamEditorPlayerSelection(index, hydrateProPlayerCandidate(player));
+    });
+};
+
+const upsertSavedTeamRoster = (team: SavedTeamRoster): void => {
+    const normalizedTeam = normalizeSavedTeamRoster(team);
+
+    savedTeams.value = sortSavedTeamRosters([
+        ...savedTeams.value.filter((savedTeam) => savedTeam.slug !== normalizedTeam.slug),
+        normalizedTeam,
+    ]);
+};
+
+const removeSavedTeamRoster = (slug: string): void => {
+    savedTeams.value = savedTeams.value.filter((team) => team.slug !== slug);
+
+    for (const side of ['radiant', 'dire'] as const) {
+        if (heroTeamPresets[side] === slug) {
+            heroTeamPresets[side] = '';
+        }
+    }
+};
+
+const saveTeamRoster = async (): Promise<void> => {
+    const trimmedName = teamEditor.name.trim();
+
+    if (trimmedName === '') {
+        errorMessage.value = 'Укажите название команды.';
+        return;
+    }
+
+    loadingAction.value = 'team-roster-save';
+    errorMessage.value = '';
+
+    try {
+        const route = teamEditor.slug
+            ? updateTeamRosterAction.patch({ teamRoster: teamEditor.slug })
+            : storeTeamRosterAction.post();
+
+        const response = await postJson<ApiEnvelope<SavedTeamRoster>>(route, {
+            name: trimmedName,
+            players: buildTeamEditorPlayersPayload(),
+        });
+
+        if (! response.data) {
+            throw new Error('Не удалось сохранить состав команды.');
+        }
+
+        const savedTeam = normalizeSavedTeamRoster(response.data);
+
+        upsertSavedTeamRoster(savedTeam);
+        startEditingTeamRoster(savedTeam);
+    } catch (error) {
+        errorMessage.value = error instanceof Error ? error.message : String(error);
+    } finally {
+        loadingAction.value = null;
+    }
+};
+
+const deleteTeamRoster = async (): Promise<void> => {
+    if (! teamEditor.slug) {
+        startCreatingTeamRoster();
+        return;
+    }
+
+    if (! window.confirm('Удалить сохраненный состав команды?')) {
+        return;
+    }
+
+    loadingAction.value = 'team-roster-delete';
+    errorMessage.value = '';
+
+    try {
+        const slug = teamEditor.slug;
+
+        await postJson<ApiEnvelope<{ slug: string }>>(destroyTeamRosterAction.delete({ teamRoster: slug }), {});
+
+        removeSavedTeamRoster(slug);
+        startCreatingTeamRoster();
+    } catch (error) {
+        errorMessage.value = error instanceof Error ? error.message : String(error);
+    } finally {
+        loadingAction.value = null;
+    }
+};
+
+const useSavedTeamInHeroForm = (side: HeroSide, slug: string): void => {
+    applySavedTeamToHeroForm(side, slug);
+    activeTab.value = 'heroes';
+};
+
+const countFilledSavedTeamSlots = (team: SavedTeamRoster): number =>
+    team.players.filter((player) => player?.steam_account_id !== null).length;
+
+const formatSavedTeamUpdatedAt = (value: string): string => {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return '—';
+    }
+
+    return date.toLocaleString('ru-RU');
+};
+
+const getSavedTeamPlayerDisplayName = (player: SavedTeamPlayer): string => player?.pro_name ?? player?.name ?? '—';
+
+const teamEditorTitle = computed(() => (teamEditor.slug ? 'Редактирование состава' : 'Новый состав'));
+
+const teamEditorSubmitLabel = computed(() => (teamEditor.slug ? 'Сохранить изменения' : 'Создать состав'));
 
 const handlePlayerFocus = (side: HeroSide, index: number): void => {
     openPlayerPicker(side, index);
@@ -2144,12 +2910,13 @@ const handleHeroInput = (side: HeroSide, index: number, event: Event): void => {
 const handleDocumentPointerDown = (event: PointerEvent): void => {
     const target = event.target;
 
-    if (target instanceof Element && target.closest('[data-hero-picker], [data-player-picker]')) {
+    if (target instanceof Element && target.closest('[data-hero-picker], [data-player-picker], [data-team-player-picker]')) {
         return;
     }
 
     closeHeroPicker();
     closePlayerPicker();
+    closeTeamEditorPlayerPicker();
 };
 
 onMounted(() => {
@@ -2178,6 +2945,10 @@ onBeforeUnmount(() => {
         for (const slot of playerSearchState[side]) {
             clearPlayerSearchTimer(slot);
         }
+    }
+
+    for (const slot of teamEditorPlayerSearchState) {
+        clearPlayerSearchTimer(slot);
     }
 });
 
