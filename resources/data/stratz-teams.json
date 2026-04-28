@@ -1,0 +1,1085 @@
+{
+    "teams":  [
+                  {
+                      "slug":  "aurora-gaming",
+                      "name":  "Aurora Gaming",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  124801257,
+                                          "name":  "Egor Grigorenko",
+                                          "pro_name":  "Nightfall",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  301750126,
+                                          "name":  "Rafli Fathur Rahman",
+                                          "pro_name":  "Mikoto",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  126842529,
+                                          "name":  "Chung Wei Shen",
+                                          "pro_name":  "Ws",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  256156323,
+                                          "name":  "Myroslav Kolpakov",
+                                          "pro_name":  "Mira",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  320219866,
+                                          "name":  "Oleh Medvedok",
+                                          "pro_name":  "kaori",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T13:29:42.5926493Z"
+                  },
+                  {
+                      "slug":  "betboom-team",
+                      "name":  "BetBoom Team",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  172099728,
+                                          "name":  "Ilya Ulyanov",
+                                          "pro_name":  "Kiritych",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  480412663,
+                                          "name":  "Danil Skutin",
+                                          "pro_name":  "gpk",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  165564598,
+                                          "name":  "Matvey Vasyunin",
+                                          "pro_name":  "MieRo`",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  317880638,
+                                          "name":  "Vitalie Melnic",
+                                          "pro_name":  "Save-",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  196878136,
+                                          "name":  "Vladislav Semenov",
+                                          "pro_name":  "Kataomi`",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T13:29:42.5926493Z"
+                  },
+                  {
+                      "slug":  "heroic",
+                      "name":  "HEROIC",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  177203952,
+                                          "name":  "Yuma Benjamin Langlet",
+                                          "pro_name":  "Yuma",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  1026694469,
+                                          "name":  "Santiago Olivos Aguero Gustavo",
+                                          "pro_name":  "TaiLung",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  292921272,
+                                          "name":  "Adrian Cespedes Dobles",
+                                          "pro_name":  "Wisper",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  105045291,
+                                          "name":  "Thiago de Oliveira Cordeiro",
+                                          "pro_name":  "Thiolicor",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  81306398,
+                                          "name":  "Matheus Santos Jungles Diniz",
+                                          "pro_name":  "KJ",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T13:29:42.5926493Z"
+                  },
+                  {
+                      "slug":  "navi",
+                      "name":  "NAVI",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  957204049,
+                                          "name":  "Taras Linnikov",
+                                          "pro_name":  "gotthejuice",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  185590374,
+                                          "name":  "Artem Bachkur",
+                                          "pro_name":  "Niku",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  835864135,
+                                          "name":  "Yurii Prots",
+                                          "pro_name":  "pma",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  111030315,
+                                          "name":  "Baqyt Emiljanov",
+                                          "pro_name":  "Zayac",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  130991304,
+                                          "name":  "Stanislav Mitroshkyn",
+                                          "pro_name":  "Riddys",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T13:29:42.5926493Z"
+                  },
+                  {
+                      "slug":  "og",
+                      "name":  "OG",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  355168766,
+                                          "name":  "John Anthony Vargas",
+                                          "pro_name":  "Natsumi-",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  324277900,
+                                          "name":  "Erin Jasper Ferrer",
+                                          "pro_name":  "Yopaj",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  146711951,
+                                          "name":  "Nikko Bilocura",
+                                          "pro_name":  "Nikko",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  155494381,
+                                          "name":  "Timothy John Randrup",
+                                          "pro_name":  "TIMS",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  100594231,
+                                          "name":  "Rolen Andrei Gabriel Ong",
+                                          "pro_name":  "skem",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T12:37:50+00:00"
+                  },
+                  {
+                      "slug":  "parivision",
+                      "name":  "PARIVISION",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  1044002267,
+                                          "name":  "Alan Gallyamov",
+                                          "pro_name":  "Satanic",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  106573901,
+                                          "name":  "Volodymyr Minenko",
+                                          "pro_name":  "No[o]ne-",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  402583877,
+                                          "name":  "Valery Lazarev",
+                                          "pro_name":  "SSS",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  164199202,
+                                          "name":  "Edgar Naltakian",
+                                          "pro_name":  "9Class",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  73401082,
+                                          "name":  "Andrey Kuropatkin",
+                                          "pro_name":  "Dukalis",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T13:29:42.5926493Z"
+                  },
+                  {
+                      "slug":  "team-falcons",
+                      "name":  "Team Falcons",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  100058342,
+                                          "name":  "Oliver Lepko",
+                                          "pro_name":  "skiter",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  898455820,
+                                          "name":  "Stanislav Potorak",
+                                          "pro_name":  "Malr1ne",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  183719386,
+                                          "name":  "Ammar Al-Assaf",
+                                          "pro_name":  "ATF",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  25907144,
+                                          "name":  "Andreas Franck Nielsen",
+                                          "pro_name":  "Cr1t-",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  10366616,
+                                          "name":  "Wu Jingjun",
+                                          "pro_name":  "Sneyking",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T13:29:42.5926493Z"
+                  },
+                  {
+                      "slug":  "team-liquid",
+                      "name":  "Team Liquid",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  152962063,
+                                          "name":  "Michael Vu",
+                                          "pro_name":  "miCKe",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  201358612,
+                                          "name":  "Michal Jankowski",
+                                          "pro_name":  "Nisha",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  97590558,
+                                          "name":  "Marcus Folke Hoelgaard Christensen",
+                                          "pro_name":  "Ace",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  77490514,
+                                          "name":  "Samuel Svahn",
+                                          "pro_name":  "Boxi",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  16497807,
+                                          "name":  "Erik Engel",
+                                          "pro_name":  "tOfu",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T13:29:42.5926493Z"
+                  },
+                  {
+                      "slug":  "team-spirit",
+                      "name":  "Team Spirit",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  321580662,
+                                          "name":  "Р†Р»Р»СЏ РњСѓР»СЏСЂС‡СѓРє",
+                                          "pro_name":  "Yatoro",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  106305042,
+                                          "name":  "Р”РµРЅРёСЃ РЎРёРіРёС‚РѕРІ",
+                                          "pro_name":  "Larl",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  302214028,
+                                          "name":  "РњР°РіРѕРјРµРґ РҐР°Р»РёР»РѕРІ",
+                                          "pro_name":  "Collapse",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  847565596,
+                                          "name":  "РђР»РµРєСЃР°РЅРґСЂ Р¤РёР»РёРЅ",
+                                          "pro_name":  "rue",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  108958769,
+                                          "name":  "РќРёРєРёС‚Р° Р‘Р°Р»Р°РіР°РЅРёРЅ",
+                                          "pro_name":  "panto",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T12:43:28+00:00"
+                  },
+                  {
+                      "slug":  "tundra-esports",
+                      "name":  "Tundra Esports",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  331855530,
+                                          "name":  "Ivan Moskalenko",
+                                          "pro_name":  "Pure",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  93618577,
+                                          "name":  "Bozhidar Bogdanov",
+                                          "pro_name":  "bzm",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  86698277,
+                                          "name":  "Neta Shapira",
+                                          "pro_name":  "33",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  346412363,
+                                          "name":  "Matthew Walker",
+                                          "pro_name":  "Ari",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  136829091,
+                                          "name":  "Matthew Filemon",
+                                          "pro_name":  "Whitemon",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T13:29:42.5926493Z"
+                  },
+                  {
+                      "slug":  "vici-gaming",
+                      "name":  "Vici Gaming",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  320252024,
+                                          "name":  "Guo Xuanang",
+                                          "pro_name":  "shiro",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  137129583,
+                                          "name":  "Guo Hongcheng",
+                                          "pro_name":  "Xm",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  118134220,
+                                          "name":  "Zhang Ruida",
+                                          "pro_name":  "Bach",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  150961567,
+                                          "name":  "Lin Hao",
+                                          "pro_name":  "planet",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  111114687,
+                                          "name":  "Zhang Yiping",
+                                          "pro_name":  "y`",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T13:29:42.5926493Z"
+                  },
+                  {
+                      "slug":  "virtuspro",
+                      "name":  "Virtus.pro",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  97658618,
+                                          "name":  "Enzo Gianoli O\u0027Connor",
+                                          "pro_name":  "Timado",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  154715080,
+                                          "name":  "Abed Azel Limpasan Yusop",
+                                          "pro_name":  "Abed",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  126212866,
+                                          "name":  "JonГЎЕЎ Volek",
+                                          "pro_name":  "SabeRLight-",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  241884166,
+                                          "name":  "РљРёСЂРёР»Р» Р›Р°РіСѓС‚РёРє",
+                                          "pro_name":  "Hellscream",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  94155156,
+                                          "name":  "ЧЧњ ЧђЧ™Ч™Ч–Ч™Ч§",
+                                          "pro_name":  "Fly",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T12:44:40+00:00"
+                  },
+                  {
+                      "slug":  "xtreme-gaming",
+                      "name":  "Xtreme Gaming",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  898754153,
+                                          "name":  "Wang Chunyu",
+                                          "pro_name":  "Ame",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  173978074,
+                                          "name":  "Cheng Jin Xiang",
+                                          "pro_name":  "NothingToSay",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  129958758,
+                                          "name":  "Lin Jing",
+                                          "pro_name":  "Xxs",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  101695162,
+                                          "name":  "Xu Linsen",
+                                          "pro_name":  "fy",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  94296097,
+                                          "name":  "Yap Jian Wei",
+                                          "pro_name":  "xNova",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T13:29:42.5926493Z"
+                  },
+                  {
+                      "slug":  "team-yandex",
+                      "name":  "Team Yandex",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  171262902,
+                                          "name":  "Alimzhan Islambekov",
+                                          "pro_name":  "watson",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  312436974,
+                                          "name":  "Ilya Chirtsov",
+                                          "pro_name":  "CHIRA_JUNIOR",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  195108598,
+                                          "name":  "Evgeniy Ignatenko",
+                                          "pro_name":  "Noticed",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  103735745,
+                                          "name":  "Martin Sazdov",
+                                          "pro_name":  "Saksa",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  93817671,
+                                          "name":  "Arman Orazbayev",
+                                          "pro_name":  "Malady",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T14:00:00Z"
+                  },
+                  {
+                      "slug":  "gamerlegion",
+                      "name":  "GamerLegion",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  164962869,
+                                          "name":  "Indji Lub",
+                                          "pro_name":  "Shad",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  154974246,
+                                          "name":  "Francis Fundemera",
+                                          "pro_name":  "RCY",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  160119017,
+                                          "name":  "Victor Zuev",
+                                          "pro_name":  "Fayde",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  90423751,
+                                          "name":  "Danil Shekhovtsov",
+                                          "pro_name":  "Bignum",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  191362875,
+                                          "name":  "Paul Bocchicchio",
+                                          "pro_name":  "Speeed",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T14:00:00Z"
+                  },
+                  {
+                      "slug":  "mouz",
+                      "name":  "MOUZ",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  127617979,
+                                          "name":  "Remco Arets",
+                                          "pro_name":  "Crystallis",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  116585378,
+                                          "name":  "Yeik Nai Zheng",
+                                          "pro_name":  "MidOne",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  190826739,
+                                          "name":  "Miroslav Bican",
+                                          "pro_name":  "BOOM",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  9403474,
+                                          "name":  "Daniyal Lazebnyy",
+                                          "pro_name":  "yamich",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  91730177,
+                                          "name":  "Melchior Leander Isaac Hillenkamp",
+                                          "pro_name":  "Seleri",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T14:00:00Z"
+                  },
+                  {
+                      "slug":  "1w-team",
+                      "name":  "1w Team",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  125445069,
+                                          "name":  "Alexander Pak",
+                                          "pro_name":  "v1olent`",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  123023873,
+                                          "name":  "Ilya Kuvaldin",
+                                          "pro_name":  "squad1x",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  383788462,
+                                          "name":  "Ivan Ilichev",
+                                          "pro_name":  "мистер мораль",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  175311897,
+                                          "name":  "Georgii Zainalabidov",
+                                          "pro_name":  "swedenstrong",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  122817493,
+                                          "name":  "Vladislav Kosygin",
+                                          "pro_name":  "Rein",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T14:00:00Z"
+                  },
+                  {
+                      "slug":  "pain-gaming",
+                      "name":  "paiN Gaming",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  363758022,
+                                          "name":  "Maximo Orozco Alza",
+                                          "pro_name":  "Wits",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  352545711,
+                                          "name":  "Oswaldo Gonzalo Herrera Martinez",
+                                          "pro_name":  "DarkMago",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  252737052,
+                                          "name":  "Frank Alberto Arias Ayala",
+                                          "pro_name":  "Frank",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  157989498,
+                                          "name":  "Elvis De la Cruz Pena",
+                                          "pro_name":  "Scofield",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  1031547092,
+                                          "name":  "Yelsthin Brayan Verde Hurtado",
+                                          "pro_name":  "Elmisho",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T14:00:00Z"
+                  },
+                  {
+                      "slug":  "yakult-brothers",
+                      "name":  "Yakult Brothers",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  168028715,
+                                          "name":  "Jin Zhiyi",
+                                          "pro_name":  "flyfly",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  113457795,
+                                          "name":  "Kam Boon Seng",
+                                          "pro_name":  "MooN",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  139937922,
+                                          "name":  "Zhou Haiyang",
+                                          "pro_name":  "Yang",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  207829314,
+                                          "name":  "Ye Zhibiao",
+                                          "pro_name":  "BoBoKa",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  158847773,
+                                          "name":  "Jiang An",
+                                          "pro_name":  "天命",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T14:00:00Z"
+                  },
+                  {
+                      "slug":  "zero-tenacity",
+                      "name":  "Zero Tenacity",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  241519559,
+                                          "name":  "Kyial Tayirov",
+                                          "pro_name":  "dream`",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  72393079,
+                                          "name":  "Vitaliy Brezgin",
+                                          "pro_name":  "Worick",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  116249155,
+                                          "name":  "Dmitry Tarasich",
+                                          "pro_name":  "nefrit",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  115464954,
+                                          "name":  "Athanasios Kartsabas",
+                                          "pro_name":  "dEsire",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  349310876,
+                                          "name":  "Joel Eduardo Mori Ozambela",
+                                          "pro_name":  "MoOz",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T14:00:00Z"
+                  },
+                  {
+                      "slug":  "yellow-submarine",
+                      "name":  "Yellow Submarine",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  164506534,
+                                          "name":  "Andrei Kopytko",
+                                          "pro_name":  "bottega",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  116865891,
+                                          "name":  "Marat Gazetdinov",
+                                          "pro_name":  "Mirele",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  417604379,
+                                          "name":  "Rodion Kulakov",
+                                          "pro_name":  "INFERNAL",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  223342537,
+                                          "name":  "Mikhail Lapochkin",
+                                          "pro_name":  "lupsi",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  217472313,
+                                          "name":  "Egor Lipartiya",
+                                          "pro_name":  "Xakoda",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T14:00:00Z"
+                  },
+                  {
+                      "slug":  "ivory",
+                      "name":  "Ivory",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  353424606,
+                                          "name":  "Philip Joshua Torres",
+                                          "pro_name":  "Karma丶",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  218367241,
+                                          "name":  "Argle Ken Corpuz Llesis",
+                                          "pro_name":  "Ken",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  145331311,
+                                          "name":  "Glenard Lei C. Rugay",
+                                          "pro_name":  "Rupido",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  162274034,
+                                          "name":  "Carl Edric Ricafrente",
+                                          "pro_name":  "Dric~",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  110759067,
+                                          "name":  "John Linuel G. Abanto",
+                                          "pro_name":  "Teehee",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T14:00:00Z"
+                  },
+                  {
+                      "slug":  "rottweilas-latam",
+                      "name":  "Rottweilas LATAM",
+                      "players":  [
+                                      {
+                                          "steam_account_id":  86822085,
+                                          "name":  "Guilherme Silva Costábile",
+                                          "pro_name":  "Costabile",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  1673586483,
+                                          "name":  "Aldhair Montoya de la Cruz",
+                                          "pro_name":  "Jam3s",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  143786911,
+                                          "name":  "Adrian Briceño Huancas",
+                                          "pro_name":  "Adrian",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  392385140,
+                                          "name":  "Moisés Abraham Nehemias Asencios Santillan",
+                                          "pro_name":  "Genek",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      },
+                                      {
+                                          "steam_account_id":  177953305,
+                                          "name":  "Junior Jhon Reyes Rimari",
+                                          "pro_name":  "Yadomi",
+                                          "team_name":  null,
+                                          "is_anonymous":  false,
+                                          "is_stratz_public":  false
+                                      }
+                                  ],
+                      "updated_at":  "2026-03-27T14:00:00Z"
+                  }
+              ]
+}

@@ -8,9 +8,17 @@ use App\Http\Requests\Stratz\FetchLeagueMatchesRequest;
 use App\Http\Requests\Stratz\FetchMatchRequest;
 use App\Http\Requests\Stratz\FetchProPlayersRequest;
 use App\Http\Requests\Stratz\FetchRoshHeroesRequest;
+use App\Http\Requests\Stratz\FetchRoshHtmlRequest;
 use App\Http\Requests\Stratz\FetchRoshRequest;
+use App\Http\Requests\Stratz\SearchProPlayersRequest;
+use App\Http\Requests\Stratz\StoreTeamRosterRequest;
+use App\Http\Requests\Stratz\UpdateTeamRosterRequest;
+use App\Services\Dltv\DltvGistHtmlFetcher;
+use App\Services\Dltv\DltvMatchHtmlParser;
 use App\Services\GoogleSheets\RoshSheetService;
+use App\Services\Liquipedia\LiquipediaService;
 use App\Services\Stratz\StratzService;
+use App\Services\Stratz\TeamRosterRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +28,7 @@ use Throwable;
 
 class StratzController
 {
-    public function index(): Response
+    public function index(TeamRosterRepository $teamRosterRepository): Response
     {
         $heroes = array_map(
             fn (Hero $hero) => [
@@ -34,6 +42,7 @@ class StratzController
 
         return Inertia::render('Stratz', [
             'heroes' => $heroes,
+            'savedTeams' => $teamRosterRepository->all(),
         ]);
     }
 
@@ -63,12 +72,28 @@ class StratzController
         }
     }
 
-    public function proPlayers(FetchProPlayersRequest $request, StratzService $stratzService): JsonResponse|RedirectResponse
+    public function proPlayers(FetchProPlayersRequest $request, LiquipediaService $liquipediaService): JsonResponse|RedirectResponse
     {
         try {
-            $proPlayers = $stratzService->getProPlayers();
+            $proPlayers = $liquipediaService->getProPlayers();
 
             return $this->respond($request, 'pro_players', $proPlayers);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function searchProPlayers(
+        SearchProPlayersRequest $request,
+        LiquipediaService $liquipediaService,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $proPlayers = $liquipediaService->searchProPlayers(
+                $request->searchQuery(),
+                $request->resultLimit(),
+            );
+
+            return $this->respond($request, 'pro_players_search', $proPlayers);
         } catch (Throwable $throwable) {
             return $this->respondWithError($request, $throwable);
         }
@@ -121,6 +146,109 @@ class StratzController
             }
 
             return $this->respond($request, 'rosh', $rosh);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function roshHtml(
+        FetchRoshHtmlRequest $request,
+        DltvMatchHtmlParser $dltvMatchHtmlParser,
+        StratzService $stratzService,
+        RoshSheetService $roshSheetService,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $payload = $dltvMatchHtmlParser->parse($request->validated('html'));
+            $rosh = $stratzService->getRoshFromHeroes($payload);
+            $rosh['parsed_html'] = $payload;
+
+            if ($roshSheetService->isConfigured()) {
+                $rosh['google_sheets'] = $roshSheetService->appendLiveOdds(
+                    (array) data_get($rosh, 'formatted', []),
+                );
+            }
+
+            return $this->respond($request, 'rosh', $rosh);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function roshGist(
+        Request $request,
+        DltvGistHtmlFetcher $dltvGistHtmlFetcher,
+        DltvMatchHtmlParser $dltvMatchHtmlParser,
+        StratzService $stratzService,
+        RoshSheetService $roshSheetService,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $payload = $dltvMatchHtmlParser->parse($dltvGistHtmlFetcher->fetch());
+            $rosh = $stratzService->getRoshFromHeroes($payload);
+            $rosh['parsed_html'] = $payload;
+            $rosh['source'] = [
+                'type' => 'gist',
+                'url' => (string) config('services.dltv.gist_url'),
+            ];
+
+            if ($roshSheetService->isConfigured()) {
+                $rosh['google_sheets'] = $roshSheetService->appendLiveOdds(
+                    (array) data_get($rosh, 'formatted', []),
+                );
+            }
+
+            return $this->respond($request, 'rosh', $rosh);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function teamRosters(Request $request, TeamRosterRepository $teamRosterRepository): JsonResponse|RedirectResponse
+    {
+        try {
+            return $this->respond($request, 'team_rosters', $teamRosterRepository->all());
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function storeTeamRoster(
+        StoreTeamRosterRequest $request,
+        TeamRosterRepository $teamRosterRepository,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $teamRoster = $teamRosterRepository->create($request->validated());
+
+            return $this->respond($request, 'team_roster', $teamRoster);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function updateTeamRoster(
+        UpdateTeamRosterRequest $request,
+        string $teamRoster,
+        TeamRosterRepository $teamRosterRepository,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $updatedTeamRoster = $teamRosterRepository->update($teamRoster, $request->validated());
+
+            return $this->respond($request, 'team_roster', $updatedTeamRoster);
+        } catch (Throwable $throwable) {
+            return $this->respondWithError($request, $throwable);
+        }
+    }
+
+    public function destroyTeamRoster(
+        Request $request,
+        string $teamRoster,
+        TeamRosterRepository $teamRosterRepository,
+    ): JsonResponse|RedirectResponse {
+        try {
+            $teamRosterRepository->delete($teamRoster);
+
+            return $this->respond($request, 'team_roster_deleted', [
+                'slug' => $teamRoster,
+            ]);
         } catch (Throwable $throwable) {
             return $this->respondWithError($request, $throwable);
         }

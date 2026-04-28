@@ -1,0 +1,1269 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "DLTV" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img [ref=e7]
+          - generic [ref=e11]: DLTV
+        - navigation [ref=e12]:
+          - link "Новости" [ref=e14] [cursor=pointer]:
+            - /url: /news
+          - link "Матчи" [ref=e16] [cursor=pointer]:
+            - /url: /matches
+          - link "Результаты" [ref=e18] [cursor=pointer]:
+            - /url: /results
+          - link "Турниры" [ref=e20] [cursor=pointer]:
+            - /url: /events
+          - generic [ref=e22] [cursor=pointer]: Статистика
+          - link "Рейтинг" [ref=e24] [cursor=pointer]:
+            - /url: /ranking
+          - link "Видео" [ref=e26] [cursor=pointer]:
+            - /url: /highlights
+          - link "Прогнозы" [ref=e28] [cursor=pointer]:
+            - /url: /leaderboards
+        - generic [ref=e29]:
+          - link [ref=e30] [cursor=pointer]:
+            - /url: https://csgopositive.xyz/p/dltv/
+          - generic [ref=e32] [cursor=pointer]:
+            - link [ref=e33]:
+              - /url: https://kda.live/
+            - img [ref=e34]
+          - generic [ref=e37] [cursor=pointer]:
+            - img [ref=e38]
+            - generic [ref=e41]: "!"
+          - generic [ref=e44] [cursor=pointer]: ru
+          - img [ref=e47] [cursor=pointer]
+          - link [ref=e50] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e51]
+          - link [ref=e54] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e55]
+      - generic [ref=e59]:
+        - button [ref=e61] [cursor=pointer]:
+          - img [ref=e62]
+        - textbox "Введите команду, игрока, событие или Steam ID..." [ref=e65]
+        - img [ref=e67] [cursor=pointer]
+  - generic [ref=e71]:
+    - generic [ref=e74]:
+      - link [ref=e75] [cursor=pointer]:
+        - /url: https://reffpa.com/L?tag=d_1145383m_97c__[]cyber[]_d54580_l54323_banner&site=1145383&ad=97
+      - generic [ref=e77]:
+        - group "1 / 4" [ref=e78] [cursor=pointer]:
+          - generic [ref=e81]: "1.88"
+          - generic [ref=e82]:
+            - generic [ref=e83]: DL D2
+            - text: 28 апр.
+          - generic [ref=e86]: "1.88"
+        - group "2 / 4" [ref=e87] [cursor=pointer]:
+          - generic [ref=e90]: "1.32"
+          - generic [ref=e91]:
+            - generic [ref=e92]: DL D2
+            - text: 29 апр.
+          - generic [ref=e95]: "3.17"
+        - group "3 / 4" [ref=e96] [cursor=pointer]:
+          - generic [ref=e99]: "1.06"
+          - generic [ref=e100]:
+            - generic [ref=e101]: Challenger
+            - text: 01 мая
+          - generic [ref=e104]: "7.90"
+        - group "4 / 4" [ref=e105] [cursor=pointer]:
+          - generic [ref=e108]: "1.69"
+          - generic [ref=e109]:
+            - generic [ref=e110]: Challenger
+            - text: 01 мая
+          - generic [ref=e113]: "2.11"
+      - button "Previous slide" [disabled]:
+        - img
+      - button "Next slide" [disabled]:
+        - img
+    - list [ref=e114]:
+      - listitem [ref=e115]:
+        - link "Главная" [ref=e116] [cursor=pointer]:
+          - /url: https://ru.dltv.org
+      - listitem [ref=e117]:
+        - link "Матчи" [ref=e118] [cursor=pointer]:
+          - /url: https://ru.dltv.org/matches
+      - listitem [ref=e119]:
+        - link "DreamLeague Division 2 Season 4" [ref=e120] [cursor=pointer]:
+          - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+      - listitem [ref=e121]: Team Lynx vs South America Rejects
+    - generic [ref=e123]:
+      - generic [ref=e124]:
+        - generic [ref=e125]:
+          - link "DreamLeague Division 2 Season 4" [ref=e126] [cursor=pointer]:
+            - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+          - generic [ref=e127]: Lower Bracket R2
+        - generic [ref=e128]:
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - link [ref=e131] [cursor=pointer]:
+                - /url: https://ru.dltv.org/teams/team-lynx
+              - generic [ref=e132]:
+                - link "Team Lynx" [ref=e133] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/teams/team-lynx
+                - generic [ref=e134]:
+                  - generic [ref=e135]:
+                    - img [ref=e136]
+                    - generic [ref=e140]: 62%
+                    - generic [ref=e141]: Winrate
+                  - generic [ref=e142]:
+                    - img [ref=e143]
+                    - generic [ref=e147]: 48%
+                    - generic [ref=e148]: FB
+                  - generic [ref=e149]:
+                    - img [ref=e150]
+                    - generic [ref=e154]: 62%
+                    - generic [ref=e155]: F10
+            - generic [ref=e156]:
+              - generic [ref=e157]: 28 апреля 2026 г. - 19:35
+              - generic [ref=e158]: 0 - 0
+              - generic [ref=e159]: Best of 3
+              - generic [ref=e160]: Live
+            - generic [ref=e161]:
+              - link [ref=e162] [cursor=pointer]:
+                - /url: https://ru.dltv.org/teams/south-america-rejects
+              - generic [ref=e163]:
+                - link "South America Rejects" [ref=e164] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/teams/south-america-rejects
+                - generic [ref=e165]:
+                  - generic [ref=e166]:
+                    - img [ref=e167]
+                    - generic [ref=e171]: 57%
+                    - generic [ref=e172]: Winrate
+                  - generic [ref=e173]:
+                    - img [ref=e174]
+                    - generic [ref=e178]: 45%
+                    - generic [ref=e179]: FB
+                  - generic [ref=e180]:
+                    - img [ref=e181]
+                    - generic [ref=e185]: 56%
+                    - generic [ref=e186]: F10
+          - link "3.94 Поставить ставку 1.22" [ref=e187] [cursor=pointer]:
+            - /url: https://reffpa.com/L?
+            - generic [ref=e189]: "3.94"
+            - generic [ref=e191]: Поставить ставку
+            - generic [ref=e194]: "1.22"
+        - generic [ref=e195]:
+          - generic [ref=e196]:
+            - text: Смотреть матч
+            - generic [ref=e198] [cursor=pointer]: All
+          - generic [ref=e200]:
+            - generic [ref=e202]:
+              - generic [ref=e204] [cursor=pointer]: All (17)
+              - generic [ref=e206] [cursor=pointer]:
+                - img "Asset 14" [ref=e207]
+                - text: (10)
+              - generic [ref=e219] [cursor=pointer]:
+                - img [ref=e220]
+                - text: (1)
+              - generic [ref=e235] [cursor=pointer]:
+                - img [ref=e236]
+                - text: (6)
+            - generic [ref=e240]:
+              - generic [ref=e242]:
+                - group "1 / 17" [ref=e243]:
+                  - generic [ref=e245] [cursor=pointer]:
+                    - generic [ref=e247]: pro_cast2
+                    - generic [ref=e249]:
+                      - img [ref=e250]
+                      - text: 2162 Просмотры
+                    - link [ref=e252]:
+                      - /url: https://twitch.tv/pro_cast2
+                      - img [ref=e253]
+                - group "2 / 17" [ref=e255]:
+                  - generic [ref=e257] [cursor=pointer]:
+                    - generic [ref=e259]: ESL_DOTA2
+                    - generic [ref=e261]:
+                      - img [ref=e262]
+                      - text: 1804 Просмотры
+                    - link [ref=e264]:
+                      - /url: https://twitch.tv/esl_dota2
+                      - img [ref=e265]
+                - group "3 / 17" [ref=e267]:
+                  - generic [ref=e269] [cursor=pointer]:
+                    - generic [ref=e271]: pivovar_cast
+                    - generic [ref=e273]:
+                      - img [ref=e274]
+                      - text: 394 Просмотры
+                    - link [ref=e276]:
+                      - /url: https://twitch.tv/pivovar_cast
+                      - img [ref=e277]
+                - group "4 / 17" [ref=e279]:
+                  - generic [ref=e281] [cursor=pointer]:
+                    - generic [ref=e283]: richicaster
+                    - generic [ref=e285]:
+                      - img [ref=e286]
+                      - text: 382 Просмотры
+                    - link [ref=e288]:
+                      - /url: https://www.kick.com/richicaster
+                      - img [ref=e289]
+                - group "5 / 17" [ref=e291]:
+                  - generic [ref=e293] [cursor=pointer]:
+                    - generic [ref=e295]: madaradota2
+                    - generic [ref=e297]:
+                      - img [ref=e298]
+                      - text: 351 Просмотры
+                    - link [ref=e300]:
+                      - /url: https://www.kick.com/madaradota2
+                      - img [ref=e301]
+                - group "6 / 17" [ref=e303]:
+                  - generic [ref=e305] [cursor=pointer]:
+                    - generic [ref=e307]: esl_dota2
+                    - generic [ref=e309]:
+                      - img [ref=e310]
+                      - text: 260 Просмотры
+                    - link [ref=e312]:
+                      - /url: https://www.kick.com/esl_dota2
+                      - img [ref=e313]
+                - group "7 / 17" [ref=e315]:
+                  - generic [ref=e317] [cursor=pointer]:
+                    - generic [ref=e319]: totustop
+                    - generic [ref=e321]:
+                      - img [ref=e322]
+                      - text: 242 Просмотры
+                    - link [ref=e324]:
+                      - /url: https://twitch.tv/totustop
+                      - img [ref=e325]
+                - group "8 / 17" [ref=e327]:
+                  - generic [ref=e329] [cursor=pointer]:
+                    - generic [ref=e331]: Detskaya_Travma
+                    - generic [ref=e333]:
+                      - img [ref=e334]
+                      - text: 221 Просмотры
+                    - link [ref=e336]:
+                      - /url: https://twitch.tv/detskaya_travma
+                      - img [ref=e337]
+                - group "9 / 17" [ref=e339]:
+                  - generic [ref=e341] [cursor=pointer]:
+                    - generic [ref=e343]: teamshikki
+                    - generic [ref=e345]:
+                      - img [ref=e346]
+                      - text: 172 Просмотры
+                    - link [ref=e348]:
+                      - /url: https://twitch.tv/teamshikki
+                      - img [ref=e349]
+                - group "10 / 17" [ref=e351]:
+                  - generic [ref=e353] [cursor=pointer]:
+                    - generic [ref=e355]: dk-caster
+                    - generic [ref=e357]:
+                      - img [ref=e358]
+                      - text: 129 Просмотры
+                    - link [ref=e360]:
+                      - /url: https://www.kick.com/dk-caster
+                      - img [ref=e361]
+                - group "11 / 17" [ref=e363]:
+                  - generic [ref=e365] [cursor=pointer]:
+                    - generic [ref=e367]: rakuzan777
+                    - generic [ref=e369]:
+                      - img [ref=e370]
+                      - text: 100 Просмотры
+                    - link [ref=e372]:
+                      - /url: https://twitch.tv/rakuzan777
+                      - img [ref=e373]
+                - group "12 / 17" [ref=e375]:
+                  - generic [ref=e377] [cursor=pointer]:
+                    - generic [ref=e379]: redmonsterdota
+                    - generic [ref=e381]:
+                      - img [ref=e382]
+                      - text: 99 Просмотры
+                    - link [ref=e384]:
+                      - /url: https://www.kick.com/redmonsterdota
+                      - img [ref=e385]
+                - group "13 / 17" [ref=e387]:
+                  - generic [ref=e389] [cursor=pointer]:
+                    - generic [ref=e391]: funkefal
+                    - generic [ref=e393]:
+                      - img [ref=e394]
+                      - text: 87 Просмотры
+                    - link [ref=e396]:
+                      - /url: https://www.kick.com/funkefal
+                      - img [ref=e397]
+                - group "14 / 17" [ref=e399]:
+                  - generic [ref=e401] [cursor=pointer]:
+                    - generic [ref=e403]: aelnis
+                    - generic [ref=e405]:
+                      - img [ref=e406]
+                      - text: 87 Просмотры
+                    - link [ref=e408]:
+                      - /url: https://twitch.tv/aelnis
+                      - img [ref=e409]
+                - group "15 / 17" [ref=e411]:
+                  - generic [ref=e413] [cursor=pointer]:
+                    - generic [ref=e415]: Jester_Andrew
+                    - generic [ref=e417]:
+                      - img [ref=e418]
+                      - text: 59 Просмотры
+                    - link [ref=e420]:
+                      - /url: https://twitch.tv/jester_andrew
+                      - img [ref=e421]
+                - group "16 / 17" [ref=e423]:
+                  - generic [ref=e425] [cursor=pointer]:
+                    - generic [ref=e427]: DotaPlayBrasil
+                    - generic [ref=e429]:
+                      - img [ref=e430]
+                      - text: 5 Просмотры
+                    - link [ref=e432]:
+                      - /url: https://twitch.tv/dotaplaybrasil
+                      - img [ref=e433]
+                - group "17 / 17" [ref=e435]:
+                  - generic [ref=e437] [cursor=pointer]:
+                    - generic [ref=e439]: ESL Dota 2
+                    - generic [ref=e441]:
+                      - img [ref=e442]
+                      - text: 492 Просмотры
+                    - link [ref=e444]:
+                      - /url: https://www.youtube.com/watch?v=RRzIJM_1CZs
+                      - img [ref=e445]
+              - button "Previous slide" [disabled]:
+                - img
+              - button "Next slide" [ref=e447] [cursor=pointer]:
+                - img [ref=e448]
+        - generic [ref=e450]:
+          - generic [ref=e451]: "Текущий счёт Игра #1"
+          - generic [ref=e452] [cursor=pointer]: Скрыть
+          - generic [ref=e453]:
+            - generic [ref=e454]:
+              - generic [ref=e455]:
+                - generic [ref=e457]:
+                  - img [ref=e458]
+                  - generic [ref=e460]: "2211"
+                - link "Team Lynx Силы Света FB" [ref=e461] [cursor=pointer]:
+                  - /url: /teams/team-lynx
+                  - generic [ref=e463]:
+                    - generic [ref=e464]: Team Lynx
+                    - text: Силы Света
+                  - generic [ref=e466]: FB
+                - generic [ref=e468]: "9"
+              - generic [ref=e469]:
+                - generic [ref=e470]: "Match ID: 8789702838"
+                - generic [ref=e471]:
+                  - text: "13"
+                  - generic [ref=e472]: ":"
+                  - text: "37"
+                - generic [ref=e474]: Продолж.
+                - img [ref=e482] [cursor=pointer]
+              - generic [ref=e484]:
+                - generic [ref=e486]: "1"
+                - link "South America Rejects Силы тьмы" [ref=e487] [cursor=pointer]:
+                  - /url: /teams/south-america-rejects
+                  - generic [ref=e489]:
+                    - generic [ref=e490]: South America Rejects
+                    - text: Силы тьмы
+            - generic [ref=e491]:
+              - generic [ref=e492]:
+                - generic [ref=e498]:
+                  - generic [ref=e499]: Date range
+                  - combobox "Date range Интервал Интервал" [ref=e500] [cursor=pointer]:
+                    - option "All time"
+                    - option "Last Month"
+                    - option "Last 3 Months"
+                    - option "Last 6 Months"
+                    - option "Last 12 Months" [selected]
+                    - option "Last 500 Maps"
+                    - option "Patch 7.41"
+                    - option "Patch 7.40"
+                    - option "Patch 7.39"
+                    - option "Patch 7.38"
+                    - option "2024"
+                    - option "2023"
+                - generic [ref=e501]:
+                  - strong [ref=e502]: Map picks & bans
+                  - text: Игр сыграно | Процент побед
+                - generic [ref=e504] [cursor=pointer]: Показать баны
+              - generic [ref=e505]:
+                - generic [ref=e507]:
+                  - generic [ref=e508]:
+                    - link "16 | 63%" [ref=e510] [cursor=pointer]:
+                      - /url: /players/vladikthehtiviy?date_range=4#hero-slardar
+                    - link "VladikTheHtiviy" [ref=e511] [cursor=pointer]:
+                      - /url: /players/vladikthehtiviy
+                      - generic [ref=e513]: VladikTheHtiviy
+                  - generic [ref=e514]:
+                    - link "9 | 33%" [ref=e516] [cursor=pointer]:
+                      - /url: /players/qbfy?date_range=4#hero-windranger
+                    - link "QBFY" [ref=e517] [cursor=pointer]:
+                      - /url: /players/qbfy
+                      - generic [ref=e519]: QBFY
+                  - generic [ref=e520]:
+                    - link "31 | 71%" [ref=e522] [cursor=pointer]:
+                      - /url: /players/mellojul?date_range=4#hero-keeper-of-the-light
+                    - link "mellojul" [ref=e523] [cursor=pointer]:
+                      - /url: /players/mellojul
+                      - generic [ref=e525]: mellojul
+                  - generic [ref=e526]:
+                    - link "13 | 62%" [ref=e528] [cursor=pointer]:
+                      - /url: /players/7jesu?date_range=4#hero-luna
+                    - link "7jesu" [ref=e529] [cursor=pointer]:
+                      - /url: /players/7jesu
+                      - generic [ref=e531]: 7jesu
+                  - generic [ref=e532]:
+                    - link "22 | 73%" [ref=e534] [cursor=pointer]:
+                      - /url: /players/kreker?date_range=4#hero-tusk
+                    - link "kreker" [ref=e535] [cursor=pointer]:
+                      - /url: /players/kreker
+                      - generic [ref=e537]: kreker
+                - generic [ref=e539]:
+                  - generic [ref=e540]:
+                    - link "4 | 75%" [ref=e542] [cursor=pointer]:
+                      - /url: /players/wits?date_range=4#hero-necrophos
+                    - link "Wits" [ref=e543] [cursor=pointer]:
+                      - /url: /players/wits
+                      - generic [ref=e545]: Wits
+                  - generic [ref=e546]:
+                    - link "6 | 33%" [ref=e548] [cursor=pointer]:
+                      - /url: /players/scofield?date_range=4#hero-shadow-demon
+                    - link "Scofield" [ref=e549] [cursor=pointer]:
+                      - /url: /players/scofield
+                      - generic [ref=e551]: Scofield
+                  - generic [ref=e552]:
+                    - link "6 | 67%" [ref=e554] [cursor=pointer]:
+                      - /url: /players/frank?date_range=4#hero-pangolier
+                    - link "Frank" [ref=e555] [cursor=pointer]:
+                      - /url: /players/frank
+                      - generic [ref=e557]: Frank
+                  - generic [ref=e558]:
+                    - link "19 | 68%" [ref=e560] [cursor=pointer]:
+                      - /url: /players/elmisho?date_range=4#hero-enchantress
+                    - link "elmisho" [ref=e561] [cursor=pointer]:
+                      - /url: /players/elmisho
+                      - generic [ref=e563]: elmisho
+                  - generic [ref=e564]:
+                    - link "38 | 63%" [ref=e566] [cursor=pointer]:
+                      - /url: /players/darkmago?date_range=4#hero-queen-of-pain
+                    - link "DarkMago♡" [ref=e567] [cursor=pointer]:
+                      - /url: /players/darkmago
+                      - generic [ref=e569]: DarkMago♡
+              - generic [ref=e571] [cursor=pointer]: Дополнительные данные
+            - generic [ref=e572]:
+              - generic [ref=e574]:
+                - generic [ref=e575]: ОЦ
+                - generic [ref=e577]:
+                  - generic [ref=e578]: Team Lynx лидирует
+                  - generic [ref=e579]:
+                    - img [ref=e580]
+                    - generic [ref=e582]: "2211"
+              - generic [ref=e587]: Состояние строений
+            - generic [ref=e590]:
+              - generic [ref=e591]: Результаты команд (Задержка 15 минут)
+              - generic [ref=e592]:
+                - generic [ref=e593]:
+                  - link "Team Lynx Силы Света" [ref=e595] [cursor=pointer]:
+                    - /url: /teams/team-lynx
+                    - generic [ref=e597]:
+                      - generic [ref=e598]: Team Lynx
+                      - generic [ref=e599]: Силы Света
+                  - generic [ref=e601]:
+                    - generic [ref=e602]:
+                      - generic [ref=e603]: Герой
+                      - generic [ref=e604]: игрок
+                      - generic [ref=e605]: KDA
+                      - generic [ref=e606]: Предметы
+                      - generic [ref=e607]: Золото
+                      - generic [ref=e608]: LH / DN
+                      - generic [ref=e609]: ЗВМ / XPM
+                      - generic [ref=e610]: ОЦ
+                    - generic [ref=e611]:
+                      - generic [ref=e612]:
+                        - generic [ref=e616]: "1"
+                        - link "7jesu" [ref=e618] [cursor=pointer]:
+                          - /url: /players/7jesu
+                          - generic [ref=e620]: 7jesu
+                        - generic [ref=e622]: 0 / 0 / 0
+                        - generic [ref=e632]: "5"
+                        - generic [ref=e634]: 0 / 0
+                        - generic [ref=e636]: 0 / 0
+                        - generic [ref=e638]: "600"
+                      - generic [ref=e639]:
+                        - generic [ref=e643]: "1"
+                        - link "mellojul" [ref=e645] [cursor=pointer]:
+                          - /url: /players/mellojul
+                          - generic [ref=e647]: mellojul
+                        - generic [ref=e649]: 0 / 0 / 0
+                        - generic [ref=e659]: "80"
+                        - generic [ref=e661]: 0 / 0
+                        - generic [ref=e663]: 0 / 0
+                        - generic [ref=e665]: "600"
+                      - generic [ref=e666]:
+                        - generic [ref=e670]: "1"
+                        - link "VladikTheHtiviy" [ref=e672] [cursor=pointer]:
+                          - /url: /players/vladikthehtiviy
+                          - generic [ref=e674]: VladikTheHtiviy
+                        - generic [ref=e676]: 0 / 0 / 0
+                        - generic [ref=e686]: "0"
+                        - generic [ref=e688]: 0 / 0
+                        - generic [ref=e690]: 0 / 0
+                        - generic [ref=e692]: "600"
+                      - generic [ref=e693]:
+                        - generic [ref=e697]: "1"
+                        - link "QBFY" [ref=e699] [cursor=pointer]:
+                          - /url: /players/qbfy
+                          - generic [ref=e701]: QBFY
+                        - generic [ref=e703]: 0 / 0 / 0
+                        - generic [ref=e713]: "15"
+                        - generic [ref=e715]: 0 / 0
+                        - generic [ref=e717]: 0 / 0
+                        - generic [ref=e719]: "600"
+                      - generic [ref=e720]:
+                        - generic [ref=e724]: "1"
+                        - link "kreker" [ref=e726] [cursor=pointer]:
+                          - /url: /players/kreker
+                          - generic [ref=e728]: kreker
+                        - generic [ref=e730]: 0 / 0 / 0
+                        - generic [ref=e740]: "50"
+                        - generic [ref=e742]: 0 / 0
+                        - generic [ref=e744]: 0 / 0
+                        - generic [ref=e746]: "550"
+                - generic [ref=e747]:
+                  - link "South America Rejects Силы тьмы" [ref=e749] [cursor=pointer]:
+                    - /url: /teams/south-america-rejects
+                    - generic [ref=e751]:
+                      - generic [ref=e752]: South America Rejects
+                      - generic [ref=e753]: Силы тьмы
+                  - generic [ref=e755]:
+                    - generic [ref=e756]:
+                      - generic [ref=e757]: Герой
+                      - generic [ref=e758]: игрок
+                      - generic [ref=e759]: KDA
+                      - generic [ref=e760]: Предметы
+                      - generic [ref=e761]: Золото
+                      - generic [ref=e762]: LH / DN
+                      - generic [ref=e763]: ЗВМ / XPM
+                      - generic [ref=e764]: ОЦ
+                    - generic [ref=e765]:
+                      - generic [ref=e766]:
+                        - generic [ref=e770]: "1"
+                        - link "Wits" [ref=e772] [cursor=pointer]:
+                          - /url: /players/wits
+                          - generic [ref=e774]: Wits
+                        - generic [ref=e776]: 0 / 0 / 0
+                        - generic [ref=e786]: "35"
+                        - generic [ref=e788]: 0 / 0
+                        - generic [ref=e790]: 0 / 0
+                        - generic [ref=e792]: "600"
+                      - generic [ref=e793]:
+                        - generic [ref=e797]: "1"
+                        - link "DarkMago♡" [ref=e799] [cursor=pointer]:
+                          - /url: /players/darkmago
+                          - generic [ref=e801]: DarkMago♡
+                        - generic [ref=e803]: 0 / 0 / 0
+                        - generic [ref=e813]: "225"
+                        - generic [ref=e815]: 0 / 0
+                        - generic [ref=e817]: 0 / 0
+                        - generic [ref=e819]: "600"
+                      - generic [ref=e820]:
+                        - generic [ref=e824]: "1"
+                        - link "elmisho" [ref=e826] [cursor=pointer]:
+                          - /url: /players/elmisho
+                          - generic [ref=e828]: elmisho
+                        - generic [ref=e830]: 0 / 0 / 0
+                        - generic [ref=e840]: "120"
+                        - generic [ref=e842]: 0 / 0
+                        - generic [ref=e844]: 0 / 0
+                        - generic [ref=e846]: "550"
+                      - generic [ref=e847]:
+                        - generic [ref=e851]: "1"
+                        - link "Scofield" [ref=e853] [cursor=pointer]:
+                          - /url: /players/scofield
+                          - generic [ref=e855]: Scofield
+                        - generic [ref=e857]: 0 / 0 / 0
+                        - generic [ref=e864]: "0"
+                        - generic [ref=e866]: 0 / 0
+                        - generic [ref=e868]: 0 / 0
+                        - generic [ref=e870]: "600"
+                      - generic [ref=e871]:
+                        - generic [ref=e875]: "1"
+                        - link "Frank" [ref=e877] [cursor=pointer]:
+                          - /url: /players/frank
+                          - generic [ref=e879]: Frank
+                        - generic [ref=e881]: 0 / 0 / 0
+                        - generic [ref=e891]: "25"
+                        - generic [ref=e893]: 0 / 0
+                        - generic [ref=e895]: 0 / 0
+                        - generic [ref=e897]: "600"
+        - generic [ref=e899]:
+          - generic [ref=e900]:
+            - generic [ref=e901] [cursor=pointer]: Состав
+            - generic [ref=e902] [cursor=pointer]: Статистика
+          - generic [ref=e904]:
+            - generic [ref=e905]:
+              - generic [ref=e906]:
+                - generic [ref=e907]: Интервал
+                - combobox [ref=e908] [cursor=pointer]:
+                  - option "Все время"
+                  - option "Last Month"
+                  - option "Last 3 Months" [selected]
+                  - option "Last 6 Months"
+                  - option "Last 12 Months"
+                  - option "Last 500 Maps"
+                  - option "Patch 7.41"
+                  - option "Patch 7.40"
+                  - option "Patch 7.39"
+                  - option "Patch 7.38"
+                  - option "2026"
+                  - option "2025"
+                  - option "2024"
+              - generic [ref=e909]:
+                - generic [ref=e910]: Связать игроков
+                - generic [ref=e911]:
+                  - radio "Да" [checked] [ref=e912]
+                  - generic [ref=e913]: Да
+                  - radio "Нет" [ref=e914]
+                  - generic [ref=e915]: Нет
+                  - radio "Авто" [ref=e916]
+                  - generic [ref=e917]: Авто
+            - generic [ref=e918]:
+              - generic [ref=e919]:
+                - 'link "Team Lynx Мировой рейтинг: #33" [ref=e920] [cursor=pointer]':
+                  - /url: https://ru.dltv.org/teams/team-lynx
+                  - generic [ref=e922]:
+                    - generic [ref=e923]: Team Lynx
+                    - generic [ref=e924]: "Мировой рейтинг: #33"
+                - generic [ref=e925]:
+                  - generic [ref=e926] [cursor=pointer]:
+                    - generic [ref=e933]: "106"
+                    - generic [ref=e936]: 7jesu
+                  - generic [ref=e937] [cursor=pointer]:
+                    - generic [ref=e944]: "49"
+                    - generic [ref=e947]: mellojul
+                  - generic [ref=e948] [cursor=pointer]:
+                    - generic [ref=e955]: "159"
+                    - generic [ref=e958]: VladikTheHtiviy
+                  - generic [ref=e959] [cursor=pointer]:
+                    - generic [ref=e966]: "205"
+                    - generic [ref=e969]: QBFY
+                  - generic [ref=e970] [cursor=pointer]:
+                    - generic [ref=e977]: "172"
+                    - generic [ref=e980]: kreker
+              - generic [ref=e981]:
+                - generic [ref=e983]:
+                  - generic [ref=e988]: "106"
+                  - generic [ref=e991]: 7jesu
+                  - link "В профиль" [ref=e992] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/players/7jesu
+                    - generic [ref=e993]: В профиль
+                - generic [ref=e994]:
+                  - generic [ref=e998]: Статистика
+                  - generic [ref=e1001]:
+                    - generic [ref=e1002]:
+                      - generic [ref=e1003]: "145"
+                      - generic [ref=e1004]: Карты
+                      - generic [ref=e1005]: "99"
+                    - generic [ref=e1006]:
+                      - generic [ref=e1007]: 62%
+                      - generic [ref=e1008]: Проц. побед
+                      - generic [ref=e1009]: 56%
+                    - generic [ref=e1010]:
+                      - generic [ref=e1011]: "4.99"
+                      - generic [ref=e1012]: KDA
+                      - generic [ref=e1013]: "6.28"
+                    - generic [ref=e1014]:
+                      - generic [ref=e1015]: "61.71"
+                      - generic [ref=e1016]: KP
+                      - generic [ref=e1017]: "62.99"
+                    - generic [ref=e1018]:
+                      - generic [ref=e1019]: "721.87"
+                      - generic [ref=e1020]: ЗВМ
+                      - generic [ref=e1021]: "685.32"
+                    - generic [ref=e1022]:
+                      - generic [ref=e1023]: "853.81"
+                      - generic [ref=e1024]: XPM
+                      - generic [ref=e1025]: "790.38"
+                    - generic [ref=e1026]:
+                      - generic [ref=e1027]: "32151.88"
+                      - generic [ref=e1028]: Урон
+                      - generic [ref=e1029]: "26164.39"
+                    - generic [ref=e1030]:
+                      - generic [ref=e1031]: "9.53"
+                      - generic [ref=e1032]: Коэф. Пула Гер.
+                      - generic [ref=e1033]: "11.43"
+                  - generic [ref=e1034]:
+                    - generic [ref=e1035]: Основные герои
+                    - generic [ref=e1036]: (Карты / Проц. побед)
+                  - generic [ref=e1037]:
+                    - generic [ref=e1038]:
+                      - generic [ref=e1039]: 22/73%
+                      - generic [ref=e1044]: 18/44%
+                    - generic [ref=e1045]:
+                      - generic [ref=e1046]: 18/72%
+                      - generic [ref=e1051]: 13/85%
+                    - generic [ref=e1052]:
+                      - generic [ref=e1053]: 15/60%
+                      - generic [ref=e1058]: 9/44%
+                - generic [ref=e1060]:
+                  - generic [ref=e1065]: "205"
+                  - generic [ref=e1068]: Wits
+                  - link "В профиль" [ref=e1069] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/players/wits
+                    - generic [ref=e1070]: В профиль
+              - generic [ref=e1071]:
+                - 'link "South America Rejects Мировой рейтинг: #14" [ref=e1072] [cursor=pointer]':
+                  - /url: https://ru.dltv.org/teams/south-america-rejects
+                  - generic [ref=e1074]:
+                    - generic [ref=e1075]: South America Rejects
+                    - generic [ref=e1076]: "Мировой рейтинг: #14"
+                - generic [ref=e1077]:
+                  - generic [ref=e1078] [cursor=pointer]:
+                    - generic [ref=e1085]: "205"
+                    - generic [ref=e1088]: Wits
+                  - generic [ref=e1089] [cursor=pointer]:
+                    - generic [ref=e1096]: "94"
+                    - generic [ref=e1099]: DarkMago♡
+                  - generic [ref=e1100] [cursor=pointer]:
+                    - generic [ref=e1107]: "60"
+                    - generic [ref=e1110]: Frank
+                  - generic [ref=e1111] [cursor=pointer]:
+                    - generic [ref=e1118]: "76"
+                    - generic [ref=e1121]: Scofield
+                  - generic [ref=e1122] [cursor=pointer]:
+                    - generic [ref=e1129]: "115"
+                    - generic [ref=e1132]: elmisho
+        - generic [ref=e1133]:
+          - generic [ref=e1135]:
+            - generic [ref=e1136]: Team Lynx Прошлые матчи
+            - generic [ref=e1138]:
+              - generic [ref=e1139]:
+                - generic [ref=e1140]: Дата
+                - generic [ref=e1141]: Серия
+                - generic [ref=e1142]: Турнир
+              - generic [ref=e1143]:
+                - generic [ref=e1144]:
+                  - link "26 апр. Lynx 2 - 1 RE" [ref=e1145] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426304/rune-eaters-vs-team-lynx-dreamleague-division-2-season-4
+                    - generic [ref=e1147]: 26 апр.
+                    - generic [ref=e1149]:
+                      - generic [ref=e1152]: Lynx
+                      - generic [ref=e1153]: 2 - 1
+                      - generic [ref=e1155]: RE
+                  - link "DreamLeague Division 2 Season 4" [ref=e1157] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1158]: DreamLeague Division 2 Season 4
+                - generic [ref=e1159]:
+                  - link "23 апр. Lynx 0 - 2 RE" [ref=e1160] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426239/rune-eaters-vs-team-lynx-dreamleague-division-2-season-4
+                    - generic [ref=e1162]: 23 апр.
+                    - generic [ref=e1164]:
+                      - generic [ref=e1167]: Lynx
+                      - generic [ref=e1168]: 0 - 2
+                      - generic [ref=e1170]: RE
+                  - link "DreamLeague Division 2 Season 4" [ref=e1172] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1173]: DreamLeague Division 2 Season 4
+                - generic [ref=e1174]:
+                  - link "22 апр. Lynx 1 - 2 Nemiga" [ref=e1175] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426233/team-lynx-vs-nemiga-gaming-dreamleague-division-2-season-4
+                    - generic [ref=e1177]: 22 апр.
+                    - generic [ref=e1179]:
+                      - generic [ref=e1182]: Lynx
+                      - generic [ref=e1183]: 1 - 2
+                      - generic [ref=e1185]: Nemiga
+                  - link "DreamLeague Division 2 Season 4" [ref=e1187] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1188]: DreamLeague Division 2 Season 4
+                - generic [ref=e1189]:
+                  - link "22 апр. Lynx 2 - 0 Roar" [ref=e1190] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426238/roar-gaming-vs-team-lynx-dreamleague-division-2-season-4
+                    - generic [ref=e1192]: 22 апр.
+                    - generic [ref=e1194]:
+                      - generic [ref=e1197]: Lynx
+                      - generic [ref=e1198]: 2 - 0
+                      - generic [ref=e1200]: Roar
+                  - link "DreamLeague Division 2 Season 4" [ref=e1202] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1203]: DreamLeague Division 2 Season 4
+                - generic [ref=e1204]:
+                  - link "21 апр. Lynx 0 - 2 Nigma" [ref=e1205] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426236/nigma-vs-team-lynx-dreamleague-division-2-season-4
+                    - generic [ref=e1207]: 21 апр.
+                    - generic [ref=e1209]:
+                      - generic [ref=e1212]: Lynx
+                      - generic [ref=e1213]: 0 - 2
+                      - generic [ref=e1215]: Nigma
+                  - link "DreamLeague Division 2 Season 4" [ref=e1217] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1218]: DreamLeague Division 2 Season 4
+                - generic [ref=e1219]:
+                  - link "21 апр. Lynx 0 - 2 Modus" [ref=e1220] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426229/modus-vs-team-lynx-dreamleague-division-2-season-4
+                    - generic [ref=e1222]: 21 апр.
+                    - generic [ref=e1224]:
+                      - generic [ref=e1227]: Lynx
+                      - generic [ref=e1228]: 0 - 2
+                      - generic [ref=e1230]: Modus
+                  - link "DreamLeague Division 2 Season 4" [ref=e1232] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1233]: DreamLeague Division 2 Season 4
+                - generic [ref=e1234]:
+                  - link "20 апр. Lynx 2 - 0 Ivory" [ref=e1235] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426224/team-lynx-vs-ivory-dreamleague-division-2-season-4
+                    - generic [ref=e1237]: 20 апр.
+                    - generic [ref=e1239]:
+                      - generic [ref=e1242]: Lynx
+                      - generic [ref=e1243]: 2 - 0
+                      - generic [ref=e1245]: Ivory
+                  - link "DreamLeague Division 2 Season 4" [ref=e1247] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1248]: DreamLeague Division 2 Season 4
+                - generic [ref=e1249]:
+                  - link "19 апр. Lynx 1 - 2 1win" [ref=e1250] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426218/team-lynx-vs-1win-team-dreamleague-division-2-season-4
+                    - generic [ref=e1252]: 19 апр.
+                    - generic [ref=e1254]:
+                      - generic [ref=e1257]: Lynx
+                      - generic [ref=e1258]: 1 - 2
+                      - generic [ref=e1260]: 1win
+                  - link "DreamLeague Division 2 Season 4" [ref=e1262] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1263]: DreamLeague Division 2 Season 4
+          - generic [ref=e1265]:
+            - generic [ref=e1266]: South America Rejects Прошлые матчи
+            - generic [ref=e1268]:
+              - generic [ref=e1269]:
+                - generic [ref=e1270]: Дата
+                - generic [ref=e1271]: Серия
+                - generic [ref=e1272]: Турнир
+              - generic [ref=e1273]:
+                - generic [ref=e1274]:
+                  - link "26 апр. SAR 2 - 0 ALIS" [ref=e1275] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426305/south-america-rejects-vs-alis-ventorus-dreamleague-division-2-season-4
+                    - generic [ref=e1277]: 26 апр.
+                    - generic [ref=e1279]:
+                      - generic [ref=e1282]: SAR
+                      - generic [ref=e1283]: 2 - 0
+                      - generic [ref=e1285]: ALIS
+                  - link "DreamLeague Division 2 Season 4" [ref=e1287] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1288]: DreamLeague Division 2 Season 4
+                - generic [ref=e1289]:
+                  - link "25 апр. SAR 0 - 2 Liquid" [ref=e1290] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426285/team-liquid-vs-south-america-rejects-pgl-wallachia-season-8
+                    - generic [ref=e1292]: 25 апр.
+                    - generic [ref=e1294]:
+                      - generic [ref=e1297]: SAR
+                      - generic [ref=e1298]: 0 - 2
+                      - generic [ref=e1300]: Liquid
+                  - link "PGL Wallachia Season 8" [ref=e1302] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/pgl-wallachia-season-8
+                    - generic [ref=e1303]: PGL Wallachia Season 8
+                - generic [ref=e1304]:
+                  - link "24 апр. SAR 1 - 2 1win" [ref=e1305] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426298/1win-team-vs-south-america-rejects-dreamleague-division-2-season-4
+                    - generic [ref=e1307]: 24 апр.
+                    - generic [ref=e1309]:
+                      - generic [ref=e1312]: SAR
+                      - generic [ref=e1313]: 1 - 2
+                      - generic [ref=e1315]: 1win
+                  - link "DreamLeague Division 2 Season 4" [ref=e1317] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1318]: DreamLeague Division 2 Season 4
+                - generic [ref=e1319]:
+                  - link "24 апр. SAR 2 - 1 Heroic" [ref=e1320] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426283/south-america-rejects-vs-heroic-pgl-wallachia-season-8
+                    - generic [ref=e1322]: 24 апр.
+                    - generic [ref=e1324]:
+                      - generic [ref=e1327]: SAR
+                      - generic [ref=e1328]: 2 - 1
+                      - generic [ref=e1330]: Heroic
+                  - link "PGL Wallachia Season 8" [ref=e1332] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/pgl-wallachia-season-8
+                    - generic [ref=e1333]: PGL Wallachia Season 8
+                - generic [ref=e1334]:
+                  - link "23 апр. SAR 2 - 1 BRKCHK" [ref=e1335] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426251/south-america-rejects-vs-breeki-cheeki-dreamleague-division-2-season-4
+                    - generic [ref=e1337]: 23 апр.
+                    - generic [ref=e1339]:
+                      - generic [ref=e1342]: SAR
+                      - generic [ref=e1343]: 2 - 1
+                      - generic [ref=e1345]: BRKCHK
+                  - link "DreamLeague Division 2 Season 4" [ref=e1347] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1348]: DreamLeague Division 2 Season 4
+                - generic [ref=e1349]:
+                  - link "23 апр. SAR 1 - 2 PARI" [ref=e1350] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426276/parivision-vs-south-america-rejects-pgl-wallachia-season-8
+                    - generic [ref=e1352]: 23 апр.
+                    - generic [ref=e1354]:
+                      - generic [ref=e1357]: SAR
+                      - generic [ref=e1358]: 1 - 2
+                      - generic [ref=e1360]: PARI
+                  - link "PGL Wallachia Season 8" [ref=e1362] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/pgl-wallachia-season-8
+                    - generic [ref=e1363]: PGL Wallachia Season 8
+                - generic [ref=e1364]:
+                  - link "23 апр. SAR 2 - 0 BTC" [ref=e1365] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426256/btc-gaming-vs-south-america-rejects-dreamleague-division-2-season-4
+                    - generic [ref=e1367]: 23 апр.
+                    - generic [ref=e1369]:
+                      - generic [ref=e1372]: SAR
+                      - generic [ref=e1373]: 2 - 0
+                      - generic [ref=e1375]: BTC
+                  - link "DreamLeague Division 2 Season 4" [ref=e1377] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1378]: DreamLeague Division 2 Season 4
+                - generic [ref=e1379]:
+                  - link "22 апр. SAR 0 - 2 ALIS" [ref=e1380] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/matches/426245/south-america-rejects-vs-alis-ventorus-dreamleague-division-2-season-4
+                    - generic [ref=e1382]: 22 апр.
+                    - generic [ref=e1384]:
+                      - generic [ref=e1387]: SAR
+                      - generic [ref=e1388]: 0 - 2
+                      - generic [ref=e1390]: ALIS
+                  - link "DreamLeague Division 2 Season 4" [ref=e1392] [cursor=pointer]:
+                    - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                    - generic [ref=e1393]: DreamLeague Division 2 Season 4
+        - generic [ref=e1395]:
+          - generic [ref=e1396]: Написать комментарий
+          - generic [ref=e1398]:
+            - generic [ref=e1399]: Только авторизованные пользователи могут оставить комментарий
+            - button "Войти" [ref=e1400] [cursor=pointer]
+        - generic [ref=e1402]:
+          - generic [ref=e1403]: Комментарии (3)
+          - generic [ref=e1404]:
+            - generic [ref=e1406]:
+              - generic [ref=e1407] [cursor=pointer]: English
+              - generic [ref=e1408] [cursor=pointer]: Русский
+              - generic [ref=e1409] [cursor=pointer]: Espanol
+              - generic [ref=e1410] [cursor=pointer]: Português
+              - generic [ref=e1411] [cursor=pointer]: Français
+              - generic [ref=e1412] [cursor=pointer]: 中文
+              - generic [ref=e1413] [cursor=pointer]: Italiano
+              - generic [ref=e1414] [cursor=pointer]: Deutsch
+              - generic [ref=e1415] [cursor=pointer]: čeština
+              - generic [ref=e1416] [cursor=pointer]: Polski
+              - generic [ref=e1417] [cursor=pointer]: Српски
+              - generic [ref=e1418] [cursor=pointer]: Türkçe
+              - generic [ref=e1419] [cursor=pointer]: แบบไทย
+              - generic [ref=e1420] [cursor=pointer]: Indonesia
+              - generic [ref=e1421] [cursor=pointer]: Ukraine
+              - generic [ref=e1422] [cursor=pointer]: Original
+            - generic [ref=e1423]:
+              - generic [ref=e1424]:
+                - link [ref=e1425] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/users/chlenix228
+                - generic [ref=e1428]:
+                  - generic [ref=e1429]: "2133"
+                  - generic [ref=e1430]: "-"
+              - generic [ref=e1431]:
+                - generic [ref=e1432]:
+                  - generic [ref=e1433]: chlenix228
+                  - generic [ref=e1434]: 5 часов назад
+                - generic [ref=e1437]: Aurora фанат
+                - paragraph [ref=e1439]:
+                  - text: 5 хохлопитеков против 5 перуанцев
+                  - text: Одним нужны бабки на дроны и меф, вторым - на кокс
+                  - text: Да будет великая битва
+                - generic [ref=e1440]:
+                  - generic [ref=e1441] [cursor=pointer]:
+                    - img [ref=e1442]
+                    - generic [ref=e1444]: Ответить
+                  - generic [ref=e1445]:
+                    - generic [ref=e1446] [cursor=pointer]:
+                      - generic [ref=e1447]: "0"
+                      - img [ref=e1448]
+                    - generic [ref=e1451] [cursor=pointer]:
+                      - generic [ref=e1452]: "7"
+                      - img [ref=e1453]
+            - generic [ref=e1456]:
+              - generic [ref=e1457]:
+                - link [ref=e1458] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/users/iout
+                - generic [ref=e1461]:
+                  - generic [ref=e1462]: "720"
+                  - generic [ref=e1463]: "-"
+              - generic [ref=e1464]:
+                - generic [ref=e1465]:
+                  - generic [ref=e1466]: iout
+                  - generic [ref=e1467]: 5 часов назад
+                - paragraph [ref=e1469]: Ну сары должны 2 0. Я хз это максимально не читаемая ******
+                - generic [ref=e1470]:
+                  - generic [ref=e1471] [cursor=pointer]:
+                    - img [ref=e1472]
+                    - generic [ref=e1474]: Ответить
+                  - generic [ref=e1475]:
+                    - generic [ref=e1476] [cursor=pointer]:
+                      - generic [ref=e1477]: "1"
+                      - img [ref=e1478]
+                    - generic [ref=e1481] [cursor=pointer]:
+                      - generic [ref=e1482]: "2"
+                      - img [ref=e1483]
+            - generic [ref=e1486]:
+              - generic [ref=e1487]:
+                - link [ref=e1488] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/users/vandal
+                - generic [ref=e1491]:
+                  - generic [ref=e1492]: "0"
+                  - generic [ref=e1493]: "-"
+              - generic [ref=e1494]:
+                - generic [ref=e1495]:
+                  - generic [ref=e1496]: vandal
+                  - generic [ref=e1497]: 34 минуты назад
+                - generic [ref=e1500]: Team Falcons фанат
+                - paragraph [ref=e1502]: Битва говна и мочи, но думаю +1.5 на линкс за 2.13 смотрится неплохо и риск обоснован, максимально в падлу брать 2-0 от перуанцев на турике, куда допустили сына сумонера на мангёку
+                - generic [ref=e1503]:
+                  - generic [ref=e1504] [cursor=pointer]:
+                    - img [ref=e1505]
+                    - generic [ref=e1507]: Ответить
+                  - generic [ref=e1508]:
+                    - generic [ref=e1509] [cursor=pointer]:
+                      - generic [ref=e1510]: "0"
+                      - img [ref=e1511]
+                    - generic [ref=e1514] [cursor=pointer]:
+                      - generic [ref=e1515]: "3"
+                      - img [ref=e1516]
+      - generic [ref=e1519]:
+        - generic [ref=e1520]:
+          - generic [ref=e1521]:
+            - generic [ref=e1522]: Матчи
+            - link "Показать" [ref=e1523] [cursor=pointer]:
+              - /url: https://ru.dltv.org/matches
+            - generic [ref=e1525]:
+              - generic [ref=e1526]:
+                - link "DreamLeague Division 2 Season 4" [ref=e1527] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                - link "Live Team Lynx 0 - 0 South America Rejects" [ref=e1528] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/matches/426307/team-lynx-vs-south-america-rejects-dreamleague-division-2-season-4
+                  - generic [ref=e1529]: Live
+                  - generic [ref=e1533]: Team Lynx
+                  - generic [ref=e1534]: 0 - 0
+                  - generic [ref=e1537]: South America Rejects
+              - generic [ref=e1539]:
+                - link "DreamLeague Division 2 Season 4" [ref=e1540] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                - link "Power Rangers 23:00 L1ga Team" [ref=e1541] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/matches/426308/power-rangers-vs-l1ga-team-dreamleague-division-2-season-4
+                  - generic [ref=e1545]: Power Rangers
+                  - generic [ref=e1546]: 23:00
+                  - generic [ref=e1549]: L1ga Team
+              - generic [ref=e1551]:
+                - link "DreamLeague Division 2 Season 4" [ref=e1552] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                - link "Zero Tenacity 19:30 TBD" [ref=e1553] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/matches/426309/zero-tenacity-vs-tbd-dreamleague-division-2-season-4
+                  - generic [ref=e1557]: Zero Tenacity
+                  - generic [ref=e1558]: 19:30
+                  - generic [ref=e1561]: TBD
+              - generic [ref=e1563]:
+                - link "DreamLeague Division 2 Season 4" [ref=e1564] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                - link "Nigma Galaxy 23:00 1win Team" [ref=e1565] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/matches/426301/nigma-vs-1win-team-dreamleague-division-2-season-4
+                  - generic [ref=e1569]: Nigma Galaxy
+                  - generic [ref=e1570]: 23:00
+                  - generic [ref=e1573]: 1win Team
+              - generic [ref=e1575]:
+                - link "DreamLeague Division 2 Season 4" [ref=e1576] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                - link "TBD 19:30 TBD" [ref=e1577] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/matches/426310/tbd-vs-tbd-dreamleague-division-2-season-4
+                  - generic [ref=e1581]: TBD
+                  - generic [ref=e1582]: 19:30
+                  - generic [ref=e1585]: TBD
+              - generic [ref=e1587]:
+                - link "DreamLeague Division 2 Season 4" [ref=e1588] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                - link "TBD 23:00 TBD" [ref=e1589] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/matches/426311/tbd-vs-tbd-dreamleague-division-2-season-4
+                  - generic [ref=e1593]: TBD
+                  - generic [ref=e1594]: 23:00
+                  - generic [ref=e1597]: TBD
+              - generic [ref=e1599]:
+                - link "ESL Challenger China Season 3" [ref=e1600] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/events/esl-challenger-china-season-3
+                - link "Xtreme Gaming 12:00 Roar Gaming" [ref=e1601] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/matches/426313/xtreme-gaming-vs-roar-gaming-esl-challenger-china-season-3
+                  - generic [ref=e1605]: Xtreme Gaming
+                  - generic [ref=e1606]: 12:00
+                  - generic [ref=e1609]: Roar Gaming
+              - generic [ref=e1611]:
+                - link "ESL Challenger China Season 3" [ref=e1612] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/events/esl-challenger-china-season-3
+                - link "Yakult Brothers 12:00 Mideng Dreamer" [ref=e1613] [cursor=pointer]:
+                  - /url: https://ru.dltv.org/matches/426314/yakult-brothers-vs-mideng-dreamer-esl-challenger-china-season-3
+                  - generic [ref=e1617]: Yakult Brothers
+                  - generic [ref=e1618]: 12:00
+                  - generic [ref=e1621]: Mideng Dreamer
+          - generic [ref=e1623]:
+            - generic [ref=e1624]: Информация о событии
+            - generic [ref=e1626]:
+              - link "DreamLeague Division 2 Season 4 19 апреля - 01 мая 2026" [ref=e1627] [cursor=pointer]:
+                - /url: https://ru.dltv.org/events/dreamleague-division-2-season-4
+                - generic [ref=e1629]:
+                  - generic [ref=e1630]: DreamLeague Division 2 Season 4
+                  - generic [ref=e1631]: 19 апреля - 01 мая 2026
+              - generic [ref=e1632]:
+                - generic [ref=e1634]: Информация
+                - generic [ref=e1635]:
+                  - generic [ref=e1636]:
+                    - generic [ref=e1638]: Дата
+                    - generic [ref=e1640]: 19 апр. - 01 мая
+                  - generic [ref=e1641]:
+                    - generic [ref=e1643]: Страна
+                    - generic [ref=e1646]: Europe
+                  - generic [ref=e1647]:
+                    - generic [ref=e1649]: призовой фонд
+                    - generic [ref=e1651]: $50,000
+                  - generic [ref=e1652]:
+                    - generic [ref=e1654]: Участники
+                    - generic [ref=e1656]: 16 Команды
+          - generic [ref=e1660]:
+            - link [ref=e1662] [cursor=pointer]:
+              - /url: https://reffpa.com/L?tag=d_1145383m_97c__[]cyber[]_d54580_l54323_banner&site=1145383&ad=97
+            - generic [ref=e1664]:
+              - generic [ref=e1665]:
+                - generic [ref=e1666]:
+                  - generic [ref=e1667]:
+                    - generic [ref=e1668]: DreamLeague Division 2 Season 4
+                    - generic [ref=e1669]: Best of 3
+                  - generic [ref=e1670]:
+                    - generic [ref=e1671]: 28 апр.
+                    - generic [ref=e1672]: 23:00
+                - generic [ref=e1673] [cursor=pointer]:
+                  - generic [ref=e1676]: Power Rangers
+                  - generic [ref=e1677]: "1.88"
+                - generic [ref=e1678] [cursor=pointer]:
+                  - generic [ref=e1681]: L1ga Team
+                  - generic [ref=e1682]: "1.88"
+              - generic [ref=e1683]:
+                - generic [ref=e1684]:
+                  - generic [ref=e1685]:
+                    - generic [ref=e1686]: DreamLeague Division 2 Season 4
+                    - generic [ref=e1687]: Best of 3
+                  - generic [ref=e1688]:
+                    - generic [ref=e1689]: 29 апр.
+                    - generic [ref=e1690]: 23:00
+                - generic [ref=e1691] [cursor=pointer]:
+                  - generic [ref=e1694]: Nigma Galaxy
+                  - generic [ref=e1695]: "1.32"
+                - generic [ref=e1696] [cursor=pointer]:
+                  - generic [ref=e1699]: 1win Team
+                  - generic [ref=e1700]: "3.17"
+              - generic [ref=e1701]:
+                - generic [ref=e1702]:
+                  - generic [ref=e1703]:
+                    - generic [ref=e1704]: ESL Challenger China Season 3
+                    - generic [ref=e1705]: Best of 1
+                  - generic [ref=e1706]:
+                    - generic [ref=e1707]: 01 мая
+                    - generic [ref=e1708]: 13:30
+                - generic [ref=e1709] [cursor=pointer]:
+                  - generic [ref=e1712]: Vici Gaming
+                  - generic [ref=e1713]: "1.06"
+                - generic [ref=e1714] [cursor=pointer]:
+                  - generic [ref=e1717]: Cloud Dawning
+                  - generic [ref=e1718]: "7.90"
+            - generic [ref=e1719]:
+              - generic [ref=e1720]:
+                - generic [ref=e1721]: Сумма ставки
+                - textbox [ref=e1722]: "100"
+              - generic [ref=e1723]:
+                - generic [ref=e1724]:
+                  - generic [ref=e1725]: Выигрыш
+                  - generic [ref=e1726]: "0"
+                - link "Сделать ставку" [ref=e1727] [cursor=pointer]:
+                  - /url: https://reffpa.com/L?tag=d_1145383m_97c__[]cyber[]_d54580_l54323_banner&site=1145383&ad=97
+                  - generic [ref=e1728]: Сделать ставку
+          - generic [ref=e1729]:
+            - generic [ref=e1730]: Коэффициенты
+            - generic [ref=e1733]:
+              - generic [ref=e1734]:
+                - generic [ref=e1735]: Bookmaker
+                - generic [ref=e1736]: Lynx vs SAR
+              - generic [ref=e1737]:
+                - link "3.94 Победитель 1.22" [ref=e1738] [cursor=pointer]:
+                  - /url: https://reffpa.com/L?
+                  - generic [ref=e1743]:
+                    - generic [ref=e1744]: "3.94"
+                    - generic [ref=e1745]: Победитель
+                    - generic [ref=e1746]: "1.22"
+                - link "Instant payouts without verification" [ref=e1747] [cursor=pointer]:
+                  - /url: https://csgopositive.xyz/p/dltv/
+                  - generic [ref=e1752]: Instant payouts without verification
+                - link "100% BONUS, Best odds and very high limits, no KYC" [ref=e1753] [cursor=pointer]:
+                  - /url: https://go.thunder.partners/visit/?bta=35973&nci=5604&campaign=dltv
+                  - generic [ref=e1758]: 100% BONUS, Best odds and very high limits, no KYC
+        - generic [ref=e1760]:
+          - generic [ref=e1761]: Популярное
+          - link "Показать" [ref=e1762] [cursor=pointer]:
+            - /url: https://ru.dltv.org/news
+          - generic [ref=e1765]:
+            - link "Events BetBoom превзошли самих себя на PGL Wallachia S8 3 дня назад" [ref=e1766] [cursor=pointer]:
+              - /url: https://ru.dltv.org/news/betboom-prevzoshli-samih-sebya-na-pgl-wallachia-s8
+              - generic [ref=e1768]: Events
+              - generic [ref=e1769]: BetBoom превзошли самих себя на PGL Wallachia S8
+              - generic [ref=e1770]: 3 дня назад
+            - link "PV и Spirit могу не получить инвайт на Инт из-за плохого выступления на PGL Wallachia S8, итоги третьего дня плей-офф 3 дня назад" [ref=e1771] [cursor=pointer]:
+              - /url: https://ru.dltv.org/news/pv-i-spirit-mogu-ne-poluchit-invait-na-int-iz-za-plohogo-vystupleniya-na-pgl-wallachia-s8-itogi-tretego-dnya-plei-off
+              - generic [ref=e1772]: PV и Spirit могу не получить инвайт на Инт из-за плохого выступления на PGL Wallachia S8, итоги третьего дня плей-офф
+              - generic [ref=e1773]: 3 дня назад
+            - link "South America Rejects выбывают от Team Liquid на PGL Wallachia Season 8 3 дня назад" [ref=e1774] [cursor=pointer]:
+              - /url: https://ru.dltv.org/news/south-america-rejects-vybyvayut-ot-team-liquid-na-pgl-wallachia-season-8
+              - generic [ref=e1775]: South America Rejects выбывают от Team Liquid на PGL Wallachia Season 8
+              - generic [ref=e1776]: 3 дня назад
+            - link "Heroic проигрывают South America Rejects на PGL Wallachia Season 8 4 дня назад" [ref=e1777] [cursor=pointer]:
+              - /url: https://ru.dltv.org/news/heroic-proigryvayut-south-america-rejects-v-pgl-wallachia-season-8
+              - generic [ref=e1778]: Heroic проигрывают South America Rejects на PGL Wallachia Season 8
+              - generic [ref=e1779]: 4 дня назад
+  - contentinfo [ref=e1780]:
+    - generic [ref=e1783]:
+      - link "DLTV" [ref=e1785] [cursor=pointer]:
+        - /url: /
+        - img [ref=e1786]
+        - generic [ref=e1790]: DLTV
+      - navigation [ref=e1791]:
+        - link "Новости" [ref=e1793] [cursor=pointer]:
+          - /url: /news
+        - link "Матчи" [ref=e1795] [cursor=pointer]:
+          - /url: /matches
+        - link "Результаты" [ref=e1797] [cursor=pointer]:
+          - /url: /results
+        - link "Турниры" [ref=e1799] [cursor=pointer]:
+          - /url: /events
+        - link "Вакансии" [ref=e1801] [cursor=pointer]:
+          - /url: /pages/jobs
+        - link "Контакты" [ref=e1803] [cursor=pointer]:
+          - /url: /contacts
+        - link "About" [ref=e1805] [cursor=pointer]:
+          - /url: /about
+      - generic [ref=e1806]:
+        - list [ref=e1807]:
+          - listitem [ref=e1808]:
+            - link [ref=e1809] [cursor=pointer]:
+              - /url: https://vk.com/dltvorg
+              - img [ref=e1810]
+          - listitem [ref=e1812]:
+            - link [ref=e1813] [cursor=pointer]:
+              - /url: https://www.instagram.com/dltvorg
+              - img [ref=e1814]
+          - listitem [ref=e1816]:
+            - link [ref=e1817] [cursor=pointer]:
+              - /url: https://discord.com/invite/tfWWEuX
+              - img [ref=e1818]
+          - listitem [ref=e1820]:
+            - link [ref=e1821] [cursor=pointer]:
+              - /url: https://x.com/dltvorg
+              - img [ref=e1822]
+          - listitem [ref=e1824]:
+            - link [ref=e1825] [cursor=pointer]:
+              - /url: https://t.me/dltvb
+              - img [ref=e1826]
+        - paragraph [ref=e1828]: DLTV.ORG © 2019-2026 Все права защищены
+    - generic [ref=e1832]:
+      - paragraph [ref=e1833]: 18+
+      - link "Политика конфиденциальности" [ref=e1834] [cursor=pointer]:
+        - /url: https://ru.dltv.org/pages/privacy-policy
+      - link "Правила использования" [ref=e1835] [cursor=pointer]:
+        - /url: https://ru.dltv.org/pages/terms-of-use
+      - link "Политика в отношении файлов cookie" [ref=e1836] [cursor=pointer]:
+        - /url: https://ru.dltv.org/pages/cookie-policy
+      - link "Офеерта и контракт" [ref=e1837] [cursor=pointer]:
+        - /url: https://ru.dltv.org/pages/agreement
+      - link "Отказ от платежа" [ref=e1838] [cursor=pointer]:
+        - /url: https://my.cloudpayments.ru/ru/unsubscribe
+  - generic [ref=e1841]:
+    - text: Мы используем файлы cookie для персонализации вашего опыта
+    - text: Продолжая посещать этот веб-сайт вы соглашаетесь с использованием нами файлов cookie
+    - generic [ref=e1842]:
+      - generic [ref=e1843] [cursor=pointer]: Got it!
+      - link "Политика cookie" [ref=e1844] [cursor=pointer]:
+        - /url: https://ru.dltv.org/pages/cookie_policy
