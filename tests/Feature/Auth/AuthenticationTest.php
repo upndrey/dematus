@@ -2,98 +2,79 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\RateLimiter;
-use Laravel\Fortify\Features;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
-    use RefreshDatabase;
-
-    public function test_login_screen_can_be_rendered()
+    public function test_login_screen_can_be_rendered(): void
     {
         $response = $this->get(route('login'));
 
         $response->assertOk();
     }
 
-    public function test_users_can_authenticate_using_the_login_screen()
+    public function test_user_can_authenticate_using_static_credentials(): void
     {
-        $user = User::factory()->create();
+        $this->withStaticCredentials();
 
         $response = $this->post(route('login.store'), [
-            'email' => $user->email,
-            'password' => 'password',
+            'username' => 'admin',
+            'password' => 'secret-password',
         ]);
 
-        $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response
+            ->assertRedirect(route('home', absolute: false))
+            ->assertSessionHas(config('static-auth.session_key'), true);
     }
 
-    public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge()
+    public function test_user_can_not_authenticate_with_invalid_password(): void
     {
-        if (! Features::canManageTwoFactorAuthentication()) {
-            $this->markTestSkipped('Two-factor authentication is not enabled.');
-        }
+        $this->withStaticCredentials();
 
-        Features::twoFactorAuthentication([
-            'confirm' => true,
-            'confirmPassword' => true,
-        ]);
-
-        $user = User::factory()->create();
-
-        $user->forceFill([
-            'two_factor_secret' => encrypt('test-secret'),
-            'two_factor_recovery_codes' => encrypt(json_encode(['code1', 'code2'])),
-            'two_factor_confirmed_at' => now(),
-        ])->save();
-
-        $response = $this->post(route('login'), [
-            'email' => $user->email,
-            'password' => 'password',
-        ]);
-
-        $response->assertRedirect(route('two-factor.login'));
-        $response->assertSessionHas('login.id', $user->id);
-        $this->assertGuest();
-    }
-
-    public function test_users_can_not_authenticate_with_invalid_password()
-    {
-        $user = User::factory()->create();
-
-        $this->post(route('login.store'), [
-            'email' => $user->email,
+        $response = $this->post(route('login.store'), [
+            'username' => 'admin',
             'password' => 'wrong-password',
         ]);
 
-        $this->assertGuest();
+        $response
+            ->assertSessionHasErrors('username')
+            ->assertSessionMissing(config('static-auth.session_key'));
     }
 
-    public function test_users_can_logout()
+    public function test_user_can_logout(): void
     {
-        $user = User::factory()->create();
+        $response = $this
+            ->withSession([config('static-auth.session_key') => true])
+            ->post(route('logout'));
 
-        $response = $this->actingAs($user)->post(route('logout'));
-
-        $this->assertGuest();
-        $response->assertRedirect(route('home'));
+        $response
+            ->assertRedirect(route('login'))
+            ->assertSessionMissing(config('static-auth.session_key'));
     }
 
-    public function test_users_are_rate_limited()
+    public function test_login_attempts_are_rate_limited(): void
     {
-        $user = User::factory()->create();
+        $this->withStaticCredentials();
 
-        RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->post(route('login.store'), [
+                'username' => 'admin',
+                'password' => 'wrong-password',
+            ]);
+        }
 
         $response = $this->post(route('login.store'), [
-            'email' => $user->email,
+            'username' => 'admin',
             'password' => 'wrong-password',
         ]);
 
         $response->assertTooManyRequests();
+    }
+
+    private function withStaticCredentials(): void
+    {
+        config()->set('static-auth.username', 'admin');
+        config()->set('static-auth.password_hash', Hash::make('secret-password'));
     }
 }

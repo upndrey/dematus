@@ -12,7 +12,11 @@ createInertiaApp({
     resolve: (name) =>
         resolvePageComponent(
             `./pages/${name}.vue`,
-            import.meta.glob<DefineComponent>('./pages/**/*.vue'),
+            import.meta.glob<DefineComponent>([
+                './pages/Dashboard.vue',
+                './pages/Stratz.vue',
+                './pages/auth/Login.vue',
+            ]),
         ),
     setup({ el, App, props, plugin }) {
         createApp({ render: () => h(App, props) })
