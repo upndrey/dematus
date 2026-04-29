@@ -41,6 +41,7 @@ class Api
             ->asJson()
             ->withHeaders([
                 'User-Agent' => self::USER_AGENT,
+                'GraphQL-Require-Preflight' => '1',
             ])
             ->withToken($token)
             ->timeout((int) config('services.stratz.timeout', 20))

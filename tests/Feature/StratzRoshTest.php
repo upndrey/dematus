@@ -143,9 +143,11 @@ class StratzRoshTest extends TestCase
             return Http::response([], 500);
         });
 
-        $response = $this->postJson(route('stratz.rosh'), [
-            'match_id' => $matchId,
-        ]);
+        $response = $this
+            ->withSession([config('static-auth.session_key') => true])
+            ->postJson(route('stratz.rosh'), [
+                'match_id' => $matchId,
+            ]);
 
         $response
             ->assertOk()
@@ -205,6 +207,7 @@ class StratzRoshTest extends TestCase
 
             return str_contains((string) $request['query'], 'query GetMatchPicksBans')
                 && $request->hasHeader('User-Agent', 'STRATZ_API')
+                && $request->hasHeader('GraphQL-Require-Preflight', '1')
                 && $request['variables']['matchId'] === $matchId;
         });
 
