@@ -12,9 +12,6 @@ Route::post('/login', [StaticAuthenticatedSessionController::class, 'store'])
 Route::options('/api/dltv-match', [StratzController::class, 'dltvExtensionOptions'])
     ->name('dltv-match.options');
 Route::post('/api/dltv-match', [StratzController::class, 'roshDltvExtension'])
-    ->withoutMiddleware([
-        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
-    ])
     ->middleware('throttle:20,1')
     ->name('dltv-match.rosh');
 
