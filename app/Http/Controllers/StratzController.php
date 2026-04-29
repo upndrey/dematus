@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Stratz\Hero;
+use App\Http\Requests\Stratz\FetchDltvExtensionRoshRequest;
 use App\Http\Requests\Stratz\FetchDraftRequest;
 use App\Http\Requests\Stratz\FetchLeagueMatchesRequest;
 use App\Http\Requests\Stratz\FetchMatchRequest;
@@ -13,6 +14,7 @@ use App\Http\Requests\Stratz\FetchRoshRequest;
 use App\Http\Requests\Stratz\SearchProPlayersRequest;
 use App\Http\Requests\Stratz\StoreTeamRosterRequest;
 use App\Http\Requests\Stratz\UpdateTeamRosterRequest;
+use App\Services\Dltv\DltvExtensionPayloadParser;
 use App\Services\Dltv\DltvGistHtmlFetcher;
 use App\Services\Dltv\DltvMatchHtmlParser;
 use App\Services\GoogleSheets\RoshSheetService;
@@ -202,6 +204,45 @@ class StratzController
         }
     }
 
+    public function roshDltvExtension(
+        FetchDltvExtensionRoshRequest $request,
+        DltvExtensionPayloadParser $dltvExtensionPayloadParser,
+        StratzService $stratzService,
+        RoshSheetService $roshSheetService,
+    ): JsonResponse {
+        try {
+            $payload = $dltvExtensionPayloadParser->parse($request->validated());
+            $rosh = $stratzService->getRoshFromHeroes($payload);
+            $rosh['parsed_extension_payload'] = $request->validated();
+            $rosh['parsed_extension_rosh_payload'] = $payload;
+            $rosh['source'] = [
+                'type' => 'dltv-browser-extension',
+                'page_url' => $request->validated('page_url'),
+                'captured_at' => $request->validated('captured_at'),
+            ];
+
+            if ($roshSheetService->isConfigured()) {
+                $rosh['google_sheets'] = $roshSheetService->appendLiveOdds(
+                    (array) data_get($rosh, 'formatted', []),
+                );
+            }
+
+            return $this->extensionResponse([
+                'type' => 'rosh',
+                'data' => $rosh,
+            ]);
+        } catch (Throwable $throwable) {
+            return $this->extensionResponse([
+                'error' => $throwable->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function dltvExtensionOptions(): JsonResponse
+    {
+        return $this->extensionResponse([], 204);
+    }
+
     public function teamRosters(Request $request, TeamRosterRepository $teamRosterRepository): JsonResponse|RedirectResponse
     {
         try {
@@ -278,5 +319,19 @@ class StratzController
         }
 
         return back()->withInput()->with('stratz_error', $throwable->getMessage());
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function extensionResponse(array $payload, int $status = 200): JsonResponse
+    {
+        return response()
+            ->json($payload, $status)
+            ->withHeaders([
+                'Access-Control-Allow-Origin' => '*',
+                'Access-Control-Allow-Headers' => 'Content-Type, X-Source, X-DLTV-Parser-Token, Authorization',
+                'Access-Control-Allow-Methods' => 'POST, OPTIONS',
+            ]);
     }
 }

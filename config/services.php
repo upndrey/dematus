@@ -64,6 +64,7 @@ return [
 
     'dltv' => [
         'gist_url' => env('DLTV_GIST_URL'),
+        'extension_token' => env('DLTV_EXTENSION_TOKEN'),
         'timeout' => (int) env('DLTV_TIMEOUT', 20),
     ],
 

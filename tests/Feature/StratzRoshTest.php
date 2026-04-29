@@ -538,9 +538,11 @@ class StratzRoshTest extends TestCase
             return Http::response([], 500);
         });
 
-        $response = $this->postJson(route('stratz.rosh-html'), [
-            'html' => $this->fakeDltvDraftHtml(),
-        ]);
+        $response = $this
+            ->withSession([config('static-auth.session_key') => true])
+            ->postJson(route('stratz.rosh-html'), [
+                'html' => $this->fakeDltvDraftHtml(),
+            ]);
 
         $response
             ->assertOk()
@@ -1449,6 +1451,102 @@ class StratzRoshTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_dltv_extension_payload_runs_full_rosh_calculation(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-25 12:00:00 UTC'));
+
+        config()->set('services.stratz.token', 'test-token');
+        config()->set('services.dltv.extension_token', 'extension-secret');
+        config()->set('services.google_sheets.spreadsheet_url', null);
+        config()->set('services.google_sheets.service_account_credentials', null);
+
+        $picks = $this->roshPicks();
+        $metaPositions = $this->fakeRoshMetaPositions($picks);
+        $globalTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [37 => 0.0],
+            [37 => [20 => 2100, 21 => 1000]],
+        );
+        $bracketTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [],
+            [37 => [20 => 2100, 21 => 900]],
+        );
+
+        Http::fake(function (Request $request) use ($metaPositions, $globalTimeStats, $bracketTimeStats) {
+            $query = $request->offsetExists('query')
+                ? (string) $request['query']
+                : '';
+
+            if (str_contains($query, 'query HeroesMetaPositionsByWeek')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $metaPositions,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query GetHeroStatsByTime')) {
+                $heroStats = isset($request['variables']['bracketBasicIds'])
+                    ? $bracketTimeStats
+                    : $globalTimeStats;
+
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $heroStats,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query Synergy')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => [
+                            'matchUp_Prev_Week_1' => [],
+                            'matchUp_Prev_Week_2' => [],
+                            'matchUp_Prev_Week_3' => [],
+                            'matchUp_Prev_Week_4' => [],
+                        ],
+                    ],
+                ]);
+            }
+
+            return Http::response([], 500);
+        });
+
+        $response = $this->postJson(route('dltv-match.rosh', ['token' => 'extension-secret']), $this->fakeDltvExtensionPayload());
+
+        $response
+            ->assertOk()
+            ->assertHeader('Access-Control-Allow-Origin', '*')
+            ->assertJsonPath('type', 'rosh')
+            ->assertJsonPath('data.formatted.radiant_team', 'Team Liquid')
+            ->assertJsonPath('data.formatted.dire_team', 'GamerLegion')
+            ->assertJsonPath('data.formatted.radiant_odds_1', 3.3)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 2.8)
+            ->assertJsonPath('data.formatted.dire_odds_1', 0)
+            ->assertJsonPath('data.formatted.dire_odds_2', 0)
+            ->assertJsonPath('data.parsed_extension_rosh_payload.radiant_heroes', [114, 25, 23, 79, 112])
+            ->assertJsonPath('data.parsed_extension_rosh_payload.dire_heroes', [70, 59, 39, 83, 37])
+            ->assertJsonPath('data.source.type', 'dltv-browser-extension')
+            ->assertJsonPath('data.source.page_url', 'https://ru.dltv.org/matches/123-team-liquid-vs-gamerlegion');
+
+        Http::assertSentCount(4);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_dltv_extension_payload_requires_token(): void
+    {
+        config()->set('services.dltv.extension_token', 'extension-secret');
+
+        $response = $this->postJson(route('dltv-match.rosh'), $this->fakeDltvExtensionPayload());
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['token']);
+    }
+
     public function test_rosh_heroes_request_requires_full_payload(): void
     {
         $response = $this->postJson(route('stratz.rosh-heroes'), [
@@ -1702,6 +1800,86 @@ let series_item = {
 </body>
 </html>
 HTML;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fakeDltvExtensionPayload(): array
+    {
+        $radiantPlayers = [
+            ['player_name' => 'miCKe', 'hero_name' => 'Monkey King', 'role_id' => 1],
+            ['player_name' => 'Nisha', 'hero_name' => 'Lina', 'role_id' => 2],
+            ['player_name' => 'SaberLight', 'hero_name' => 'Kunkka', 'role_id' => 3],
+            ['player_name' => 'Boxi', 'hero_name' => 'Shadow Demon', 'role_id' => 4],
+            ['player_name' => 'Insania', 'hero_name' => 'Winter Wyvern', 'role_id' => 5],
+        ];
+        $direPlayers = [
+            ['player_name' => 'watson', 'hero_name' => 'Ursa', 'role_id' => 1],
+            ['player_name' => 'Quinn', 'hero_name' => 'Huskar', 'role_id' => 2],
+            ['player_name' => 'Ace', 'hero_name' => 'Queen of Pain', 'role_id' => 3],
+            ['player_name' => 'tOfu', 'hero_name' => 'Treant Protector', 'role_id' => 4],
+            ['player_name' => 'Seleri', 'hero_name' => 'Warlock', 'role_id' => 5],
+        ];
+
+        $players = [
+            ...array_map(
+                static fn (array $player): array => [
+                    ...$player,
+                    'team_index' => 1,
+                    'player_url' => null,
+                    'hero_image_url' => null,
+                    'role_name' => null,
+                    'level' => 20,
+                ],
+                $radiantPlayers,
+            ),
+            ...array_map(
+                static fn (array $player): array => [
+                    ...$player,
+                    'team_index' => 2,
+                    'player_url' => null,
+                    'hero_image_url' => null,
+                    'role_name' => null,
+                    'level' => 20,
+                ],
+                $direPlayers,
+            ),
+        ];
+
+        return [
+            'source' => 'dltv',
+            'page_url' => 'https://ru.dltv.org/matches/123-team-liquid-vs-gamerlegion',
+            'captured_at' => '2026-04-29T12:00:00.000Z',
+            'match' => [
+                'team_1' => 'Team Liquid',
+                'team_2' => 'GamerLegion',
+                'radiant_team' => null,
+                'dire_team' => null,
+                'map_number' => 1,
+                'game_time' => '20:00',
+                'score' => '0-0',
+            ],
+            'players' => $players,
+            'teams' => [
+                [
+                    'team_index' => 1,
+                    'team_name' => 'Team Liquid',
+                    'players' => array_slice($players, 0, 5),
+                ],
+                [
+                    'team_index' => 2,
+                    'team_name' => 'GamerLegion',
+                    'players' => array_slice($players, 5, 5),
+                ],
+            ],
+            'meta' => [
+                'players_count' => 10,
+                'heroes_count' => 10,
+                'roles_count' => 10,
+                'warnings' => [],
+            ],
+        ];
     }
 
     private function fakeGoogleCredentialsPath(): string
