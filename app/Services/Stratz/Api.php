@@ -11,6 +11,18 @@ class Api
 {
     private const USER_AGENT = 'STRATZ_API';
 
+    /**
+     * @var array<string, string>
+     */
+    private const REQUIRED_HEADERS = [
+        'Accept' => 'application/json',
+        'Content-Type' => 'application/json',
+        'User-Agent' => self::USER_AGENT,
+        'GraphQL-Require-Preflight' => '1',
+        'Origin' => 'https://stratz.com',
+        'Referer' => 'https://stratz.com/',
+    ];
+
     private const DIFFERENT_IP_ERROR_FRAGMENT = 'You cannot use different IP Addresses when using the API.';
 
     public function query(string $query, array $variables = []): array
@@ -37,12 +49,9 @@ class Api
             throw new RuntimeException('STRATZ token is not configured. Set STRATZ_TOKEN in .env.');
         }
 
-        $response = Http::acceptJson()
+        $headers = self::REQUIRED_HEADERS;
+        $response = Http::withHeaders($headers)
             ->asJson()
-            ->withHeaders([
-                'User-Agent' => self::USER_AGENT,
-                'GraphQL-Require-Preflight' => '1',
-            ])
             ->withToken($token)
             ->timeout((int) config('services.stratz.timeout', 20))
             ->post((string) config('services.stratz.endpoint'), [
@@ -50,18 +59,18 @@ class Api
                 'variables' => $variables,
             ]);
 
-        return $this->parseResponse($response, $allowGraphQLErrors);
+        return $this->parseResponse($response, $allowGraphQLErrors, $headers);
     }
 
     /**
      * @return array{data: array<string, mixed>, errors: list<array<string, mixed>>}
      */
-    protected function parseResponse(Response $response, bool $allowGraphQLErrors = false): array
+    protected function parseResponse(Response $response, bool $allowGraphQLErrors = false, array $requestHeaders = []): array
     {
         if ($response->failed()) {
             throw new ExternalHttpRequestException(
                 $this->resolveErrorMessage($response),
-                $this->responseContext($response),
+                $this->responseContext($response, $requestHeaders),
                 $response->status(),
             );
         }
@@ -117,15 +126,27 @@ class Api
     /**
      * @return array<string, mixed>
      */
-    private function responseContext(Response $response): array
+    private function responseContext(Response $response, array $requestHeaders = []): array
     {
         return [
             'service' => 'stratz',
             'status' => $response->status(),
             'url' => (string) config('services.stratz.endpoint'),
+            'request_headers' => $this->safeHeaders($this->normalizeHeaderValues($requestHeaders)),
             'headers' => $this->safeHeaders($response->headers()),
             'body' => $this->truncateBody($response->body()),
         ];
+    }
+
+    /**
+     * @param  array<string, string|list<string>>  $headers
+     * @return array<string, list<string>>
+     */
+    private function normalizeHeaderValues(array $headers): array
+    {
+        return collect($headers)
+            ->map(fn (string|array $value): array => is_array($value) ? array_values($value) : [$value])
+            ->all();
     }
 
     /**

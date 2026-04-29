@@ -208,6 +208,8 @@ class StratzRoshTest extends TestCase
             return str_contains((string) $request['query'], 'query GetMatchPicksBans')
                 && $request->hasHeader('User-Agent', 'STRATZ_API')
                 && $request->hasHeader('GraphQL-Require-Preflight', '1')
+                && $request->hasHeader('Origin', 'https://stratz.com')
+                && $request->hasHeader('Referer', 'https://stratz.com/')
                 && $request['variables']['matchId'] === $matchId;
         });
 
@@ -1573,6 +1575,10 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('external_response.service', 'stratz')
             ->assertJsonPath('external_response.status', 403)
             ->assertJsonPath('external_response.url', 'https://api.stratz.com/graphql')
+            ->assertJsonPath('external_response.request_headers.User-Agent.0', 'STRATZ_API')
+            ->assertJsonPath('external_response.request_headers.GraphQL-Require-Preflight.0', '1')
+            ->assertJsonPath('external_response.request_headers.Origin.0', 'https://stratz.com')
+            ->assertJsonPath('external_response.request_headers.Referer.0', 'https://stratz.com/')
             ->assertJsonPath('external_response.headers.cf-ray.0', 'test-ray')
             ->assertJsonMissingPath('external_response.headers.set-cookie')
             ->assertJsonPath('external_response.body', '<!DOCTYPE html><html class="no-js oldie" lang="en-US"><body>Forbidden</body></html>');
