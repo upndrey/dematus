@@ -9,7 +9,7 @@ use RuntimeException;
 
 class Api
 {
-    private const USER_AGENT = 'STRATZ_API';
+    private const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
 
     /**
      * @var array<string, string>
@@ -18,9 +18,7 @@ class Api
         'Accept' => 'application/json',
         'Content-Type' => 'application/json',
         'User-Agent' => self::USER_AGENT,
-        'GraphQL-Require-Preflight' => '1',
-        'Origin' => 'https://stratz.com',
-        'Referer' => 'https://stratz.com/',
+        'Referer' => 'https://api.stratz.com/graphiql',
     ];
 
     private const DIFFERENT_IP_ERROR_FRAGMENT = 'You cannot use different IP Addresses when using the API.';
@@ -50,27 +48,28 @@ class Api
         }
 
         $headers = self::REQUIRED_HEADERS;
+        $url = $this->endpointWithKey($token);
+
         $response = Http::withHeaders($headers)
             ->asJson()
-            ->withToken($token)
             ->timeout((int) config('services.stratz.timeout', 20))
-            ->post((string) config('services.stratz.endpoint'), [
+            ->post($url, [
                 'query' => $query,
                 'variables' => $variables,
             ]);
 
-        return $this->parseResponse($response, $allowGraphQLErrors, $headers);
+        return $this->parseResponse($response, $allowGraphQLErrors, $headers, $url);
     }
 
     /**
      * @return array{data: array<string, mixed>, errors: list<array<string, mixed>>}
      */
-    protected function parseResponse(Response $response, bool $allowGraphQLErrors = false, array $requestHeaders = []): array
+    protected function parseResponse(Response $response, bool $allowGraphQLErrors = false, array $requestHeaders = [], ?string $requestUrl = null): array
     {
         if ($response->failed()) {
             throw new ExternalHttpRequestException(
                 $this->resolveErrorMessage($response),
-                $this->responseContext($response, $requestHeaders),
+                $this->responseContext($response, $requestHeaders, $requestUrl),
                 $response->status(),
             );
         }
@@ -126,12 +125,12 @@ class Api
     /**
      * @return array<string, mixed>
      */
-    private function responseContext(Response $response, array $requestHeaders = []): array
+    private function responseContext(Response $response, array $requestHeaders = [], ?string $requestUrl = null): array
     {
         return [
             'service' => 'stratz',
             'status' => $response->status(),
-            'url' => (string) config('services.stratz.endpoint'),
+            'url' => $this->safeUrl($requestUrl ?? (string) config('services.stratz.endpoint')),
             'request_headers' => $this->safeHeaders($this->normalizeHeaderValues($requestHeaders)),
             'headers' => $this->safeHeaders($response->headers()),
             'body' => $this->truncateBody($response->body()),
@@ -170,6 +169,19 @@ class Api
         $body = trim($body);
 
         return strlen($body) > 12000 ? substr($body, 0, 12000).'... [truncated]' : $body;
+    }
+
+    private function endpointWithKey(string $token): string
+    {
+        $endpoint = (string) config('services.stratz.endpoint');
+        $separator = str_contains($endpoint, '?') ? '&' : '?';
+
+        return $endpoint.$separator.http_build_query(['key' => $token]);
+    }
+
+    private function safeUrl(string $url): string
+    {
+        return preg_replace('/([?&]key=)[^&]+/', '$1[redacted]', $url) ?? $url;
     }
 
     /**

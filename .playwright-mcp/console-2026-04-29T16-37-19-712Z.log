@@ -1,0 +1,1 @@
+[  793857ms] [ERROR] WebSocket connection to 'wss://api.stratz.com/graphql' failed: Error during WebSocket handshake: Unexpected response code: 403 @ https://unpkg.com/subscriptions-transport-ws@0.8.2/browser/client.js:701
