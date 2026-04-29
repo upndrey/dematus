@@ -2,6 +2,7 @@
 
 namespace App\Services\Stratz;
 
+use App\Exceptions\ExternalHttpRequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -57,7 +58,11 @@ class Api
     protected function parseResponse(Response $response, bool $allowGraphQLErrors = false): array
     {
         if ($response->failed()) {
-            throw new RuntimeException($this->resolveErrorMessage($response));
+            throw new ExternalHttpRequestException(
+                $this->resolveErrorMessage($response),
+                $this->responseContext($response),
+                $response->status(),
+            );
         }
 
         $payload = $response->json();
@@ -106,6 +111,43 @@ class Api
         }
 
         return 'STRATZ request failed with HTTP '.$response->status().'.';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function responseContext(Response $response): array
+    {
+        return [
+            'service' => 'stratz',
+            'status' => $response->status(),
+            'url' => (string) config('services.stratz.endpoint'),
+            'headers' => $this->safeHeaders($response->headers()),
+            'body' => $this->truncateBody($response->body()),
+        ];
+    }
+
+    /**
+     * @param  array<string, list<string>>  $headers
+     * @return array<string, list<string>>
+     */
+    private function safeHeaders(array $headers): array
+    {
+        return collect($headers)
+            ->reject(fn (mixed $value, string $header): bool => in_array(strtolower($header), [
+                'set-cookie',
+                'cookie',
+                'authorization',
+                'x-api-key',
+            ], true))
+            ->all();
+    }
+
+    private function truncateBody(string $body): string
+    {
+        $body = trim($body);
+
+        return strlen($body) > 12000 ? substr($body, 0, 12000).'... [truncated]' : $body;
     }
 
     /**

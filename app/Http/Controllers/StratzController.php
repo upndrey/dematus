@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Stratz\Hero;
+use App\Exceptions\ExternalHttpRequestException;
 use App\Http\Requests\Stratz\FetchDltvExtensionRoshRequest;
 use App\Http\Requests\Stratz\FetchDraftRequest;
 use App\Http\Requests\Stratz\FetchLeagueMatchesRequest;
@@ -232,9 +233,7 @@ class StratzController
                 'data' => $rosh,
             ]);
         } catch (Throwable $throwable) {
-            return $this->extensionResponse([
-                'error' => $throwable->getMessage(),
-            ], 422);
+            return $this->extensionResponse($this->errorPayload($throwable), 422);
         }
     }
 
@@ -313,12 +312,31 @@ class StratzController
     private function respondWithError(Request $request, Throwable $throwable): JsonResponse|RedirectResponse
     {
         if ($request->expectsJson()) {
-            return response()->json([
-                'error' => $throwable->getMessage(),
-            ], 422);
+            return response()->json($this->errorPayload($throwable), 422);
+        }
+
+        if ($throwable instanceof ExternalHttpRequestException) {
+            return back()->withInput()->with('stratz_error', $throwable->context());
         }
 
         return back()->withInput()->with('stratz_error', $throwable->getMessage());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function errorPayload(Throwable $throwable): array
+    {
+        if ($throwable instanceof ExternalHttpRequestException) {
+            return [
+                'error' => $throwable->getMessage(),
+                'external_response' => $throwable->context(),
+            ];
+        }
+
+        return [
+            'error' => $throwable->getMessage(),
+        ];
     }
 
     /**

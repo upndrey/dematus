@@ -1547,6 +1547,34 @@ class StratzRoshTest extends TestCase
             ->assertJsonValidationErrors(['token']);
     }
 
+    public function test_dltv_extension_payload_returns_external_http_response_details(): void
+    {
+        config()->set('services.stratz.token', 'test-token');
+        config()->set('services.stratz.endpoint', 'https://api.stratz.com/graphql');
+        config()->set('services.dltv.extension_token', 'extension-secret');
+        config()->set('services.google_sheets.spreadsheet_url', null);
+        config()->set('services.google_sheets.service_account_credentials', null);
+
+        Http::fake([
+            'https://api.stratz.com/graphql' => Http::response(
+                '<!DOCTYPE html><html class="no-js oldie" lang="en-US"><body>Forbidden</body></html>',
+                403,
+                ['cf-ray' => 'test-ray', 'set-cookie' => 'secret-cookie'],
+            ),
+        ]);
+
+        $response = $this->postJson(route('dltv-match.rosh', ['token' => 'extension-secret']), $this->fakeDltvExtensionPayload());
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonPath('external_response.service', 'stratz')
+            ->assertJsonPath('external_response.status', 403)
+            ->assertJsonPath('external_response.url', 'https://api.stratz.com/graphql')
+            ->assertJsonPath('external_response.headers.cf-ray.0', 'test-ray')
+            ->assertJsonMissingPath('external_response.headers.set-cookie')
+            ->assertJsonPath('external_response.body', '<!DOCTYPE html><html class="no-js oldie" lang="en-US"><body>Forbidden</body></html>');
+    }
+
     public function test_rosh_heroes_request_requires_full_payload(): void
     {
         $response = $this->postJson(route('stratz.rosh-heroes'), [
