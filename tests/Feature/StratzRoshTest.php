@@ -1589,6 +1589,91 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('external_response.body', '<!DOCTYPE html><html class="no-js oldie" lang="en-US"><body>Forbidden</body></html>');
     }
 
+    public function test_stratz_request_can_force_ipv4(): void
+    {
+        if (! defined('CURLOPT_IPRESOLVE') || ! defined('CURL_IPRESOLVE_V4')) {
+            $this->markTestSkipped('The PHP cURL constants needed to force IPv4 are not available.');
+        }
+
+        config()->set('services.stratz.token', 'test-token');
+        config()->set('services.stratz.force_ipv4', true);
+        config()->set('services.google_sheets.spreadsheet_url', null);
+        config()->set('services.google_sheets.service_account_credentials', null);
+
+        $picks = $this->roshPicks();
+        $metaPositions = $this->fakeRoshMetaPositions($picks);
+        $globalTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [37 => 0.0],
+            [37 => [20 => 2100, 21 => 1000]],
+        );
+        $bracketTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [],
+            [37 => [20 => 2100, 21 => 900]],
+        );
+
+        Http::fake(function (Request $request) use ($metaPositions, $globalTimeStats, $bracketTimeStats) {
+            $query = $request->offsetExists('query')
+                ? (string) $request['query']
+                : '';
+
+            if (str_contains($query, 'query HeroesMetaPositionsByWeek')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $metaPositions,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query GetHeroStatsByTime')) {
+                $heroStats = isset($request['variables']['bracketBasicIds'])
+                    ? $bracketTimeStats
+                    : $globalTimeStats;
+
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $heroStats,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query Synergy')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => [
+                            'matchUp_Prev_Week_1' => [],
+                            'matchUp_Prev_Week_2' => [],
+                            'matchUp_Prev_Week_3' => [],
+                            'matchUp_Prev_Week_4' => [],
+                        ],
+                    ],
+                ]);
+            }
+
+            return Http::response([], 500);
+        });
+
+        $response = $this
+            ->withSession([config('static-auth.session_key') => true])
+            ->postJson(route('stratz.rosh-heroes'), [
+                'radiant_team' => 'Team Liquid',
+                'dire_team' => 'GamerLegion',
+                'radiant_heroes' => [114, 25, 23, 79, 112],
+                'dire_heroes' => [70, 59, 39, 83, 37],
+            ]);
+
+        $response->assertOk();
+
+        Http::assertSent(function (Request $request): bool {
+            if (! $this->isStratzGraphqlRequest($request)) {
+                return false;
+            }
+
+            return data_get($request->options(), 'curl.'.constant('CURLOPT_IPRESOLVE')) === constant('CURL_IPRESOLVE_V4');
+        });
+    }
+
     public function test_rosh_heroes_request_requires_full_payload(): void
     {
         $response = $this->postJson(route('stratz.rosh-heroes'), [

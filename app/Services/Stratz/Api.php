@@ -52,6 +52,7 @@ class Api
 
         $response = Http::withHeaders($headers)
             ->asJson()
+            ->withOptions($this->httpOptions())
             ->timeout((int) config('services.stratz.timeout', 20))
             ->post($url, [
                 'query' => $query,
@@ -182,6 +183,26 @@ class Api
     private function safeUrl(string $url): string
     {
         return preg_replace('/([?&]key=)[^&]+/', '$1[redacted]', $url) ?? $url;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function httpOptions(): array
+    {
+        if (! config('services.stratz.force_ipv4', false)) {
+            return [];
+        }
+
+        if (! defined('CURLOPT_IPRESOLVE') || ! defined('CURL_IPRESOLVE_V4')) {
+            return [];
+        }
+
+        return [
+            'curl' => [
+                constant('CURLOPT_IPRESOLVE') => constant('CURL_IPRESOLVE_V4'),
+            ],
+        ];
     }
 
     /**
