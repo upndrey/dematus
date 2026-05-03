@@ -18,7 +18,7 @@ class Api
         'Accept' => 'application/json',
         'Content-Type' => 'application/json',
         'User-Agent' => self::USER_AGENT,
-        'Referer' => 'https://api.stratz.com/graphiql',
+        'GraphQL-Require-Preflight' => '1',
     ];
 
     private const DIFFERENT_IP_ERROR_FRAGMENT = 'You cannot use different IP Addresses when using the API.';
@@ -48,10 +48,15 @@ class Api
         }
 
         $headers = self::REQUIRED_HEADERS;
-        $url = $this->endpointWithKey($token);
+        $url = (string) config('services.stratz.endpoint');
+        $requestHeaders = [
+            ...$headers,
+            'Authorization' => 'Bearer [redacted]',
+        ];
 
         $response = Http::withHeaders($headers)
             ->asJson()
+            ->withToken($token)
             ->withOptions($this->httpOptions())
             ->timeout((int) config('services.stratz.timeout', 20))
             ->post($url, [
@@ -59,7 +64,7 @@ class Api
                 'variables' => $variables,
             ]);
 
-        return $this->parseResponse($response, $allowGraphQLErrors, $headers, $url);
+        return $this->parseResponse($response, $allowGraphQLErrors, $requestHeaders, $url);
     }
 
     /**
@@ -131,7 +136,7 @@ class Api
         return [
             'service' => 'stratz',
             'status' => $response->status(),
-            'url' => $this->safeUrl($requestUrl ?? (string) config('services.stratz.endpoint')),
+            'url' => $requestUrl ?? (string) config('services.stratz.endpoint'),
             'request_headers' => $this->safeHeaders($this->normalizeHeaderValues($requestHeaders)),
             'headers' => $this->safeHeaders($response->headers()),
             'body' => $this->truncateBody($response->body()),
@@ -159,9 +164,11 @@ class Api
             ->reject(fn (mixed $value, string $header): bool => in_array(strtolower($header), [
                 'set-cookie',
                 'cookie',
+            ], true))
+            ->mapWithKeys(fn (array $value, string $header): array => in_array(strtolower($header), [
                 'authorization',
                 'x-api-key',
-            ], true))
+            ], true) ? [$header => ['[redacted]']] : [$header => $value])
             ->all();
     }
 
@@ -170,19 +177,6 @@ class Api
         $body = trim($body);
 
         return strlen($body) > 12000 ? substr($body, 0, 12000).'... [truncated]' : $body;
-    }
-
-    private function endpointWithKey(string $token): string
-    {
-        $endpoint = (string) config('services.stratz.endpoint');
-        $separator = str_contains($endpoint, '?') ? '&' : '?';
-
-        return $endpoint.$separator.http_build_query(['key' => $token]);
-    }
-
-    private function safeUrl(string $url): string
-    {
-        return preg_replace('/([?&]key=)[^&]+/', '$1[redacted]', $url) ?? $url;
     }
 
     /**

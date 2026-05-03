@@ -206,14 +206,13 @@ class StratzRoshTest extends TestCase
             }
 
             return str_contains((string) $request['query'], 'query GetMatchPicksBans')
-                && str_contains($request->url(), 'key=test-token')
                 && $request->hasHeader('Accept', 'application/json')
                 && $request->hasHeader('Content-Type', 'application/json')
-                && $request->hasHeader('Referer', 'https://api.stratz.com/graphiql')
                 && $request->hasHeader('User-Agent', 'STRATZ_API')
-                && ! $request->hasHeader('Authorization')
-                && ! $request->hasHeader('GraphQL-Require-Preflight')
+                && $request->hasHeader('Authorization', 'Bearer test-token')
+                && $request->hasHeader('GraphQL-Require-Preflight', '1')
                 && ! $request->hasHeader('Origin')
+                && ! $request->hasHeader('Referer')
                 && $request['variables']['matchId'] === $matchId;
         });
 
@@ -1578,12 +1577,12 @@ class StratzRoshTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('external_response.service', 'stratz')
             ->assertJsonPath('external_response.status', 403)
-            ->assertJsonPath('external_response.url', 'https://api.stratz.com/graphql?key=[redacted]')
+            ->assertJsonPath('external_response.url', 'https://api.stratz.com/graphql')
             ->assertJsonPath('external_response.request_headers.User-Agent.0', 'STRATZ_API')
-            ->assertJsonPath('external_response.request_headers.Referer.0', 'https://api.stratz.com/graphiql')
-            ->assertJsonMissingPath('external_response.request_headers.Authorization')
-            ->assertJsonMissingPath('external_response.request_headers.GraphQL-Require-Preflight')
+            ->assertJsonPath('external_response.request_headers.Authorization.0', '[redacted]')
+            ->assertJsonPath('external_response.request_headers.GraphQL-Require-Preflight.0', '1')
             ->assertJsonMissingPath('external_response.request_headers.Origin')
+            ->assertJsonMissingPath('external_response.request_headers.Referer')
             ->assertJsonPath('external_response.headers.cf-ray.0', 'test-ray')
             ->assertJsonMissingPath('external_response.headers.set-cookie')
             ->assertJsonPath('external_response.body', '<!DOCTYPE html><html class="no-js oldie" lang="en-US"><body>Forbidden</body></html>');
@@ -2011,7 +2010,7 @@ HTML;
 
     private function isStratzGraphqlRequest(Request $request): bool
     {
-        return str_starts_with($request->url(), 'https://api.stratz.com/graphql?key=');
+        return $request->url() === 'https://api.stratz.com/graphql';
     }
 
     private function fakeGoogleCredentialsPath(): string
