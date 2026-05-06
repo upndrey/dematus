@@ -38,7 +38,7 @@ return [
     'stratz' => [
         'endpoint' => env('STRATZ_ENDPOINT', 'https://api.stratz.com/graphql'),
         'token' => env('STRATZ_TOKEN'),
-        'timeout' => (int) env('STRATZ_TIMEOUT', 20),
+        'timeout' => (int) env('STRATZ_TIMEOUT', 60),
         'force_ipv4' => (bool) env('STRATZ_FORCE_IPV4', false),
         'team_rosters_path' => env('STRATZ_TEAM_ROSTERS_PATH', resource_path('data/stratz-teams.json')),
     ],
