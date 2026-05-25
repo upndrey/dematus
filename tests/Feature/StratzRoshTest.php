@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Services\Stratz\StratzService;
 use Carbon\Carbon;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -87,8 +88,8 @@ class StratzRoshTest extends TestCase
                         ['range' => "'BLAST SLAM VI'!C8", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D8", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E8", 'values' => [['Radiant']]],
-                        ['range' => "'BLAST SLAM VI'!G8", 'values' => [['3,3%']]],
-                        ['range' => "'BLAST SLAM VI'!H8", 'values' => [['2,8%']]],
+                        ['range' => "'BLAST SLAM VI'!G8", 'values' => [['5,3%']]],
+                        ['range' => "'BLAST SLAM VI'!H8", 'values' => [['5,3%']]],
                         ['range' => "'BLAST SLAM VI'!J8", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!K8", 'values' => [['0,0%']]],
                     ],
@@ -159,8 +160,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.formatted.bracket', 'IMMORTAL')
             ->assertJsonPath('data.formatted.bracket_basic', 'DIVINE_IMMORTAL')
             ->assertJsonPath('data.formatted.date_time', 1770574943)
-            ->assertJsonPath('data.formatted.radiant_odds_1', 3.3)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 2.8)
+            ->assertJsonPath('data.formatted.radiant_odds_1', 5.3)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 5.3)
             ->assertJsonPath('data.formatted.dire_odds_1', 0)
             ->assertJsonPath('data.formatted.dire_odds_2', 0)
             ->assertJsonCount(2, 'data.minute_table')
@@ -168,15 +169,17 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.minute_table.0.time_start', 20)
             ->assertJsonPath('data.minute_table.0.time_end', 21)
             ->assertJsonPath('data.minute_table.0.advantage_side', 'radiant')
-            ->assertJsonPath('data.minute_table.0.advantage_percent', 3.3)
-            ->assertJsonPath('data.minute_table.0.radiant_advantage', 3.3)
+            ->assertJsonPath('data.minute_table.0.advantage_percent', 5.3)
+            ->assertJsonPath('data.minute_table.0.radiant_advantage', 5.3)
+            ->assertJsonPath('data.minute_table.0.hero_base_adjustment', 5.3)
+            ->assertJsonPath('data.minute_table.0.hero_tempo_adjustment', 0)
             ->assertJsonPath('data.minute_table.0.dire_advantage', 0)
             ->assertJsonPath('data.minute_table.1.minute', 21)
             ->assertJsonPath('data.minute_table.1.time_start', 20)
             ->assertJsonPath('data.minute_table.1.time_end', 22)
             ->assertJsonPath('data.minute_table.1.advantage_side', 'radiant')
-            ->assertJsonPath('data.minute_table.1.advantage_percent', 2.8)
-            ->assertJsonPath('data.minute_table.1.radiant_advantage', 2.8)
+            ->assertJsonPath('data.minute_table.1.advantage_percent', 5.3)
+            ->assertJsonPath('data.minute_table.1.radiant_advantage', 5.3)
             ->assertJsonPath('data.minute_table.1.dire_advantage', 0)
             ->assertJsonPath('data.request.match.operationName', 'GetMatchPicksBans')
             ->assertJsonPath('data.request.match.variables.matchId', $matchId)
@@ -189,16 +192,16 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.google_sheets.cells.C8', 'Team Liquid')
             ->assertJsonPath('data.google_sheets.cells.D8', 'GamerLegion')
             ->assertJsonPath('data.google_sheets.cells.E8', 'Radiant')
-            ->assertJsonPath('data.google_sheets.cells.G8', '3,3%')
-            ->assertJsonPath('data.google_sheets.cells.H8', '2,8%')
+            ->assertJsonPath('data.google_sheets.cells.G8', '5,3%')
+            ->assertJsonPath('data.google_sheets.cells.H8', '5,3%')
             ->assertJsonPath('data.google_sheets.cells.J8', '0,0%')
             ->assertJsonPath('data.google_sheets.cells.K8', '0,0%')
             ->assertJsonPath('data.raw.match.id', $matchId)
-            ->assertJsonPath('data.raw.analysis_summary.hero_stats_by_time_global.heroStatsByTime_1.count', 4)
+            ->assertJsonPath('data.raw.analysis_summary.hero_stats_by_time_bracket.heroStatsByTime_1.count', 4)
             ->assertJsonPath('data.raw.analysis_summary.synergy.matchUp_Prev_Week_1.count', 0)
             ->assertJsonMissingPath('data.raw.analysis');
 
-        Http::assertSentCount(10);
+        Http::assertSentCount(9);
 
         Http::assertSent(function (Request $request) use ($matchId): bool {
             if (! $this->isStratzGraphqlRequest($request)) {
@@ -223,7 +226,8 @@ class StratzRoshTest extends TestCase
 
             return str_contains((string) $request['query'], 'query HeroesMetaPositionsByWeek')
                 && $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
-                && $request['variables']['week'] === 1770574943;
+                && $request['variables']['week'] === 1770574943
+                && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37];
         });
 
         Http::assertSent(function (Request $request): bool {
@@ -235,7 +239,10 @@ class StratzRoshTest extends TestCase
                 return false;
             }
 
-            return $request['variables']['week'] === 1770574943;
+            return $request['variables']['week'] === 1770574943
+                && $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
+                && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37]
+                && str_contains((string) $request['query'], 'maxTime: 62');
         });
 
         Http::assertSent(function (Request $request): bool {
@@ -250,7 +257,8 @@ class StratzRoshTest extends TestCase
                 && $request['variables']['currentWeek'] === 1770574943
                 && $request['variables']['previousWeek1'] === 1769970143
                 && $request['variables']['previousWeek2'] === 1769365343
-                && $request['variables']['previousWeek3'] === 1768760543;
+                && $request['variables']['previousWeek3'] === 1768760543
+                && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37];
         });
 
         Http::assertSent(function (Request $request): bool {
@@ -284,7 +292,7 @@ class StratzRoshTest extends TestCase
                     [
                         'range' => "'BLAST SLAM VI'!G8:H8",
                         'majorDimension' => 'ROWS',
-                        'values' => [['3,3%', '2,8%']],
+                        'values' => [['5,3%', '5,3%']],
                     ],
                     [
                         'range' => "'BLAST SLAM VI'!J8:K8",
@@ -378,8 +386,8 @@ class StratzRoshTest extends TestCase
                         ['range' => "'BLAST SLAM VI'!C9", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D9", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E9", 'values' => [['Radiant']]],
-                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['3,3%']]],
-                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['2,8%']]],
+                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['5,3%']]],
+                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['5,3%']]],
                         ['range' => "'BLAST SLAM VI'!J9", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!K9", 'values' => [['0,0%']]],
                     ],
@@ -446,8 +454,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.google_sheets.cells.C9', 'Team Liquid')
             ->assertJsonPath('data.google_sheets.cells.D9', 'GamerLegion')
             ->assertJsonPath('data.google_sheets.cells.E9', 'Radiant')
-            ->assertJsonPath('data.google_sheets.cells.G9', '3,3%')
-            ->assertJsonPath('data.google_sheets.cells.H9', '2,8%')
+            ->assertJsonPath('data.google_sheets.cells.G9', '5,3%')
+            ->assertJsonPath('data.google_sheets.cells.H9', '5,3%')
             ->assertJsonPath('data.google_sheets.cells.J9', '0,0%')
             ->assertJsonPath('data.google_sheets.cells.K9', '0,0%');
 
@@ -463,7 +471,7 @@ class StratzRoshTest extends TestCase
                     [
                         'range' => "'BLAST SLAM VI'!G9:H9",
                         'majorDimension' => 'ROWS',
-                        'values' => [['3,3%', '2,8%']],
+                        'values' => [['5,3%', '5,3%']],
                     ],
                     [
                         'range' => "'BLAST SLAM VI'!J9:K9",
@@ -558,8 +566,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.formatted.match_id', 'LIVE')
             ->assertJsonPath('data.formatted.radiant_team', 'Team Liquid')
             ->assertJsonPath('data.formatted.dire_team', 'GamerLegion')
-            ->assertJsonPath('data.formatted.radiant_odds_1', 3.3)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 2.8)
+            ->assertJsonPath('data.formatted.radiant_odds_1', 5.3)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 5.3)
             ->assertJsonPath('data.request.input.mode', 'heroes')
             ->assertJsonPath('data.request.input.radiantHeroes.0', 114)
             ->assertJsonPath('data.request.input.direHeroes.4', 37)
@@ -768,8 +776,8 @@ class StratzRoshTest extends TestCase
                         ['range' => "'BLAST SLAM VI'!C9", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D9", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E9", 'values' => [['Radiant']]],
-                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['3,3%']]],
-                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['2,8%']]],
+                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['5,3%']]],
+                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['5,3%']]],
                         ['range' => "'BLAST SLAM VI'!J9", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!K9", 'values' => [['0,0%']]],
                     ],
@@ -833,8 +841,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.formatted.bracket', 'IMMORTAL')
             ->assertJsonPath('data.formatted.bracket_basic', 'DIVINE_IMMORTAL')
             ->assertJsonPath('data.formatted.date_time', $week)
-            ->assertJsonPath('data.formatted.radiant_odds_1', 3.3)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 2.8)
+            ->assertJsonPath('data.formatted.radiant_odds_1', 5.3)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 5.3)
             ->assertJsonPath('data.formatted.dire_odds_1', 0)
             ->assertJsonPath('data.formatted.dire_odds_2', 0)
             ->assertJsonPath('data.request.input.mode', 'heroes')
@@ -850,8 +858,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.google_sheets.cells.C9', 'Team Liquid')
             ->assertJsonPath('data.google_sheets.cells.D9', 'GamerLegion')
             ->assertJsonPath('data.google_sheets.cells.E9', 'Radiant')
-            ->assertJsonPath('data.google_sheets.cells.G9', '3,3%')
-            ->assertJsonPath('data.google_sheets.cells.H9', '2,8%')
+            ->assertJsonPath('data.google_sheets.cells.G9', '5,3%')
+            ->assertJsonPath('data.google_sheets.cells.H9', '5,3%')
             ->assertJsonPath('data.google_sheets.cells.J9', '0,0%')
             ->assertJsonPath('data.google_sheets.cells.K9', '0,0%')
             ->assertJsonPath('data.raw.match.id', 'LIVE')
@@ -880,7 +888,7 @@ class StratzRoshTest extends TestCase
                     [
                         'range' => "'BLAST SLAM VI'!G9:H9",
                         'majorDimension' => 'ROWS',
-                        'values' => [['3,3%', '2,8%']],
+                        'values' => [['5,3%', '5,3%']],
                     ],
                     [
                         'range' => "'BLAST SLAM VI'!J9:K9",
@@ -901,6 +909,128 @@ class StratzRoshTest extends TestCase
         });
 
         Carbon::setTestNow();
+    }
+
+    public function test_rosh_heroes_counts_bidirectional_synergy_signals_once(): void
+    {
+        $rosh = $this->calculateLiveRoshWithSynergy([
+            'matchUp_Prev_Week_1' => [
+                [
+                    'heroId' => 114,
+                    'with' => [['heroId2' => 25, 'matchCount' => 100, 'synergy' => 4.0]],
+                    'vs' => [['heroId2' => 70, 'matchCount' => 100, 'synergy' => 3.0]],
+                ],
+                [
+                    'heroId' => 25,
+                    'with' => [['heroId2' => 114, 'matchCount' => 100, 'synergy' => 4.0]],
+                    'vs' => [],
+                ],
+                [
+                    'heroId' => 70,
+                    'with' => [],
+                    'vs' => [['heroId2' => 114, 'matchCount' => 100, 'synergy' => -3.0]],
+                ],
+            ],
+        ]);
+
+        $this->assertSame(0.0, $rosh['minute_table'][0]['hero_adjustment']);
+        $this->assertSame(7.0, $rosh['minute_table'][0]['synergy_adjustment']);
+        $this->assertSame(7.0, $rosh['minute_table'][0]['win_rate_graph']);
+    }
+
+    public function test_rosh_heroes_reduces_synergy_from_small_match_samples(): void
+    {
+        $rosh = $this->calculateLiveRoshWithSynergy([
+            'matchUp_Prev_Week_1' => [
+                [
+                    'heroId' => 114,
+                    'with' => [['heroId2' => 25, 'matchCount' => 20, 'synergy' => 10.0]],
+                    'vs' => [],
+                ],
+                [
+                    'heroId' => 25,
+                    'with' => [['heroId2' => 114, 'matchCount' => 20, 'synergy' => 10.0]],
+                    'vs' => [],
+                ],
+            ],
+        ]);
+
+        $this->assertSame(2.0, $rosh['minute_table'][0]['synergy_adjustment']);
+        $this->assertSame(2.0, $rosh['minute_table'][0]['win_rate_graph']);
+    }
+
+    public function test_rosh_heroes_caps_total_synergy_adjustment(): void
+    {
+        $rosh = $this->calculateLiveRoshWithSynergy([
+            'matchUp_Prev_Week_1' => [
+                [
+                    'heroId' => 114,
+                    'with' => [['heroId2' => 25, 'matchCount' => 100, 'synergy' => 50.0]],
+                    'vs' => [],
+                ],
+                [
+                    'heroId' => 25,
+                    'with' => [['heroId2' => 114, 'matchCount' => 100, 'synergy' => 50.0]],
+                    'vs' => [],
+                ],
+            ],
+        ]);
+
+        $this->assertSame(15.0, $rosh['minute_table'][0]['synergy_adjustment']);
+        $this->assertSame(15.0, $rosh['minute_table'][0]['win_rate_graph']);
+    }
+
+    public function test_rosh_heroes_smooths_low_sample_immortal_time_stats_without_global_fallback(): void
+    {
+        $picks = array_map(
+            static fn (array $pick): array => [
+                ...$pick,
+                'baseDiff' => 0.0,
+            ],
+            $this->roshPicks(),
+        );
+        $immortalTimeStats = $this->fakeRoshHeroStatsByTime(
+            $picks,
+            [114 => 40.0],
+            [114 => [20 => 1800, 21 => 900]],
+        );
+
+        $rosh = $this->calculateLiveRoshWithSynergy([], $immortalTimeStats);
+
+        $this->assertSame(2.2, $rosh['minute_table'][0]['hero_adjustment']);
+        $this->assertSame(2.2, $rosh['minute_table'][1]['hero_adjustment']);
+        $this->assertSame(0.0, $rosh['minute_table'][0]['hero_base_adjustment']);
+        $this->assertSame(2.2, $rosh['minute_table'][0]['hero_tempo_adjustment']);
+
+        Http::assertNotSent(function (Request $request): bool {
+            return str_contains((string) $request['query'], 'query GetHeroStatsByTime')
+                && ! isset($request['variables']['bracketBasicIds']);
+        });
+    }
+
+    public function test_rosh_heroes_uses_following_time_buckets_to_compute_minute_sixty_tempo_adjustment(): void
+    {
+        $picks = array_map(
+            static fn (array $pick): array => [
+                ...$pick,
+                'baseDiff' => 0.0,
+            ],
+            $this->roshPicks(),
+        );
+        $immortalTimeStats = $this->fakeRoshHeroStatsByTime($picks);
+        $immortalTimeStats['heroStatsByTime_1'] = [
+            ['heroId' => 114, 'positionIds' => ['POSITION_1'], 'time' => 59, 'matchCount' => 400, 'winCount' => 300],
+            ['heroId' => 114, 'positionIds' => ['POSITION_1'], 'time' => 60, 'matchCount' => 300, 'winCount' => 225],
+            ['heroId' => 114, 'positionIds' => ['POSITION_1'], 'time' => 61, 'matchCount' => 200, 'winCount' => 150],
+            ['heroId' => 114, 'positionIds' => ['POSITION_1'], 'time' => 62, 'matchCount' => 100, 'winCount' => 75],
+        ];
+
+        $rosh = $this->calculateLiveRoshWithSynergy([], $immortalTimeStats);
+        $minuteSixty = collect($rosh['minute_table'])->firstWhere('minute', 60);
+
+        $this->assertIsArray($minuteSixty);
+        $this->assertSame(0.7, $minuteSixty['hero_tempo_adjustment']);
+        $this->assertSame(0.7, $minuteSixty['hero_adjustment']);
     }
 
     public function test_rosh_heroes_request_can_apply_pro_player_adjustment_when_player_mode_is_enabled(): void
@@ -982,8 +1112,8 @@ class StratzRoshTest extends TestCase
                         ['range' => "'BLAST SLAM VI'!C9", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D9", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E9", 'values' => [['Radiant']]],
-                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['3,9%']]],
-                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['3,4%']]],
+                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['5,9%']]],
+                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['5,9%']]],
                         ['range' => "'BLAST SLAM VI'!J9", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!K9", 'values' => [['0,0%']]],
                     ],
@@ -1097,8 +1227,8 @@ class StratzRoshTest extends TestCase
             ->assertOk()
             ->assertJsonPath('type', 'rosh')
             ->assertJsonPath('data.formatted.match_id', 'LIVE')
-            ->assertJsonPath('data.formatted.radiant_odds_1', 3.9)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 3.4)
+            ->assertJsonPath('data.formatted.radiant_odds_1', 5.9)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 5.9)
             ->assertJsonPath('data.formatted.dire_odds_1', 0)
             ->assertJsonPath('data.formatted.dire_odds_2', 0)
             ->assertJsonPath('data.request.input.considerPlayers', true)
@@ -1530,8 +1660,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('type', 'rosh')
             ->assertJsonPath('data.formatted.radiant_team', 'Team Liquid')
             ->assertJsonPath('data.formatted.dire_team', 'GamerLegion')
-            ->assertJsonPath('data.formatted.radiant_odds_1', 3.3)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 2.8)
+            ->assertJsonPath('data.formatted.radiant_odds_1', 5.3)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 5.3)
             ->assertJsonPath('data.formatted.dire_odds_1', 0)
             ->assertJsonPath('data.formatted.dire_odds_2', 0)
             ->assertJsonPath('data.parsed_extension_rosh_payload.radiant_heroes', [114, 25, 23, 79, 112])
@@ -1539,7 +1669,7 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.source.type', 'dltv-browser-extension')
             ->assertJsonPath('data.source.page_url', 'https://ru.dltv.org/matches/123-team-liquid-vs-gamerlegion');
 
-        Http::assertSentCount(4);
+        Http::assertSentCount(3);
 
         Carbon::setTestNow();
     }
@@ -1861,6 +1991,70 @@ class StratzRoshTest extends TestCase
         }
 
         return $heroStats;
+    }
+
+    /**
+     * @param  array<string, mixed>  $synergy
+     * @return array<string, mixed>
+     */
+    private function calculateLiveRoshWithSynergy(array $synergy, ?array $timeStats = null): array
+    {
+        config()->set('services.stratz.token', 'test-token');
+
+        $picks = array_map(
+            static fn (array $pick): array => [
+                ...$pick,
+                'baseDiff' => 0.0,
+            ],
+            $this->roshPicks(),
+        );
+        $metaPositions = $this->fakeRoshMetaPositions($picks);
+        $timeStats ??= $this->fakeRoshHeroStatsByTime($picks);
+        $synergy = array_merge([
+            'matchUp_Prev_Week_1' => [],
+            'matchUp_Prev_Week_2' => [],
+            'matchUp_Prev_Week_3' => [],
+            'matchUp_Prev_Week_4' => [],
+        ], $synergy);
+
+        Http::fake(function (Request $request) use ($metaPositions, $timeStats, $synergy) {
+            $query = $request->offsetExists('query')
+                ? (string) $request['query']
+                : '';
+
+            if (str_contains($query, 'query HeroesMetaPositionsByWeek')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $metaPositions,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query GetHeroStatsByTime')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $timeStats,
+                    ],
+                ]);
+            }
+
+            if (str_contains($query, 'query Synergy')) {
+                return Http::response([
+                    'data' => [
+                        'heroStats' => $synergy,
+                    ],
+                ]);
+            }
+
+            return Http::response([], 500);
+        });
+
+        return app(StratzService::class)->getRoshFromHeroes([
+            'radiant_team' => 'Radiant',
+            'dire_team' => 'Dire',
+            'radiant_heroes' => [114, 25, 23, 79, 112],
+            'dire_heroes' => [70, 59, 39, 83, 37],
+        ]);
     }
 
     /**

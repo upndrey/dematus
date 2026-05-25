@@ -31,3 +31,4 @@ yarn-error.log
 /.vscode
 /.zed
 upheld-shield-221606-be4a23ada5ea.json
+.playwright-mcp

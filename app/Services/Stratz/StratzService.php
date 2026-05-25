@@ -10,9 +10,19 @@ class StratzService
 
     private const ROSH_GRAPH_WINDOW_RADIUS = 1;
 
-    private const ROSH_GRAPH_FALLBACK_MATCH_COUNT = 1000;
+    private const ROSH_HERO_BASE_PRIOR_MATCH_COUNT = 500;
+
+    private const ROSH_HERO_TEMPO_PRIOR_MATCH_COUNT = 500;
+
+    private const ROSH_HERO_TEMPO_WEIGHT = 0.35;
+
+    private const ROSH_SYNERGY_RELIABILITY_MATCH_COUNT = 100;
+
+    private const ROSH_SYNERGY_ADJUSTMENT_CAP = 15.0;
 
     private const ROSH_PLAYER_IMPACT_CAP = 1.5;
+
+    private const ROSH_SIDE_WINRATE_BIAS = 0.037;
 
     private const ROSH_TEAM_PLAYER_ADJUSTMENT_CAP = 2.5;
 
@@ -280,12 +290,12 @@ GRAPHQL;
      *         bracket:string,
      *         bracketBasicIds:string,
      *         week:int,
-     *         operations:array<int, array{key:string, operationName:string, variables:array<string, int|string>}>
+     *         heroIds:list<int>,
+     *         operations:array<int, array{key:string, operationName:string, variables:array<string, mixed>}>
      *     }
      * }  $request
      * @return array{
      *     heroes_meta_positions:array<string, mixed>,
-     *     hero_stats_by_time_global:array<string, mixed>,
      *     hero_stats_by_time_bracket:array<string, mixed>,
      *     synergy:array<string, mixed>
      * }
@@ -294,12 +304,15 @@ GRAPHQL;
     {
         $week = (int) data_get($request, 'analysis.week');
         $bracketBasicId = (string) data_get($request, 'analysis.bracketBasicIds');
+        $heroIds = array_values(array_filter(
+            (array) data_get($request, 'analysis.heroIds', []),
+            static fn (mixed $heroId): bool => is_int($heroId),
+        ));
 
         return [
-            'heroes_meta_positions' => $this->getRoshHeroesMetaPositionsByWeek($bracketBasicId, $week),
-            'hero_stats_by_time_global' => $this->getRoshHeroStatsByTime($week),
-            'hero_stats_by_time_bracket' => $this->getRoshHeroStatsByTime($week, $bracketBasicId),
-            'synergy' => $this->getRoshSynergy($bracketBasicId, $week),
+            'heroes_meta_positions' => $this->getRoshHeroesMetaPositionsByWeek($bracketBasicId, $week, $heroIds),
+            'hero_stats_by_time_bracket' => $this->getRoshHeroStatsByTime($week, $bracketBasicId, $heroIds),
+            'synergy' => $this->getRoshSynergy($bracketBasicId, $week, $heroIds),
         ];
     }
 
@@ -420,7 +433,8 @@ GRAPHQL;
      *         bracket:string,
      *         bracketBasicIds:string,
      *         week:int,
-     *         operations:array<int, array{key:string, operationName:string, variables:array<string, int|string>}>
+     *         heroIds:list<int>,
+     *         operations:array<int, array{key:string, operationName:string, variables:array<string, mixed>}>
      *     }
      * }
      */
@@ -439,6 +453,8 @@ GRAPHQL;
 
         $bracket = $this->mapBracketToId($bracketValue);
         $bracketBasicId = $this->mapBracketToBasicId($bracketValue);
+        $picks = $this->extractRoshPicksFromMatch($match);
+        $heroIds = $this->getRoshHeroIdsFromPicks($picks['radiant'], $picks['dire']);
 
         return [
             'match' => [
@@ -451,6 +467,7 @@ GRAPHQL;
                 'bracket' => $bracket,
                 'bracketBasicIds' => $bracketBasicId,
                 'week' => $week,
+                'heroIds' => $heroIds,
                 'operations' => [
                     [
                         'key' => 'heroes_meta_positions',
@@ -458,13 +475,7 @@ GRAPHQL;
                         'variables' => [
                             'bracketBasicIds' => $bracketBasicId,
                             'week' => $week,
-                        ],
-                    ],
-                    [
-                        'key' => 'hero_stats_by_time_global',
-                        'operationName' => 'GetHeroStatsByTime',
-                        'variables' => [
-                            'week' => $week,
+                            'heroIds' => $heroIds,
                         ],
                     ],
                     [
@@ -473,6 +484,7 @@ GRAPHQL;
                         'variables' => [
                             'bracketBasicIds' => $bracketBasicId,
                             'week' => $week,
+                            'heroIds' => $heroIds,
                         ],
                     ],
                     [
@@ -486,6 +498,7 @@ GRAPHQL;
                             'previousWeek1' => $week - 604800,
                             'previousWeek2' => $week - 1209600,
                             'previousWeek3' => $week - 1814400,
+                            'heroIds' => $heroIds,
                         ],
                     ],
                 ],
@@ -508,7 +521,8 @@ GRAPHQL;
      *         bracket:string,
      *         bracketBasicIds:string,
      *         week:int,
-     *         operations:array<int, array{key:string, operationName:string, variables:array<string, int|string>}>
+     *         heroIds:list<int>,
+     *         operations:array<int, array{key:string, operationName:string, variables:array<string, mixed>}>
      *     }
      * }
      */
@@ -517,6 +531,10 @@ GRAPHQL;
         $bracket = $this->mapBracketToId(8);
         $bracketBasicId = $this->mapBracketToBasicId(8);
         $considerPlayers = (bool) data_get($match, 'considerPlayers');
+        $picks = $this->extractRoshPicksFromMatch($match);
+        $radiantHeroIds = array_column($picks['radiant'], 'heroId');
+        $direHeroIds = array_column($picks['dire'], 'heroId');
+        $heroIds = $this->getRoshHeroIdsFromPicks($picks['radiant'], $picks['dire']);
 
         return [
             'input' => [
@@ -525,20 +543,8 @@ GRAPHQL;
                 'radiantTeam' => (string) data_get($match, 'radiantTeam.name', 'Radiant'),
                 'direTeam' => (string) data_get($match, 'direTeam.name', 'Dire'),
                 'considerPlayers' => $considerPlayers,
-                'radiantHeroes' => array_values(array_map(
-                    static fn (array $player): int => (int) $player['heroId'],
-                    array_filter(
-                        (array) data_get($match, 'players', []),
-                        static fn (mixed $player): bool => (bool) data_get($player, 'isRadiant'),
-                    ),
-                )),
-                'direHeroes' => array_values(array_map(
-                    static fn (array $player): int => (int) $player['heroId'],
-                    array_filter(
-                        (array) data_get($match, 'players', []),
-                        static fn (mixed $player): bool => ! (bool) data_get($player, 'isRadiant'),
-                    ),
-                )),
+                'radiantHeroes' => $radiantHeroIds,
+                'direHeroes' => $direHeroIds,
                 ...($considerPlayers ? [
                     'radiantPlayers' => $this->buildRoshRequestPlayersFromMatch($match, true),
                     'direPlayers' => $this->buildRoshRequestPlayersFromMatch($match, false),
@@ -548,6 +554,7 @@ GRAPHQL;
                 'bracket' => $bracket,
                 'bracketBasicIds' => $bracketBasicId,
                 'week' => $week,
+                'heroIds' => $heroIds,
                 'operations' => [
                     [
                         'key' => 'heroes_meta_positions',
@@ -555,13 +562,7 @@ GRAPHQL;
                         'variables' => [
                             'bracketBasicIds' => $bracketBasicId,
                             'week' => $week,
-                        ],
-                    ],
-                    [
-                        'key' => 'hero_stats_by_time_global',
-                        'operationName' => 'GetHeroStatsByTime',
-                        'variables' => [
-                            'week' => $week,
+                            'heroIds' => $heroIds,
                         ],
                     ],
                     [
@@ -570,6 +571,7 @@ GRAPHQL;
                         'variables' => [
                             'bracketBasicIds' => $bracketBasicId,
                             'week' => $week,
+                            'heroIds' => $heroIds,
                         ],
                     ],
                     [
@@ -583,6 +585,7 @@ GRAPHQL;
                             'previousWeek1' => $week - 604800,
                             'previousWeek2' => $week - 1209600,
                             'previousWeek3' => $week - 1814400,
+                            'heroIds' => $heroIds,
                         ],
                     ],
                 ],
@@ -638,8 +641,12 @@ GRAPHQL;
             static fn (mixed $value): bool => is_numeric($value),
         ));
 
-        $radiantOddsStart = $this->normalizeProbability($winValues[0] ?? null);
-        $radiantOddsEnd = $this->normalizeProbability($winValues[array_key_last($winValues)] ?? null);
+        $radiantOddsStart = $this->applyRoshSideWinRateBias(
+            $this->normalizeProbability($winValues[0] ?? null),
+        );
+        $radiantOddsEnd = $this->applyRoshSideWinRateBias(
+            $this->normalizeProbability($winValues[array_key_last($winValues)] ?? null),
+        );
 
         return [
             'match_id' => $matchId,
@@ -1343,7 +1350,6 @@ GRAPHQL;
      * @param  array<string, mixed>  $match
      * @param  array{
      *     heroes_meta_positions:array<string, mixed>,
-     *     hero_stats_by_time_global:array<string, mixed>,
      *     hero_stats_by_time_bracket:array<string, mixed>,
      *     synergy:array<string, mixed>
      * }  $analysis
@@ -1358,6 +1364,8 @@ GRAPHQL;
      *     match_percentage:float,
      *     win_rate_graph:float,
      *     hero_adjustment:float,
+     *     hero_base_adjustment:float,
+     *     hero_tempo_adjustment:float,
      *     synergy_adjustment:float,
      *     player_adjustment:float
      * }>
@@ -1373,13 +1381,18 @@ GRAPHQL;
             return [];
         }
 
-        $globalGraphData = $this->buildRoshComputedGraphData(
-            (array) ($analysis['hero_stats_by_time_global'] ?? []),
+        $heroPositionData = $this->buildRoshHeroPositionData(
+            (array) ($analysis['heroes_meta_positions'] ?? []),
+        );
+        $heroBaseAdjustment = $this->calculateRoshHeroBaseAdjustment(
+            $radiantPicks,
+            $direPicks,
+            $heroPositionData,
         );
 
         $computedGraphData = $this->buildRoshComputedGraphData(
             (array) ($analysis['hero_stats_by_time_bracket'] ?? []),
-            $globalGraphData,
+            $heroPositionData,
         );
 
         if ($computedGraphData === []) {
@@ -1399,8 +1412,8 @@ GRAPHQL;
         $minuteTable = [];
 
         foreach ($computedGraphData as $bucket) {
-            $radiantMinuteDiff = 0.0;
-            $direMinuteDiff = 0.0;
+            $radiantTempoTotal = 0.0;
+            $direTempoTotal = 0.0;
             $minuteMatchCount = 0;
             $totalMatchCount = 0;
 
@@ -1414,7 +1427,7 @@ GRAPHQL;
                     continue;
                 }
 
-                $radiantMinuteDiff += (float) data_get($heroStats, 'win_rate_diff', 0.0);
+                $radiantTempoTotal += (float) data_get($heroStats, 'tempo_effect', 0.0);
                 $minuteMatchCount += (int) data_get($heroStats, 'match_count', 0);
                 $totalMatchCount += (int) data_get($heroStats, 'total_match_count', 0);
             }
@@ -1429,12 +1442,18 @@ GRAPHQL;
                     continue;
                 }
 
-                $direMinuteDiff += (float) data_get($heroStats, 'win_rate_diff', 0.0);
+                $direTempoTotal += (float) data_get($heroStats, 'tempo_effect', 0.0);
                 $minuteMatchCount += (int) data_get($heroStats, 'match_count', 0);
                 $totalMatchCount += (int) data_get($heroStats, 'total_match_count', 0);
             }
 
-            $heroAdjustment = ($radiantMinuteDiff - $direMinuteDiff) / $pickCount;
+            $heroTempoAdjustment = $this->calculateRoshTeamAverageDifference(
+                $radiantTempoTotal,
+                count($radiantPicks),
+                $direTempoTotal,
+                count($direPicks),
+            );
+            $heroAdjustment = $heroBaseAdjustment + $heroTempoAdjustment;
             $winRateGraph = round($heroAdjustment + $synergyOffset + $playerAdjustment, 1);
 
             $matchPercentage = $totalMatchCount > 0
@@ -1452,6 +1471,8 @@ GRAPHQL;
                 'match_percentage' => $matchPercentage,
                 'win_rate_graph' => $winRateGraph,
                 'hero_adjustment' => round($heroAdjustment, 1),
+                'hero_base_adjustment' => round($heroBaseAdjustment, 1),
+                'hero_tempo_adjustment' => round($heroTempoAdjustment, 1),
                 'synergy_adjustment' => round($synergyOffset, 1),
                 'player_adjustment' => $playerAdjustment,
             ];
@@ -1561,6 +1582,19 @@ GRAPHQL;
     }
 
     /**
+     * @param  list<array{heroId:int, positionId:int}>  $radiantPicks
+     * @param  list<array{heroId:int, positionId:int}>  $direPicks
+     * @return list<int>
+     */
+    private function getRoshHeroIdsFromPicks(array $radiantPicks, array $direPicks): array
+    {
+        return array_values(array_unique(array_column(
+            [...$radiantPicks, ...$direPicks],
+            'heroId',
+        )));
+    }
+
+    /**
      * @param  array<string, mixed>  $rawSynergy
      * @return array{
      *     with:array<int, array<int, array{matchCount:int, synergy:float}>>,
@@ -1577,9 +1611,7 @@ GRAPHQL;
             $weeks[] = (array) data_get($rawSynergy, 'matchUp_Prev_Week_'.$weekIndex, []);
         }
 
-        foreach ($weeks as $weekIndex => $rows) {
-            $isLastWeek = $weekIndex === array_key_last($weeks);
-
+        foreach ($weeks as $rows) {
             foreach ($rows as $row) {
                 $heroId = data_get($row, 'heroId');
 
@@ -1602,7 +1634,6 @@ GRAPHQL;
                         $heroId2,
                         (int) $matchCount,
                         (float) $synergy,
-                        $isLastWeek,
                     );
                 }
 
@@ -1621,15 +1652,14 @@ GRAPHQL;
                         $heroId2,
                         (int) $matchCount,
                         (float) $synergy,
-                        $isLastWeek,
                     );
                 }
             }
         }
 
         return [
-            'with' => $synergyWithData,
-            'vs' => $synergyVsData,
+            'with' => $this->applyRoshSynergyReliability($synergyWithData),
+            'vs' => $this->applyRoshSynergyReliability($synergyVsData),
         ];
     }
 
@@ -1642,7 +1672,6 @@ GRAPHQL;
         int $heroId2,
         int $matchCount,
         float $synergy,
-        bool $isLastWeek,
     ): void {
         if (! isset($lookup[$heroId][$heroId2])) {
             $lookup[$heroId][$heroId2] = [
@@ -1668,38 +1697,148 @@ GRAPHQL;
 
         $lookup[$heroId][$heroId2] = [
             'matchCount' => $totalMatchCount,
-            'synergy' => $isLastWeek && $totalMatchCount < 100
-                ? round(($weightedSynergy * $totalMatchCount) / 100, 2)
-                : round($weightedSynergy, 2),
+            'synergy' => $weightedSynergy,
         ];
     }
 
     /**
+     * @param  array<int, array<int, array{matchCount:int, synergy:float}>>  $lookup
+     * @return array<int, array<int, array{matchCount:int, synergy:float}>>
+     */
+    private function applyRoshSynergyReliability(array $lookup): array
+    {
+        foreach ($lookup as $heroId => $entries) {
+            foreach ($entries as $heroId2 => $entry) {
+                $confidence = $this->clampFloat(
+                    $entry['matchCount'] / self::ROSH_SYNERGY_RELIABILITY_MATCH_COUNT,
+                    0.0,
+                    1.0,
+                );
+
+                $lookup[$heroId][$heroId2]['synergy'] = round($entry['synergy'] * $confidence, 2);
+            }
+        }
+
+        return $lookup;
+    }
+
+    /**
+     * @param  array<string, mixed>  $heroesMetaPositions
+     * @return array<int, array<int, array{
+     *     match_count:int,
+     *     raw_win_rate_diff:float,
+     *     base_effect:float
+     * }>>
+     */
+    private function buildRoshHeroPositionData(array $heroesMetaPositions): array
+    {
+        $positionData = [];
+
+        foreach (range(1, 5) as $positionId) {
+            foreach ((array) data_get($heroesMetaPositions, 'heroesPos_'.$positionId, []) as $row) {
+                $heroId = data_get($row, 'heroId');
+                $matchCount = data_get($row, 'matchCount');
+                $winCount = data_get($row, 'winCount');
+
+                if (! is_int($heroId) || ! is_numeric($matchCount) || ! is_numeric($winCount) || (int) $matchCount <= 0) {
+                    continue;
+                }
+
+                $matchCount = (int) $matchCount;
+                $rawWinRateDiff = (((int) $winCount / $matchCount) * 100) - 50;
+                $confidence = $matchCount / ($matchCount + self::ROSH_HERO_BASE_PRIOR_MATCH_COUNT);
+
+                $positionData[$positionId][$heroId] = [
+                    'match_count' => $matchCount,
+                    'raw_win_rate_diff' => $rawWinRateDiff,
+                    'base_effect' => $rawWinRateDiff * $confidence,
+                ];
+            }
+        }
+
+        return $positionData;
+    }
+
+    /**
+     * @param  list<array{heroId:int, positionId:int}>  $radiantPicks
+     * @param  list<array{heroId:int, positionId:int}>  $direPicks
+     * @param  array<int, array<int, array{
+     *     match_count:int,
+     *     raw_win_rate_diff:float,
+     *     base_effect:float
+     * }>>  $heroPositionData
+     */
+    private function calculateRoshHeroBaseAdjustment(
+        array $radiantPicks,
+        array $direPicks,
+        array $heroPositionData,
+    ): float {
+        $radiantTotal = $this->sumRoshHeroPositionEffects($radiantPicks, $heroPositionData);
+        $direTotal = $this->sumRoshHeroPositionEffects($direPicks, $heroPositionData);
+
+        return $this->calculateRoshTeamAverageDifference(
+            $radiantTotal,
+            count($radiantPicks),
+            $direTotal,
+            count($direPicks),
+        );
+    }
+
+    /**
+     * @param  list<array{heroId:int, positionId:int}>  $picks
+     * @param  array<int, array<int, array{
+     *     match_count:int,
+     *     raw_win_rate_diff:float,
+     *     base_effect:float
+     * }>>  $heroPositionData
+     */
+    private function sumRoshHeroPositionEffects(array $picks, array $heroPositionData): float
+    {
+        $total = 0.0;
+
+        foreach ($picks as $pick) {
+            $total += (float) data_get(
+                $heroPositionData,
+                $pick['positionId'].'.'.$pick['heroId'].'.base_effect',
+                0.0,
+            );
+        }
+
+        return $total;
+    }
+
+    private function calculateRoshTeamAverageDifference(
+        float $radiantTotal,
+        int $radiantPickCount,
+        float $direTotal,
+        int $direPickCount,
+    ): float {
+        $radiantAverage = $radiantPickCount > 0 ? $radiantTotal / $radiantPickCount : 0.0;
+        $direAverage = $direPickCount > 0 ? $direTotal / $direPickCount : 0.0;
+
+        return $radiantAverage - $direAverage;
+    }
+
+    /**
      * @param  array<string, mixed>  $heroStatsByTime
-     * @param  array<int, array{
-     *     time:int,
-     *     time_start:int,
-     *     time_end:int,
-     *     heroes:array<int, array<int, array{
-     *         hero_id:int,
-     *         win_rate_diff:float,
-     *         match_count:int,
-     *         total_match_count:int
-     *     }>>
-     * }> | null  $fallbackGraphData
+     * @param  array<int, array<int, array{
+     *     match_count:int,
+     *     raw_win_rate_diff:float,
+     *     base_effect:float
+     * }>>  $heroPositionData
      * @return array<int, array{
      *     time:int,
      *     time_start:int,
      *     time_end:int,
      *     heroes:array<int, array<int, array{
      *         hero_id:int,
-     *         win_rate_diff:float,
+     *         tempo_effect:float,
      *         match_count:int,
      *         total_match_count:int
      *     }>>
      * }>
      */
-    private function buildRoshComputedGraphData(array $heroStatsByTime, ?array $fallbackGraphData = null): array
+    private function buildRoshComputedGraphData(array $heroStatsByTime, array $heroPositionData): array
     {
         $computedGraphData = [];
 
@@ -1753,6 +1892,19 @@ GRAPHQL;
                 $heroId = $row['heroId'];
                 $time = $row['time'];
 
+                if ($time < self::ROSH_MIN_TIME || $time > self::ROSH_MAX_TIME) {
+                    continue;
+                }
+
+                $baseWinRateDiff = data_get(
+                    $heroPositionData,
+                    $positionId.'.'.$heroId.'.raw_win_rate_diff',
+                );
+
+                if (! is_numeric($baseWinRateDiff)) {
+                    continue;
+                }
+
                 if (! isset($computedGraphData[$time])) {
                     $computedGraphData[$time] = [
                         'time' => $time,
@@ -1764,16 +1916,6 @@ GRAPHQL;
 
                 if (! isset($computedGraphData[$time]['heroes'][$positionId])) {
                     $computedGraphData[$time]['heroes'][$positionId] = [];
-                }
-
-                if (
-                    $row['matchCount'] < self::ROSH_GRAPH_FALLBACK_MATCH_COUNT
-                    && $fallbackGraphData !== null
-                    && isset($fallbackGraphData[$time]['heroes'][$positionId][$heroId])
-                ) {
-                    $computedGraphData[$time]['heroes'][$positionId][$heroId] = $fallbackGraphData[$time]['heroes'][$positionId][$heroId];
-
-                    continue;
                 }
 
                 $windowStart = max(0, $index - self::ROSH_GRAPH_WINDOW_RADIUS);
@@ -1790,9 +1932,14 @@ GRAPHQL;
                     continue;
                 }
 
+                $durationWinRateDiff = (($windowWinCount / $windowMatchCount) * 100) - 50;
+                $confidence = $windowMatchCount / ($windowMatchCount + self::ROSH_HERO_TEMPO_PRIOR_MATCH_COUNT);
+
                 $computedGraphData[$time]['heroes'][$positionId][$heroId] = [
                     'hero_id' => $heroId,
-                    'win_rate_diff' => (($windowWinCount / $windowMatchCount) * 100) - 50,
+                    'tempo_effect' => ($durationWinRateDiff - (float) $baseWinRateDiff)
+                        * $confidence
+                        * self::ROSH_HERO_TEMPO_WEIGHT,
                     'match_count' => $row['matchCount'],
                     'total_match_count' => $totalMatchCountByHeroId[$heroId],
                 ];
@@ -1812,69 +1959,97 @@ GRAPHQL;
      */
     private function calculateRoshSynergyOffset(array $radiantPicks, array $direPicks, array $synergyData): float
     {
-        $radiantSynergy = 0.0;
-        $direSynergy = 0.0;
+        $radiantSynergy = $this->sumRoshTeamPairSynergies(
+            $radiantPicks,
+            (array) ($synergyData['with'] ?? []),
+        );
+        $direSynergy = $this->sumRoshTeamPairSynergies(
+            $direPicks,
+            (array) ($synergyData['with'] ?? []),
+        );
+        $matchupAdvantage = $this->sumRoshMatchupAdvantages(
+            $radiantPicks,
+            $direPicks,
+            (array) ($synergyData['vs'] ?? []),
+        );
 
-        foreach ($radiantPicks as $pick) {
-            $radiantSynergy += $this->calculateRoshHeroSynergy(
-                $radiantPicks,
-                $direPicks,
-                $pick['heroId'],
-                $synergyData,
-            );
-        }
-
-        foreach ($direPicks as $pick) {
-            $direSynergy += $this->calculateRoshHeroSynergy(
-                $direPicks,
-                $radiantPicks,
-                $pick['heroId'],
-                $synergyData,
-            );
-        }
-
-        return $radiantSynergy - $direSynergy;
+        return $this->clampFloat(
+            $radiantSynergy - $direSynergy + $matchupAdvantage,
+            -self::ROSH_SYNERGY_ADJUSTMENT_CAP,
+            self::ROSH_SYNERGY_ADJUSTMENT_CAP,
+        );
     }
 
     /**
      * @param  list<array{heroId:int, positionId:int}>  $teamPicks
-     * @param  list<array{heroId:int, positionId:int}>  $enemyPicks
-     * @param  array{
-     *     with:array<int, array<int, array{matchCount:int, synergy:float}>>,
-     *     vs:array<int, array<int, array{matchCount:int, synergy:float}>>
-     * }  $synergyData
-     */
-    private function calculateRoshHeroSynergy(
-        array $teamPicks,
-        array $enemyPicks,
-        int $heroId,
-        array $synergyData,
-    ): float {
-        return $this->sumRoshSynergyValues($teamPicks, $heroId, (array) ($synergyData['with'] ?? []))
-            + $this->sumRoshSynergyValues($enemyPicks, $heroId, (array) ($synergyData['vs'] ?? []));
-    }
-
-    /**
-     * @param  list<array{heroId:int, positionId:int}>  $picks
      * @param  array<int, array<int, array{matchCount:int, synergy:float}>>  $lookup
      */
-    private function sumRoshSynergyValues(array $picks, int $heroId, array $lookup): float
+    private function sumRoshTeamPairSynergies(array $teamPicks, array $lookup): float
     {
-        if (! isset($lookup[$heroId])) {
-            return 0.0;
-        }
-
         $synergy = 0.0;
+        $pickCount = count($teamPicks);
 
-        foreach ($picks as $pick) {
-            if ($pick['heroId'] === $heroId) {
-                continue;
+        for ($leftIndex = 0; $leftIndex < $pickCount; $leftIndex++) {
+            for ($rightIndex = $leftIndex + 1; $rightIndex < $pickCount; $rightIndex++) {
+                $synergy += $this->averageRoshPairSynergy(
+                    $teamPicks[$leftIndex]['heroId'],
+                    $teamPicks[$rightIndex]['heroId'],
+                    $lookup,
+                );
             }
-
-            $synergy += (float) data_get($lookup, $heroId.'.'.$pick['heroId'].'.synergy', 0.0);
         }
 
         return $synergy;
+    }
+
+    /**
+     * @param  list<array{heroId:int, positionId:int}>  $radiantPicks
+     * @param  list<array{heroId:int, positionId:int}>  $direPicks
+     * @param  array<int, array<int, array{matchCount:int, synergy:float}>>  $lookup
+     */
+    private function sumRoshMatchupAdvantages(array $radiantPicks, array $direPicks, array $lookup): float
+    {
+        $advantage = 0.0;
+
+        foreach ($radiantPicks as $radiantPick) {
+            foreach ($direPicks as $direPick) {
+                $radiantSynergy = data_get($lookup, $radiantPick['heroId'].'.'.$direPick['heroId'].'.synergy');
+                $direSynergy = data_get($lookup, $direPick['heroId'].'.'.$radiantPick['heroId'].'.synergy');
+
+                if (is_numeric($radiantSynergy) && is_numeric($direSynergy)) {
+                    $advantage += ((float) $radiantSynergy - (float) $direSynergy) / 2;
+
+                    continue;
+                }
+
+                if (is_numeric($radiantSynergy)) {
+                    $advantage += (float) $radiantSynergy;
+                } elseif (is_numeric($direSynergy)) {
+                    $advantage -= (float) $direSynergy;
+                }
+            }
+        }
+
+        return $advantage;
+    }
+
+    /**
+     * @param  array<int, array<int, array{matchCount:int, synergy:float}>>  $lookup
+     */
+    private function averageRoshPairSynergy(int $heroId, int $heroId2, array $lookup): float
+    {
+        $leftSynergy = data_get($lookup, $heroId.'.'.$heroId2.'.synergy');
+        $rightSynergy = data_get($lookup, $heroId2.'.'.$heroId.'.synergy');
+
+        if (is_numeric($leftSynergy) && is_numeric($rightSynergy)) {
+            return ((float) $leftSynergy + (float) $rightSynergy) / 2;
+        }
+
+        if (is_numeric($leftSynergy)) {
+            return (float) $leftSynergy;
+        }
+
+        return is_numeric($rightSynergy) ? (float) $rightSynergy : 0.0;
     }
 
     /**
@@ -1933,7 +2108,7 @@ GRAPHQL;
     /**
      * @return array<string, mixed>
      */
-    private function getRoshHeroesMetaPositionsByWeek(string $bracketBasicId, int $week): array
+    private function getRoshHeroesMetaPositionsByWeek(string $bracketBasicId, int $week, array $heroIds): array
     {
         $query = <<<'GRAPHQL'
 query HeroesMetaPositionsByWeek($bracketBasicIds: [RankBracketBasicEnum], $week: Long, $heroIds: [Short]) {
@@ -2000,6 +2175,7 @@ GRAPHQL;
         $data = $this->api->query($query, [
             'bracketBasicIds' => $bracketBasicId,
             'week' => $week,
+            'heroIds' => $heroIds,
         ]);
 
         return (array) data_get($data, 'heroStats', []);
@@ -2008,18 +2184,19 @@ GRAPHQL;
     /**
      * @return array<string, mixed>
      */
-    private function getRoshHeroStatsByTime(int $week, ?string $bracketBasicId = null): array
+    private function getRoshHeroStatsByTime(int $week, string $bracketBasicId, array $heroIds): array
     {
         $query = <<<'GRAPHQL'
-query GetHeroStatsByTime($bracketBasicIds: [RankBracketBasicEnum], $week: Long) {
+query GetHeroStatsByTime($bracketBasicIds: [RankBracketBasicEnum], $week: Long, $heroIds: [Short]) {
   heroStats {
     heroStatsByTime_1: stats(
       bracketBasicIds: $bracketBasicIds
       positionIds: [POSITION_1]
       groupByTime: true
       minTime: 20
-      maxTime: 60
+      maxTime: 62
       week: $week
+      heroIds: $heroIds
     ) {
       heroId
       time
@@ -2031,8 +2208,9 @@ query GetHeroStatsByTime($bracketBasicIds: [RankBracketBasicEnum], $week: Long) 
       positionIds: [POSITION_2]
       groupByTime: true
       minTime: 20
-      maxTime: 60
+      maxTime: 62
       week: $week
+      heroIds: $heroIds
     ) {
       heroId
       time
@@ -2044,8 +2222,9 @@ query GetHeroStatsByTime($bracketBasicIds: [RankBracketBasicEnum], $week: Long) 
       positionIds: [POSITION_3]
       groupByTime: true
       minTime: 20
-      maxTime: 60
+      maxTime: 62
       week: $week
+      heroIds: $heroIds
     ) {
       heroId
       time
@@ -2057,8 +2236,9 @@ query GetHeroStatsByTime($bracketBasicIds: [RankBracketBasicEnum], $week: Long) 
       positionIds: [POSITION_4]
       groupByTime: true
       minTime: 20
-      maxTime: 60
+      maxTime: 62
       week: $week
+      heroIds: $heroIds
     ) {
       heroId
       time
@@ -2070,8 +2250,9 @@ query GetHeroStatsByTime($bracketBasicIds: [RankBracketBasicEnum], $week: Long) 
       positionIds: [POSITION_5]
       groupByTime: true
       minTime: 20
-      maxTime: 60
+      maxTime: 62
       week: $week
+      heroIds: $heroIds
     ) {
       heroId
       time
@@ -2084,11 +2265,9 @@ GRAPHQL;
 
         $variables = [
             'week' => $week,
+            'bracketBasicIds' => $bracketBasicId,
+            'heroIds' => $heroIds,
         ];
-
-        if ($bracketBasicId !== null) {
-            $variables['bracketBasicIds'] = $bracketBasicId;
-        }
 
         $data = $this->api->query($query, $variables);
 
@@ -2098,7 +2277,7 @@ GRAPHQL;
     /**
      * @return array<string, mixed>
      */
-    private function getRoshSynergy(string $bracketBasicId, int $week): array
+    private function getRoshSynergy(string $bracketBasicId, int $week, array $heroIds): array
     {
         $query = <<<'GRAPHQL'
 query Synergy(
@@ -2200,6 +2379,7 @@ GRAPHQL;
             'previousWeek1' => $week - 604800,
             'previousWeek2' => $week - 1209600,
             'previousWeek3' => $week - 1814400,
+            'heroIds' => $heroIds,
         ]);
 
         return (array) data_get($data, 'heroStats', []);
@@ -2265,6 +2445,15 @@ GRAPHQL;
         return round((float) $value, 4);
     }
 
+    private function applyRoshSideWinRateBias(?float $value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return round($this->clampFloat($value + self::ROSH_SIDE_WINRATE_BIAS, 0.0, 1.0), 4);
+    }
+
     private function normalizePercentMetric(mixed $value): ?float
     {
         if (! is_numeric($value)) {
@@ -2320,7 +2509,6 @@ GRAPHQL;
     /**
      * @param  array{
      *     heroes_meta_positions:array<string, mixed>,
-     *     hero_stats_by_time_global:array<string, mixed>,
      *     hero_stats_by_time_bracket:array<string, mixed>,
      *     synergy:array<string, mixed>
      * }  $analysis
@@ -2338,16 +2526,6 @@ GRAPHQL;
                     'heroesPos_4',
                     'heroesPos_5',
                     'heroes',
-                ],
-            ),
-            'hero_stats_by_time_global' => $this->summarizeRoshFlatBuckets(
-                (array) ($analysis['hero_stats_by_time_global'] ?? []),
-                [
-                    'heroStatsByTime_1',
-                    'heroStatsByTime_2',
-                    'heroStatsByTime_3',
-                    'heroStatsByTime_4',
-                    'heroStatsByTime_5',
                 ],
             ),
             'hero_stats_by_time_bracket' => $this->summarizeRoshFlatBuckets(

@@ -66,9 +66,10 @@ class StratzDraftTest extends TestCase
             return Http::response([], 500);
         });
 
-        $response = $this->postJson(route('stratz.draft'), [
-            'match_id' => 8294471853,
-        ]);
+        $response = $this->withSession([config('static-auth.session_key') => true])
+            ->postJson(route('stratz.draft'), [
+                'match_id' => 8294471853,
+            ]);
 
         $response
             ->assertOk()
@@ -78,10 +79,10 @@ class StratzDraftTest extends TestCase
                     'formatted' => [
                         'match_id' => 8294471853,
                         'winner' => 'radiant',
-                        'radiant_odds_1' => 0.61,
-                        'radiant_odds_2' => 0.91,
-                        'dire_odds_1' => 0.39,
-                        'dire_odds_2' => 0.09,
+                        'radiant_odds_1' => 0.647,
+                        'radiant_odds_2' => 0.947,
+                        'dire_odds_1' => 0.353,
+                        'dire_odds_2' => 0.053,
                     ],
                     'request' => [
                         'matchId' => 8294471853,
@@ -173,9 +174,10 @@ class StratzDraftTest extends TestCase
             return Http::response([], 500);
         });
 
-        $response = $this->postJson(route('stratz.draft'), [
-            'match_id' => 8294471853,
-        ]);
+        $response = $this->withSession([config('static-auth.session_key') => true])
+            ->postJson(route('stratz.draft'), [
+                'match_id' => 8294471853,
+            ]);
 
         $response
             ->assertStatus(422)
