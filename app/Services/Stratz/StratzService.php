@@ -16,9 +16,11 @@ class StratzService
 
     private const ROSH_HERO_TEMPO_WEIGHT = 0.35;
 
+    private const ROSH_HERO_ADJUSTMENT_WEIGHT = 2.0;
+
     private const ROSH_SYNERGY_RELIABILITY_MATCH_COUNT = 100;
 
-    private const ROSH_SYNERGY_ADJUSTMENT_CAP = 15.0;
+    private const ROSH_SYNERGY_ADJUSTMENT_CAP = 30.0;
 
     private const ROSH_PLAYER_IMPACT_CAP = 1.5;
 
@@ -1388,7 +1390,7 @@ GRAPHQL;
             $radiantPicks,
             $direPicks,
             $heroPositionData,
-        );
+        ) * self::ROSH_HERO_ADJUSTMENT_WEIGHT;
 
         $computedGraphData = $this->buildRoshComputedGraphData(
             (array) ($analysis['hero_stats_by_time_bracket'] ?? []),
@@ -1452,7 +1454,7 @@ GRAPHQL;
                 count($radiantPicks),
                 $direTempoTotal,
                 count($direPicks),
-            );
+            ) * self::ROSH_HERO_ADJUSTMENT_WEIGHT;
             $heroAdjustment = $heroBaseAdjustment + $heroTempoAdjustment;
             $winRateGraph = round($heroAdjustment + $synergyOffset + $playerAdjustment, 1);
 
@@ -1681,10 +1683,6 @@ GRAPHQL;
         }
 
         $currentEntry = $lookup[$heroId][$heroId2];
-
-        if ($currentEntry['matchCount'] >= 100) {
-            return;
-        }
 
         $totalMatchCount = $currentEntry['matchCount'] + $matchCount;
 

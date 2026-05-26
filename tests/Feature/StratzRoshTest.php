@@ -88,8 +88,8 @@ class StratzRoshTest extends TestCase
                         ['range' => "'BLAST SLAM VI'!C8", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D8", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E8", 'values' => [['Radiant']]],
-                        ['range' => "'BLAST SLAM VI'!G8", 'values' => [['5,3%']]],
-                        ['range' => "'BLAST SLAM VI'!H8", 'values' => [['5,3%']]],
+                        ['range' => "'BLAST SLAM VI'!G8", 'values' => [['10,6%']]],
+                        ['range' => "'BLAST SLAM VI'!H8", 'values' => [['10,6%']]],
                         ['range' => "'BLAST SLAM VI'!J8", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!K8", 'values' => [['0,0%']]],
                     ],
@@ -160,8 +160,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.formatted.bracket', 'IMMORTAL')
             ->assertJsonPath('data.formatted.bracket_basic', 'DIVINE_IMMORTAL')
             ->assertJsonPath('data.formatted.date_time', 1770574943)
-            ->assertJsonPath('data.formatted.radiant_odds_1', 5.3)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 5.3)
+            ->assertJsonPath('data.formatted.radiant_odds_1', 10.6)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 10.6)
             ->assertJsonPath('data.formatted.dire_odds_1', 0)
             ->assertJsonPath('data.formatted.dire_odds_2', 0)
             ->assertJsonCount(2, 'data.minute_table')
@@ -169,17 +169,17 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.minute_table.0.time_start', 20)
             ->assertJsonPath('data.minute_table.0.time_end', 21)
             ->assertJsonPath('data.minute_table.0.advantage_side', 'radiant')
-            ->assertJsonPath('data.minute_table.0.advantage_percent', 5.3)
-            ->assertJsonPath('data.minute_table.0.radiant_advantage', 5.3)
-            ->assertJsonPath('data.minute_table.0.hero_base_adjustment', 5.3)
+            ->assertJsonPath('data.minute_table.0.advantage_percent', 10.6)
+            ->assertJsonPath('data.minute_table.0.radiant_advantage', 10.6)
+            ->assertJsonPath('data.minute_table.0.hero_base_adjustment', 10.6)
             ->assertJsonPath('data.minute_table.0.hero_tempo_adjustment', 0)
             ->assertJsonPath('data.minute_table.0.dire_advantage', 0)
             ->assertJsonPath('data.minute_table.1.minute', 21)
             ->assertJsonPath('data.minute_table.1.time_start', 20)
             ->assertJsonPath('data.minute_table.1.time_end', 22)
             ->assertJsonPath('data.minute_table.1.advantage_side', 'radiant')
-            ->assertJsonPath('data.minute_table.1.advantage_percent', 5.3)
-            ->assertJsonPath('data.minute_table.1.radiant_advantage', 5.3)
+            ->assertJsonPath('data.minute_table.1.advantage_percent', 10.6)
+            ->assertJsonPath('data.minute_table.1.radiant_advantage', 10.6)
             ->assertJsonPath('data.minute_table.1.dire_advantage', 0)
             ->assertJsonPath('data.request.match.operationName', 'GetMatchPicksBans')
             ->assertJsonPath('data.request.match.variables.matchId', $matchId)
@@ -192,8 +192,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.google_sheets.cells.C8', 'Team Liquid')
             ->assertJsonPath('data.google_sheets.cells.D8', 'GamerLegion')
             ->assertJsonPath('data.google_sheets.cells.E8', 'Radiant')
-            ->assertJsonPath('data.google_sheets.cells.G8', '5,3%')
-            ->assertJsonPath('data.google_sheets.cells.H8', '5,3%')
+            ->assertJsonPath('data.google_sheets.cells.G8', '10,6%')
+            ->assertJsonPath('data.google_sheets.cells.H8', '10,6%')
             ->assertJsonPath('data.google_sheets.cells.J8', '0,0%')
             ->assertJsonPath('data.google_sheets.cells.K8', '0,0%')
             ->assertJsonPath('data.raw.match.id', $matchId)
@@ -292,7 +292,7 @@ class StratzRoshTest extends TestCase
                     [
                         'range' => "'BLAST SLAM VI'!G8:H8",
                         'majorDimension' => 'ROWS',
-                        'values' => [['5,3%', '5,3%']],
+                        'values' => [['10,6%', '10,6%']],
                     ],
                     [
                         'range' => "'BLAST SLAM VI'!J8:K8",
@@ -386,8 +386,8 @@ class StratzRoshTest extends TestCase
                         ['range' => "'BLAST SLAM VI'!C9", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D9", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E9", 'values' => [['Radiant']]],
-                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['5,3%']]],
-                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['5,3%']]],
+                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['10,6%']]],
+                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['10,6%']]],
                         ['range' => "'BLAST SLAM VI'!J9", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!K9", 'values' => [['0,0%']]],
                     ],
@@ -454,8 +454,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.google_sheets.cells.C9', 'Team Liquid')
             ->assertJsonPath('data.google_sheets.cells.D9', 'GamerLegion')
             ->assertJsonPath('data.google_sheets.cells.E9', 'Radiant')
-            ->assertJsonPath('data.google_sheets.cells.G9', '5,3%')
-            ->assertJsonPath('data.google_sheets.cells.H9', '5,3%')
+            ->assertJsonPath('data.google_sheets.cells.G9', '10,6%')
+            ->assertJsonPath('data.google_sheets.cells.H9', '10,6%')
             ->assertJsonPath('data.google_sheets.cells.J9', '0,0%')
             ->assertJsonPath('data.google_sheets.cells.K9', '0,0%');
 
@@ -471,7 +471,7 @@ class StratzRoshTest extends TestCase
                     [
                         'range' => "'BLAST SLAM VI'!G9:H9",
                         'majorDimension' => 'ROWS',
-                        'values' => [['5,3%', '5,3%']],
+                        'values' => [['10,6%', '10,6%']],
                     ],
                     [
                         'range' => "'BLAST SLAM VI'!J9:K9",
@@ -566,8 +566,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.formatted.match_id', 'LIVE')
             ->assertJsonPath('data.formatted.radiant_team', 'Team Liquid')
             ->assertJsonPath('data.formatted.dire_team', 'GamerLegion')
-            ->assertJsonPath('data.formatted.radiant_odds_1', 5.3)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 5.3)
+            ->assertJsonPath('data.formatted.radiant_odds_1', 10.6)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 10.6)
             ->assertJsonPath('data.request.input.mode', 'heroes')
             ->assertJsonPath('data.request.input.radiantHeroes.0', 114)
             ->assertJsonPath('data.request.input.direHeroes.4', 37)
@@ -776,8 +776,8 @@ class StratzRoshTest extends TestCase
                         ['range' => "'BLAST SLAM VI'!C9", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D9", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E9", 'values' => [['Radiant']]],
-                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['5,3%']]],
-                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['5,3%']]],
+                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['10,6%']]],
+                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['10,6%']]],
                         ['range' => "'BLAST SLAM VI'!J9", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!K9", 'values' => [['0,0%']]],
                     ],
@@ -841,8 +841,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.formatted.bracket', 'IMMORTAL')
             ->assertJsonPath('data.formatted.bracket_basic', 'DIVINE_IMMORTAL')
             ->assertJsonPath('data.formatted.date_time', $week)
-            ->assertJsonPath('data.formatted.radiant_odds_1', 5.3)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 5.3)
+            ->assertJsonPath('data.formatted.radiant_odds_1', 10.6)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 10.6)
             ->assertJsonPath('data.formatted.dire_odds_1', 0)
             ->assertJsonPath('data.formatted.dire_odds_2', 0)
             ->assertJsonPath('data.request.input.mode', 'heroes')
@@ -858,8 +858,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.google_sheets.cells.C9', 'Team Liquid')
             ->assertJsonPath('data.google_sheets.cells.D9', 'GamerLegion')
             ->assertJsonPath('data.google_sheets.cells.E9', 'Radiant')
-            ->assertJsonPath('data.google_sheets.cells.G9', '5,3%')
-            ->assertJsonPath('data.google_sheets.cells.H9', '5,3%')
+            ->assertJsonPath('data.google_sheets.cells.G9', '10,6%')
+            ->assertJsonPath('data.google_sheets.cells.H9', '10,6%')
             ->assertJsonPath('data.google_sheets.cells.J9', '0,0%')
             ->assertJsonPath('data.google_sheets.cells.K9', '0,0%')
             ->assertJsonPath('data.raw.match.id', 'LIVE')
@@ -888,7 +888,7 @@ class StratzRoshTest extends TestCase
                     [
                         'range' => "'BLAST SLAM VI'!G9:H9",
                         'majorDimension' => 'ROWS',
-                        'values' => [['5,3%', '5,3%']],
+                        'values' => [['10,6%', '10,6%']],
                     ],
                     [
                         'range' => "'BLAST SLAM VI'!J9:K9",
@@ -976,8 +976,8 @@ class StratzRoshTest extends TestCase
             ],
         ]);
 
-        $this->assertSame(15.0, $rosh['minute_table'][0]['synergy_adjustment']);
-        $this->assertSame(15.0, $rosh['minute_table'][0]['win_rate_graph']);
+        $this->assertSame(30.0, $rosh['minute_table'][0]['synergy_adjustment']);
+        $this->assertSame(30.0, $rosh['minute_table'][0]['win_rate_graph']);
     }
 
     public function test_rosh_heroes_smooths_low_sample_immortal_time_stats_without_global_fallback(): void
@@ -997,10 +997,10 @@ class StratzRoshTest extends TestCase
 
         $rosh = $this->calculateLiveRoshWithSynergy([], $immortalTimeStats);
 
-        $this->assertSame(2.2, $rosh['minute_table'][0]['hero_adjustment']);
-        $this->assertSame(2.2, $rosh['minute_table'][1]['hero_adjustment']);
+        $this->assertSame(4.4, $rosh['minute_table'][0]['hero_adjustment']);
+        $this->assertSame(4.4, $rosh['minute_table'][1]['hero_adjustment']);
         $this->assertSame(0.0, $rosh['minute_table'][0]['hero_base_adjustment']);
-        $this->assertSame(2.2, $rosh['minute_table'][0]['hero_tempo_adjustment']);
+        $this->assertSame(4.4, $rosh['minute_table'][0]['hero_tempo_adjustment']);
 
         Http::assertNotSent(function (Request $request): bool {
             return str_contains((string) $request['query'], 'query GetHeroStatsByTime')
@@ -1029,8 +1029,8 @@ class StratzRoshTest extends TestCase
         $minuteSixty = collect($rosh['minute_table'])->firstWhere('minute', 60);
 
         $this->assertIsArray($minuteSixty);
-        $this->assertSame(0.7, $minuteSixty['hero_tempo_adjustment']);
-        $this->assertSame(0.7, $minuteSixty['hero_adjustment']);
+        $this->assertSame(1.3, $minuteSixty['hero_tempo_adjustment']);
+        $this->assertSame(1.3, $minuteSixty['hero_adjustment']);
     }
 
     public function test_rosh_heroes_request_can_apply_pro_player_adjustment_when_player_mode_is_enabled(): void
@@ -1112,8 +1112,8 @@ class StratzRoshTest extends TestCase
                         ['range' => "'BLAST SLAM VI'!C9", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D9", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E9", 'values' => [['Radiant']]],
-                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['5,9%']]],
-                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['5,9%']]],
+                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['11,2%']]],
+                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['11,2%']]],
                         ['range' => "'BLAST SLAM VI'!J9", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!K9", 'values' => [['0,0%']]],
                     ],
@@ -1227,8 +1227,8 @@ class StratzRoshTest extends TestCase
             ->assertOk()
             ->assertJsonPath('type', 'rosh')
             ->assertJsonPath('data.formatted.match_id', 'LIVE')
-            ->assertJsonPath('data.formatted.radiant_odds_1', 5.9)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 5.9)
+            ->assertJsonPath('data.formatted.radiant_odds_1', 11.2)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 11.2)
             ->assertJsonPath('data.formatted.dire_odds_1', 0)
             ->assertJsonPath('data.formatted.dire_odds_2', 0)
             ->assertJsonPath('data.request.input.considerPlayers', true)
@@ -1660,8 +1660,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('type', 'rosh')
             ->assertJsonPath('data.formatted.radiant_team', 'Team Liquid')
             ->assertJsonPath('data.formatted.dire_team', 'GamerLegion')
-            ->assertJsonPath('data.formatted.radiant_odds_1', 5.3)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 5.3)
+            ->assertJsonPath('data.formatted.radiant_odds_1', 10.6)
+            ->assertJsonPath('data.formatted.radiant_odds_2', 10.6)
             ->assertJsonPath('data.formatted.dire_odds_1', 0)
             ->assertJsonPath('data.formatted.dire_odds_2', 0)
             ->assertJsonPath('data.parsed_extension_rosh_payload.radiant_heroes', [114, 25, 23, 79, 112])
