@@ -28,6 +28,13 @@ class StratzService
 
     private const ROSH_TEAM_PLAYER_ADJUSTMENT_CAP = 2.5;
 
+    private const WEEK_SECONDS = 604800;
+
+    /**
+     * @var list<int>
+     */
+    private const ROSH_TARGET_DATA_WINDOWS = [4, 8, 12];
+
     /**
      * @var array<string, int>
      */
@@ -207,6 +214,11 @@ GRAPHQL;
                 'match' => $match,
                 'analysis_summary' => $this->buildRoshRawAnalysisSummary($rosh),
             ],
+            'snapshot_stratz_payload' => [
+                'match' => $match,
+                'request' => $roshRequest,
+                'analysis' => $rosh,
+            ],
         ];
     }
 
@@ -246,6 +258,11 @@ GRAPHQL;
                         'player_hero_highlights' => $this->buildRoshPlayerAnalysisSummary($match),
                     ],
                 ),
+            ],
+            'snapshot_stratz_payload' => [
+                'match' => $match,
+                'request' => $roshRequest,
+                'analysis' => $rosh,
             ],
         ];
     }
@@ -315,7 +332,95 @@ GRAPHQL;
             'heroes_meta_positions' => $this->getRoshHeroesMetaPositionsByWeek($bracketBasicId, $week, $heroIds),
             'hero_stats_by_time_bracket' => $this->getRoshHeroStatsByTime($week, $bracketBasicId, $heroIds),
             'synergy' => $this->getRoshSynergy($bracketBasicId, $week, $heroIds),
+            'stratz_data_windows' => (array) data_get($request, 'analysis.dataWindows', []),
         ];
+    }
+
+    /**
+     * @param  list<int>  $heroIds
+     * @return array{
+     *     raw_payload:array<string, mixed>,
+     *     normalized_payload:array<string, mixed>
+     * }
+     */
+    public function collectRoshDataWindowBucketPayload(
+        string $dataType,
+        int $anchorWeek,
+        int $windowWeeks,
+        string $bracketBasicId,
+        array $heroIds,
+    ): array {
+        $weekTimestamps = $this->previousRoshWeekTimestamps($anchorWeek, $windowWeeks);
+
+        $rawPayload = match ($dataType) {
+            'heroes_meta_positions' => $this->collectRoshWeeklyStatsPayload(
+                $weekTimestamps,
+                fn (int $week): array => $this->getRoshHeroesMetaPositionsByWeek($bracketBasicId, $week, $heroIds),
+            ),
+            'hero_stats_by_time_bracket' => $this->collectRoshWeeklyStatsPayload(
+                $weekTimestamps,
+                fn (int $week): array => $this->getRoshHeroStatsByTime($week, $bracketBasicId, $heroIds),
+            ),
+            'synergy' => $this->collectRoshSynergyWindowPayload($anchorWeek, $windowWeeks, $bracketBasicId, $heroIds),
+            default => throw new \InvalidArgumentException("Unsupported STRATZ bucket data type '{$dataType}'."),
+        };
+
+        return [
+            'raw_payload' => $rawPayload,
+            'normalized_payload' => [
+                'window_weeks' => $windowWeeks,
+                'week_timestamps' => $weekTimestamps,
+                'summary' => $this->summarizeRoshWindowPayload($rawPayload),
+            ],
+        ];
+    }
+
+    /**
+     * @param  list<int>  $windowWeeks
+     * @param  list<int>  $heroIds
+     * @return list<array{
+     *     data_type:string,
+     *     window_weeks:int,
+     *     raw_payload:array<string, mixed>,
+     *     normalized_payload:array<string, mixed>
+     * }>
+     */
+    public function collectRoshDataWindowBucketPayloads(
+        int $anchorWeek,
+        array $windowWeeks,
+        string $bracketBasicId,
+        array $heroIds,
+    ): array {
+        $windowWeeks = array_values(array_unique(array_map('intval', $windowWeeks)));
+        sort($windowWeeks);
+
+        $maxWindowWeeks = max($windowWeeks);
+        $allWeekTimestamps = $this->previousRoshWeekTimestamps($anchorWeek, $maxWindowWeeks);
+
+        $weeklyPayloads = [
+            'heroes_meta_positions' => $this->collectRoshWeeklyStatsPayload(
+                $allWeekTimestamps,
+                fn (int $week): array => $this->getRoshHeroesMetaPositionsByWeek($bracketBasicId, $week, $heroIds),
+            ),
+            'hero_stats_by_time_bracket' => $this->collectRoshWeeklyStatsPayload(
+                $allWeekTimestamps,
+                fn (int $week): array => $this->getRoshHeroStatsByTime($week, $bracketBasicId, $heroIds),
+            ),
+        ];
+        $synergyPayload = $this->collectRoshSynergyWindowPayload($anchorWeek, $maxWindowWeeks, $bracketBasicId, $heroIds);
+        $payloads = [];
+
+        foreach ($windowWeeks as $currentWindowWeeks) {
+            foreach ($weeklyPayloads as $dataType => $rawPayload) {
+                $windowPayload = $this->sliceRoshWeeklyStatsPayload($rawPayload, $anchorWeek, $currentWindowWeeks);
+                $payloads[] = $this->buildRoshDataWindowBucketPayload($dataType, $anchorWeek, $currentWindowWeeks, $windowPayload);
+            }
+
+            $windowSynergyPayload = $this->sliceRoshSynergyPayload($synergyPayload, $anchorWeek, $currentWindowWeeks);
+            $payloads[] = $this->buildRoshDataWindowBucketPayload('synergy', $anchorWeek, $currentWindowWeeks, $windowSynergyPayload);
+        }
+
+        return $payloads;
     }
 
     /**
@@ -470,6 +575,7 @@ GRAPHQL;
                 'bracketBasicIds' => $bracketBasicId,
                 'week' => $week,
                 'heroIds' => $heroIds,
+                'dataWindows' => $this->buildRoshDataWindowPlan($week),
                 'operations' => [
                     [
                         'key' => 'heroes_meta_positions',
@@ -492,14 +598,15 @@ GRAPHQL;
                     [
                         'key' => 'synergy',
                         'operationName' => 'Synergy',
+                        'windowWeeks' => 4,
                         'variables' => [
                             'bracketBasicIds' => $bracketBasicId,
                             'matchLimit' => 0,
                             'take' => 200,
                             'currentWeek' => $week,
-                            'previousWeek1' => $week - 604800,
-                            'previousWeek2' => $week - 1209600,
-                            'previousWeek3' => $week - 1814400,
+                            'previousWeek1' => $week - self::WEEK_SECONDS,
+                            'previousWeek2' => $week - (self::WEEK_SECONDS * 2),
+                            'previousWeek3' => $week - (self::WEEK_SECONDS * 3),
                             'heroIds' => $heroIds,
                         ],
                     ],
@@ -557,6 +664,7 @@ GRAPHQL;
                 'bracketBasicIds' => $bracketBasicId,
                 'week' => $week,
                 'heroIds' => $heroIds,
+                'dataWindows' => $this->buildRoshDataWindowPlan($week),
                 'operations' => [
                     [
                         'key' => 'heroes_meta_positions',
@@ -579,14 +687,15 @@ GRAPHQL;
                     [
                         'key' => 'synergy',
                         'operationName' => 'Synergy',
+                        'windowWeeks' => 4,
                         'variables' => [
                             'bracketBasicIds' => $bracketBasicId,
                             'matchLimit' => 0,
                             'take' => 200,
                             'currentWeek' => $week,
-                            'previousWeek1' => $week - 604800,
-                            'previousWeek2' => $week - 1209600,
-                            'previousWeek3' => $week - 1814400,
+                            'previousWeek1' => $week - self::WEEK_SECONDS,
+                            'previousWeek2' => $week - (self::WEEK_SECONDS * 2),
+                            'previousWeek3' => $week - (self::WEEK_SECONDS * 3),
                             'heroIds' => $heroIds,
                         ],
                     ],
@@ -622,6 +731,196 @@ GRAPHQL;
                 'isStratzPublic' => data_get($player, 'isStratzPublic'),
             ];
         }, $players);
+    }
+
+    /**
+     * @return array{
+     *     active:array<string, mixed>,
+     *     targets:array<string, array{weeks:int, week_timestamps:list<int>}>
+     * }
+     */
+    private function buildRoshDataWindowPlan(int $week): array
+    {
+        $targets = [];
+
+        foreach (self::ROSH_TARGET_DATA_WINDOWS as $windowWeeks) {
+            $targets[$windowWeeks.'w'] = [
+                'weeks' => $windowWeeks,
+                'week_timestamps' => $this->previousRoshWeekTimestamps($week, $windowWeeks),
+            ];
+        }
+
+        return [
+            'active' => [
+                'mode' => 'legacy_mixed',
+                'heroes_meta_positions_weeks' => 1,
+                'hero_stats_by_time_weeks' => 1,
+                'synergy_weeks' => 4,
+                'note' => 'Current formula still uses 1w hero winrate/time stats and 4w synergy. Target buckets are stored for the 4w/8w/12w data layer migration.',
+            ],
+            'targets' => $targets,
+        ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function previousRoshWeekTimestamps(int $week, int $windowWeeks): array
+    {
+        return array_map(
+            static fn (int $index): int => $week - (self::WEEK_SECONDS * $index),
+            range(0, $windowWeeks - 1),
+        );
+    }
+
+    /**
+     * @param  list<int>  $weekTimestamps
+     * @param  callable(int): array<string, mixed>  $fetch
+     * @return array<string, mixed>
+     */
+    private function collectRoshWeeklyStatsPayload(array $weekTimestamps, callable $fetch): array
+    {
+        $weeks = [];
+
+        foreach ($weekTimestamps as $week) {
+            $weeks[(string) $week] = $fetch($week);
+        }
+
+        return [
+            'weeks' => $weeks,
+        ];
+    }
+
+    /**
+     * @param  list<int>  $heroIds
+     * @return array<string, mixed>
+     */
+    private function collectRoshSynergyWindowPayload(int $anchorWeek, int $windowWeeks, string $bracketBasicId, array $heroIds): array
+    {
+        $segments = [];
+
+        foreach ($this->previousRoshSynergySegmentTimestamps($anchorWeek, $windowWeeks) as $segmentAnchorWeek) {
+            $segments[(string) $segmentAnchorWeek] = $this->getRoshSynergy(
+                $bracketBasicId,
+                $segmentAnchorWeek,
+                $heroIds,
+            );
+        }
+
+        return [
+            'segments' => $segments,
+        ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function previousRoshSynergySegmentTimestamps(int $week, int $windowWeeks): array
+    {
+        $timestamps = [];
+
+        for ($offset = 0; $offset < $windowWeeks; $offset += 4) {
+            $timestamps[] = $week - (self::WEEK_SECONDS * $offset);
+        }
+
+        return $timestamps;
+    }
+
+    /**
+     * @param  array<string, mixed>  $rawPayload
+     * @return array<string, mixed>
+     */
+    private function sliceRoshWeeklyStatsPayload(array $rawPayload, int $anchorWeek, int $windowWeeks): array
+    {
+        $weekKeys = array_map('strval', $this->previousRoshWeekTimestamps($anchorWeek, $windowWeeks));
+        $weeks = (array) data_get($rawPayload, 'weeks', []);
+
+        return [
+            'weeks' => array_intersect_key($weeks, array_flip($weekKeys)),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $rawPayload
+     * @return array<string, mixed>
+     */
+    private function sliceRoshSynergyPayload(array $rawPayload, int $anchorWeek, int $windowWeeks): array
+    {
+        $segmentKeys = array_map('strval', $this->previousRoshSynergySegmentTimestamps($anchorWeek, $windowWeeks));
+        $segments = (array) data_get($rawPayload, 'segments', []);
+
+        return [
+            'segments' => array_intersect_key($segments, array_flip($segmentKeys)),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $rawPayload
+     * @return array{
+     *     data_type:string,
+     *     window_weeks:int,
+     *     raw_payload:array<string, mixed>,
+     *     normalized_payload:array<string, mixed>
+     * }
+     */
+    private function buildRoshDataWindowBucketPayload(string $dataType, int $anchorWeek, int $windowWeeks, array $rawPayload): array
+    {
+        return [
+            'data_type' => $dataType,
+            'window_weeks' => $windowWeeks,
+            'raw_payload' => $rawPayload,
+            'normalized_payload' => [
+                'window_weeks' => $windowWeeks,
+                'week_timestamps' => $this->previousRoshWeekTimestamps($anchorWeek, $windowWeeks),
+                'summary' => $this->summarizeRoshWindowPayload($rawPayload),
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $rawPayload
+     * @return array<string, mixed>
+     */
+    private function summarizeRoshWindowPayload(array $rawPayload): array
+    {
+        $summary = [];
+
+        foreach ($rawPayload as $groupKey => $groupValue) {
+            if (! is_array($groupValue)) {
+                continue;
+            }
+
+            $summary[$groupKey] = collect($groupValue)
+                ->map(fn (mixed $payload): array => $this->summarizeNestedRoshPayload($payload))
+                ->all();
+        }
+
+        return $summary;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function summarizeNestedRoshPayload(mixed $payload): array
+    {
+        if (! is_array($payload)) {
+            return [
+                'count' => 0,
+            ];
+        }
+
+        $summary = [];
+
+        foreach ($payload as $key => $value) {
+            if (is_array($value)) {
+                $summary[$key] = [
+                    'count' => count($value),
+                    'sample' => array_slice(array_values($value), 0, 2),
+                ];
+            }
+        }
+
+        return $summary;
     }
 
     /**
@@ -2374,9 +2673,9 @@ GRAPHQL;
             'matchLimit' => 0,
             'take' => 200,
             'currentWeek' => $week,
-            'previousWeek1' => $week - 604800,
-            'previousWeek2' => $week - 1209600,
-            'previousWeek3' => $week - 1814400,
+            'previousWeek1' => $week - self::WEEK_SECONDS,
+            'previousWeek2' => $week - (self::WEEK_SECONDS * 2),
+            'previousWeek3' => $week - (self::WEEK_SECONDS * 3),
             'heroIds' => $heroIds,
         ]);
 
@@ -2545,6 +2844,7 @@ GRAPHQL;
                     'matchUp_Prev_Week_4',
                 ],
             ),
+            'stratz_data_windows' => (array) ($analysis['stratz_data_windows'] ?? []),
         ];
     }
 

@@ -744,6 +744,209 @@
             </section>
 
             <section
+                v-else-if="activeTab === 'snapshots'"
+                class="rounded-3xl border border-emerald-500/20 bg-slate-900/60 p-6 shadow-xl shadow-slate-950/30"
+            >
+                <div class="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div class="flex flex-col gap-2">
+                        <p class="text-xs font-semibold tracking-[0.3em] text-emerald-300 uppercase">
+                            Snapshots
+                        </p>
+                        <h2 class="text-xl font-semibold text-white">Сохраненные расчёты</h2>
+                        <p class="max-w-3xl text-sm leading-6 text-slate-300">
+                            Здесь видно, что именно Dematus сохранил после live или MatchID расчёта: команды, строку Google Sheets, наличие STRATZ raw payload и рассчитанных признаков.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            class="rounded-xl border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-sm font-semibold text-sky-100 transition hover:border-sky-300/50 hover:bg-sky-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                            :disabled="isLoading('snapshot-dataset-export')"
+                            @click="exportSnapshotDataset"
+                        >
+                            {{ isLoading('snapshot-dataset-export') ? 'Экспортируем...' : 'Export Dataset' }}
+                        </button>
+
+                        <button
+                            type="button"
+                            class="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                            :disabled="isLoading('snapshots')"
+                            @click="loadSnapshots"
+                        >
+                            {{ isLoading('snapshots') ? 'Обновляем...' : 'Обновить' }}
+                        </button>
+                    </div>
+                </div>
+
+                <div
+                    v-if="snapshotDatasetExport"
+                    class="mb-5 rounded-2xl border border-sky-400/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100"
+                >
+                    Dataset exported to <span class="font-semibold">{{ snapshotDatasetExport.sheet_title }}</span>:
+                    {{ snapshotDatasetExport.exported_rows }} rows.
+                </div>
+
+                <div class="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                    <section class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                        <div
+                            v-if="snapshots.length === 0"
+                            class="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 px-4 py-6 text-sm leading-6 text-slate-400"
+                        >
+                            Snapshot’ов пока нет. Сделайте расчёт по MatchID или live-драфту, затем обновите список.
+                        </div>
+
+                        <div v-else class="space-y-3">
+                            <button
+                                v-for="snapshotItem in snapshots"
+                                :key="snapshotItem.id"
+                                type="button"
+                                class="w-full rounded-2xl border px-4 py-3 text-left transition"
+                                :class="
+                                    selectedSnapshot?.id === snapshotItem.id
+                                        ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-50'
+                                        : 'border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                                "
+                                @click="selectSnapshot(snapshotItem)"
+                            >
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="font-semibold text-white">
+                                        #{{ snapshotItem.id }} · {{ snapshotItem.radiant_team ?? 'Radiant' }} vs {{ snapshotItem.dire_team ?? 'Dire' }}
+                                    </div>
+                                    <span class="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
+                                        {{ formatSnapshotSource(snapshotItem.source) }}
+                                    </span>
+                                </div>
+                                <div class="mt-2 grid gap-1 text-xs leading-5 text-slate-400 sm:grid-cols-2">
+                                    <div>Match ID: {{ snapshotItem.match_id ?? 'LIVE' }}</div>
+                                    <div>Captured: {{ formatSnapshotDate(snapshotItem.captured_at) }}</div>
+                                    <div>Winner: {{ formatSnapshotWinner(snapshotItem.winner) }}</div>
+                                    <div>STRATZ buckets: {{ snapshotItem.stratz_data_buckets_count }}</div>
+                                    <div>4/8/12: {{ snapshotItem.stratz_data_bucket_matrix.complete_4_8_12 ? 'ready' : 'missing' }}</div>
+                                    <div>Sheet: {{ snapshotItem.sheet_title ?? '—' }}{{ snapshotItem.sheet_row ? ` · row ${snapshotItem.sheet_row}` : '' }}</div>
+                                </div>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                        <div v-if="! selectedSnapshot" class="text-sm leading-6 text-slate-400">
+                            Выберите snapshot слева, чтобы посмотреть детали.
+                        </div>
+
+                        <div v-else class="space-y-4">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold tracking-[0.3em] text-emerald-300 uppercase">
+                                        Snapshot #{{ selectedSnapshot.id }}
+                                    </p>
+                                    <h3 class="mt-1 text-lg font-semibold text-white">
+                                        {{ selectedSnapshot.radiant_team ?? 'Radiant' }} vs {{ selectedSnapshot.dire_team ?? 'Dire' }}
+                                    </h3>
+                                </div>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        class="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                                        :disabled="isLoading(`snapshot-windows-${selectedSnapshot.id}`) || selectedSnapshot.stratz_data_bucket_matrix.complete_4_8_12"
+                                        @click="collectSnapshotWindows(selectedSnapshot)"
+                                    >
+                                        {{ collectSnapshotWindowsButtonLabel(selectedSnapshot) }}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:border-emerald-400/60"
+                                        @click="downloadSelectedSnapshot"
+                                    >
+                                        Скачать JSON
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-xs leading-5 text-slate-300">
+                                    <div class="font-semibold text-slate-100">Payload blocks</div>
+                                    <div>Draft: {{ selectedSnapshot.has_draft_payload ? 'yes' : 'no' }}</div>
+                                    <div>STRATZ raw: {{ selectedSnapshot.has_stratz_payload ? 'yes' : 'no' }}</div>
+                                    <div>Features: {{ selectedSnapshot.has_feature_payload ? 'yes' : 'no' }}</div>
+                                    <div>Sheets: {{ selectedSnapshot.has_sheet_payload ? 'yes' : 'no' }}</div>
+                                    <div>Buckets: {{ selectedSnapshot.stratz_data_buckets_count }}</div>
+                                </div>
+
+                                <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-xs leading-5 text-slate-300">
+                                    <div class="font-semibold text-slate-100">Run metadata</div>
+                                    <div>Model: {{ selectedSnapshot.model_version ?? '—' }}</div>
+                                    <div>Heroes: {{ selectedSnapshot.radiant_heroes_count }} vs {{ selectedSnapshot.dire_heroes_count }}</div>
+                                    <div>Source: {{ formatSnapshotSource(selectedSnapshot.source) }}</div>
+                                    <div>Captured: {{ formatSnapshotDate(selectedSnapshot.captured_at) }}</div>
+                                </div>
+                            </div>
+
+                            <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                        <div class="font-semibold text-slate-100">STRATZ data buckets</div>
+                                        <div class="mt-1 text-xs text-slate-400">
+                                            4w/8w/12w: {{ selectedSnapshot.stratz_data_bucket_matrix.complete_4_8_12 ? 'полный набор собран' : 'нужно собрать collector’ом' }}
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.2em] uppercase"
+                                        :class="
+                                            selectedSnapshot.stratz_data_bucket_matrix.complete_4_8_12
+                                                ? 'border-emerald-400/40 text-emerald-200'
+                                                : 'border-amber-400/40 text-amber-200'
+                                        "
+                                    >
+                                        {{ selectedSnapshot.stratz_data_bucket_matrix.complete_4_8_12 ? 'ready' : 'missing' }}
+                                    </span>
+                                </div>
+
+                                <div
+                                    v-if="selectedSnapshot.stratz_data_bucket_matrix.items.length === 0"
+                                    class="text-xs leading-5 text-slate-400"
+                                >
+                                    Bucket’ов пока нет.
+                                </div>
+
+                                <div v-else class="overflow-x-auto">
+                                    <table class="w-full min-w-[620px] text-left text-xs">
+                                        <thead class="text-slate-500">
+                                            <tr>
+                                                <th class="py-2 pr-3 font-semibold">Type</th>
+                                                <th class="py-2 pr-3 font-semibold">Window</th>
+                                                <th class="py-2 pr-3 font-semibold">Source</th>
+                                                <th class="py-2 pr-3 font-semibold">Raw size</th>
+                                                <th class="py-2 font-semibold">Updated</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-800 text-slate-300">
+                                            <tr
+                                                v-for="bucket in selectedSnapshot.stratz_data_bucket_matrix.items"
+                                                :key="`${bucket.source}-${bucket.data_type}-${bucket.window_weeks}`"
+                                            >
+                                                <td class="py-2 pr-3">{{ formatBucketDataType(bucket.data_type) }}</td>
+                                                <td class="py-2 pr-3">{{ bucket.window_weeks }}w</td>
+                                                <td class="py-2 pr-3">
+                                                    {{ bucket.source }}{{ bucket.optimized ? ' · optimized' : '' }}
+                                                </td>
+                                                <td class="py-2 pr-3">{{ formatBytes(bucket.raw_size_bytes) }}</td>
+                                                <td class="py-2">{{ formatSnapshotDate(bucket.updated_at) }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <pre class="max-h-[55vh] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs text-slate-200">{{ formatJson(selectedSnapshot) }}</pre>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section
                 v-else-if="activeTab === 'teams'"
                 class="rounded-3xl border border-amber-500/20 bg-slate-900/60 p-6 shadow-xl shadow-slate-950/30"
             >
@@ -1487,11 +1690,15 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import {
+    collectSnapshotStratzWindows as collectSnapshotStratzWindowsAction,
     destroyTeamRoster as destroyTeamRosterAction,
+    exportSnapshotDataset as exportSnapshotDatasetAction,
     rosh as roshAction,
     roshGist as roshGistAction,
     roshHeroes as roshHeroesAction,
     searchProPlayers as searchProPlayersAction,
+    snapshot as snapshotAction,
+    snapshots as snapshotsAction,
     storeTeamRoster as storeTeamRosterAction,
     updateTeamRoster as updateTeamRosterAction,
 } from '@/actions/App/Http/Controllers/StratzController';
@@ -1556,7 +1763,7 @@ type SearchableHeroOption = {
 type HeroSide = 'radiant' | 'dire';
 type HeroPickerKey = `${HeroSide}-${number}`;
 type PlayerPickerKey = `${HeroSide}-${number}`;
-type StratzTab = 'matchId' | 'heroes' | 'gist' | 'teams';
+type StratzTab = 'matchId' | 'heroes' | 'gist' | 'teams' | 'snapshots';
 type PlayerSearchStatus = 'idle' | 'searching' | 'ready' | 'empty' | 'error';
 
 type RoshFormattedResult = {
@@ -1683,6 +1890,65 @@ type RoshResultPayload = {
     raw?: unknown;
 };
 
+type DraftSnapshotBucketMatrixItem = {
+    data_type: string;
+    window_weeks: number;
+    source: 'baseline' | 'collector' | string;
+    optimized: boolean;
+    raw_size_bytes: number;
+    updated_at: string | null;
+};
+
+type DraftSnapshotBucketMatrix = {
+    complete_4_8_12: boolean;
+    items: DraftSnapshotBucketMatrixItem[];
+};
+
+type SnapshotDatasetExportResult = {
+    spreadsheet_id: string;
+    sheet_title: string;
+    exported_rows: number;
+    rows: Record<string, number>;
+};
+
+type DraftSnapshotSummary = {
+    id: number;
+    source: 'live_dltv' | 'match_id' | 'manual' | string;
+    captured_at: string | null;
+    match_id: number | null;
+    tournament: string | null;
+    radiant_team: string | null;
+    dire_team: string | null;
+    radiant_heroes_count: number;
+    dire_heroes_count: number;
+    winner: 'radiant' | 'dire' | null;
+    model_version: string | null;
+    sheet_title: string | null;
+    sheet_row: number | null;
+    has_draft_payload: boolean;
+    has_stratz_payload: boolean;
+    has_feature_payload: boolean;
+    has_sheet_payload: boolean;
+    has_result_payload: boolean;
+    stratz_data_buckets_count: number;
+    stratz_data_bucket_matrix: DraftSnapshotBucketMatrix;
+};
+
+type DraftSnapshotPayload = DraftSnapshotSummary & {
+    dltv_url: string | null;
+    bookmaker_odds_radiant: string | number | null;
+    bookmaker_odds_dire: string | number | null;
+    radiant_heroes: number[] | null;
+    dire_heroes: number[] | null;
+    draft_payload: unknown;
+    stratz_payload: unknown;
+    feature_payload: unknown;
+    sheet_payload: unknown;
+    book_payload: unknown;
+    result_payload: unknown;
+    stratz_data_buckets: unknown[];
+};
+
 type StratzResult = {
     type: string;
     data: unknown;
@@ -1760,6 +2026,14 @@ const tabs: Array<{
         activeClasses: 'border-amber-400/50 bg-amber-500/10 text-amber-50',
         badgeClasses: 'border-amber-300/40 bg-amber-300/10 text-amber-100',
     },
+    {
+        id: 'snapshots',
+        label: 'Snapshots',
+        shortLabel: 'Data',
+        description: 'Проверить сохраненные расчёты и скачать полный JSON для воспроизведения.',
+        activeClasses: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-50',
+        badgeClasses: 'border-emerald-300/40 bg-emerald-300/10 text-emerald-100',
+    },
 ];
 
 const roles = [
@@ -1797,6 +2071,10 @@ const activeHeroOptionIndex = ref(0);
 const loadingAction = ref<string | null>(null);
 const errorMessage = ref('');
 const result = ref<StratzResult | null>(null);
+const snapshots = ref<DraftSnapshotSummary[]>([]);
+const selectedSnapshot = ref<DraftSnapshotPayload | null>(null);
+const snapshotsLoaded = ref(false);
+const snapshotDatasetExport = ref<SnapshotDatasetExportResult | null>(null);
 const proPlayerSearchCache = new Map<string, ProPlayerCandidate[]>();
 const savedTeams = ref<SavedTeamRoster[]>(props.savedTeams);
 
@@ -2013,12 +2291,13 @@ const jsonHeaders = () => ({
     'X-CSRF-Token': csrfToken,
 });
 
-const postJson = async <TResponse>(route: RouteTarget, payload: unknown): Promise<TResponse> => {
+const apiJson = async <TResponse>(route: RouteTarget, payload?: unknown): Promise<TResponse> => {
+    const method = route.method.toUpperCase();
     const response = await fetch(route.url, {
-        method: route.method.toUpperCase(),
+        method,
         headers: jsonHeaders(),
         credentials: 'same-origin',
-        body: JSON.stringify(payload),
+        ...(method === 'GET' || method === 'HEAD' ? {} : { body: JSON.stringify(payload ?? {}) }),
     });
 
     const contentType = response.headers.get('content-type') || '';
@@ -2035,6 +2314,8 @@ const postJson = async <TResponse>(route: RouteTarget, payload: unknown): Promis
 
     return body as TResponse;
 };
+
+const postJson = async <TResponse>(route: RouteTarget, payload: unknown): Promise<TResponse> => apiJson<TResponse>(route, payload);
 
 const normalizeHeroQuery = (value: string): string =>
     value
@@ -2974,6 +3255,12 @@ watch(
     },
 );
 
+watch(activeTab, (tab) => {
+    if (tab === 'snapshots' && ! snapshotsLoaded.value) {
+        void loadSnapshots();
+    }
+});
+
 onBeforeUnmount(() => {
     document.removeEventListener('pointerdown', handleDocumentPointerDown);
 
@@ -3005,6 +3292,118 @@ const request = async (action: string, route: RouteTarget, payload: unknown): Pr
     } finally {
         loadingAction.value = null;
     }
+};
+
+const loadSnapshots = async (): Promise<void> => {
+    loadingAction.value = 'snapshots';
+    errorMessage.value = '';
+
+    try {
+        const body = await apiJson<ApiEnvelope<DraftSnapshotSummary[]>>(snapshotsAction.get());
+
+        snapshots.value = body.data ?? [];
+        snapshotsLoaded.value = true;
+
+        if (! selectedSnapshot.value && snapshots.value.length > 0) {
+            await selectSnapshot(snapshots.value[0]);
+        }
+    } catch (error) {
+        errorMessage.value = error instanceof Error ? error.message : String(error);
+    } finally {
+        loadingAction.value = null;
+    }
+};
+
+const selectSnapshot = async (snapshot: DraftSnapshotSummary): Promise<void> => {
+    loadingAction.value = `snapshot-${snapshot.id}`;
+    errorMessage.value = '';
+
+    try {
+        const body = await apiJson<ApiEnvelope<DraftSnapshotPayload>>(snapshotAction.get(snapshot.id));
+
+        selectedSnapshot.value = body.data ?? null;
+    } catch (error) {
+        errorMessage.value = error instanceof Error ? error.message : String(error);
+    } finally {
+        loadingAction.value = null;
+    }
+};
+
+const exportSnapshotDataset = async (): Promise<void> => {
+    loadingAction.value = 'snapshot-dataset-export';
+    errorMessage.value = '';
+    snapshotDatasetExport.value = null;
+
+    try {
+        const body = await postJson<ApiEnvelope<SnapshotDatasetExportResult>>(
+            exportSnapshotDatasetAction.post(),
+            {},
+        );
+
+        snapshotDatasetExport.value = body.data ?? null;
+    } catch (error) {
+        errorMessage.value = error instanceof Error ? error.message : String(error);
+    } finally {
+        loadingAction.value = null;
+    }
+};
+
+const collectSnapshotWindows = async (snapshot: DraftSnapshotSummary): Promise<void> => {
+    if (snapshot.stratz_data_bucket_matrix.complete_4_8_12) {
+        return;
+    }
+
+    loadingAction.value = `snapshot-windows-${snapshot.id}`;
+    errorMessage.value = '';
+
+    try {
+        const body = await postJson<ApiEnvelope<DraftSnapshotPayload>>(
+            collectSnapshotStratzWindowsAction.post(snapshot.id),
+            {},
+        );
+        const updatedSnapshot = body.data ?? null;
+
+        if (! updatedSnapshot) {
+            return;
+        }
+
+        selectedSnapshot.value = updatedSnapshot;
+        snapshots.value = snapshots.value.map((snapshotItem) =>
+            snapshotItem.id === updatedSnapshot.id ? updatedSnapshot : snapshotItem,
+        );
+    } catch (error) {
+        errorMessage.value = error instanceof Error ? error.message : String(error);
+    } finally {
+        loadingAction.value = null;
+    }
+};
+
+const collectSnapshotWindowsButtonLabel = (snapshot: DraftSnapshotSummary): string => {
+    if (isLoading(`snapshot-windows-${snapshot.id}`)) {
+        return 'Собираем...';
+    }
+
+    if (snapshot.stratz_data_bucket_matrix.complete_4_8_12) {
+        return 'Already collected';
+    }
+
+    return 'Collect 4w/8w/12w';
+};
+
+const downloadSelectedSnapshot = (): void => {
+    if (! selectedSnapshot.value) {
+        return;
+    }
+
+    const json = formatJson(selectedSnapshot.value);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = `dematus-snapshot-${selectedSnapshot.value.id}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
 };
 
 const buildHeroIds = (heroes: string[], side: 'Radiant' | 'Dire'): number[] => {
@@ -3072,6 +3471,69 @@ const submitRoshByHeroes = async (): Promise<void> => {
 };
 
 const formatJson = (value: unknown): string => JSON.stringify(value, null, 2);
+
+const formatSnapshotDate = (value: string | null): string => {
+    if (! value) {
+        return '—';
+    }
+
+    return new Date(value).toLocaleString('ru-RU');
+};
+
+const formatSnapshotSource = (value: DraftSnapshotSummary['source']): string => {
+    if (value === 'live_dltv') {
+        return 'Live DLTV';
+    }
+
+    if (value === 'match_id') {
+        return 'Match ID';
+    }
+
+    if (value === 'manual') {
+        return 'Manual';
+    }
+
+    return value;
+};
+
+const formatSnapshotWinner = (value: DraftSnapshotSummary['winner']): string => {
+    if (value === 'radiant') {
+        return 'Radiant';
+    }
+
+    if (value === 'dire') {
+        return 'Dire';
+    }
+
+    return '—';
+};
+
+const formatBucketDataType = (value: string): string => {
+    const labels: Record<string, string> = {
+        heroes_meta_positions: 'Hero winrate',
+        hero_stats_by_time_bracket: 'Hero tempo',
+        synergy: 'Synergy',
+    };
+
+    return labels[value] ?? value;
+};
+
+const formatBytes = (value: number): string => {
+    if (! Number.isFinite(value) || value <= 0) {
+        return '0 B';
+    }
+
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = value;
+    let unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex += 1;
+    }
+
+    return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+};
 
 const formatUnixDate = (value: number): string => {
     if (! Number.isFinite(value)) {

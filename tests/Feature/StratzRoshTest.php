@@ -2,14 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Models\DraftSnapshot;
 use App\Services\Stratz\StratzService;
 use Carbon\Carbon;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class StratzRoshTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_rosh_request_builds_analysis_from_match_id(): void
     {
         config()->set('services.stratz.token', 'test-token');
@@ -59,9 +63,9 @@ class StratzRoshTest extends TestCase
                 ]);
             }
 
-            if (str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!B:B")) {
+            if (str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!A:A")) {
                 return Http::response([
-                    'range' => "'BLAST SLAM VI'!B:B",
+                    'range' => "'BLAST SLAM VI'!A:A",
                     'values' => [
                         ['ROSH Winrate'],
                         ['Match ID'],
@@ -84,14 +88,14 @@ class StratzRoshTest extends TestCase
             if (str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchGet')) {
                 return Http::response([
                     'valueRanges' => [
-                        ['range' => "'BLAST SLAM VI'!B8", 'values' => [['8683333901']]],
+                        ['range' => "'BLAST SLAM VI'!A8", 'values' => [['8683333901']]],
                         ['range' => "'BLAST SLAM VI'!C8", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D8", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E8", 'values' => [['Radiant']]],
+                        ['range' => "'BLAST SLAM VI'!F8", 'values' => [['10,6%']]],
                         ['range' => "'BLAST SLAM VI'!G8", 'values' => [['10,6%']]],
-                        ['range' => "'BLAST SLAM VI'!H8", 'values' => [['10,6%']]],
+                        ['range' => "'BLAST SLAM VI'!I8", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!J8", 'values' => [['0,0%']]],
-                        ['range' => "'BLAST SLAM VI'!K8", 'values' => [['0,0%']]],
                     ],
                 ]);
             }
@@ -186,20 +190,62 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.request.analysis.bracket', 'IMMORTAL')
             ->assertJsonPath('data.request.analysis.bracketBasicIds', 'DIVINE_IMMORTAL')
             ->assertJsonPath('data.request.analysis.week', 1770574943)
+            ->assertJsonPath('data.request.analysis.dataWindows.active.mode', 'legacy_mixed')
+            ->assertJsonPath('data.request.analysis.dataWindows.active.heroes_meta_positions_weeks', 1)
+            ->assertJsonPath('data.request.analysis.dataWindows.active.hero_stats_by_time_weeks', 1)
+            ->assertJsonPath('data.request.analysis.dataWindows.active.synergy_weeks', 4)
+            ->assertJsonCount(4, 'data.request.analysis.dataWindows.targets.4w.week_timestamps')
+            ->assertJsonCount(8, 'data.request.analysis.dataWindows.targets.8w.week_timestamps')
+            ->assertJsonCount(12, 'data.request.analysis.dataWindows.targets.12w.week_timestamps')
             ->assertJsonPath('data.google_sheets.sheet_title', 'BLAST SLAM VI')
             ->assertJsonPath('data.google_sheets.row', 8)
-            ->assertJsonPath('data.google_sheets.cells.B8', '8683333901')
+            ->assertJsonPath('data.google_sheets.cells.A8', '8683333901')
             ->assertJsonPath('data.google_sheets.cells.C8', 'Team Liquid')
             ->assertJsonPath('data.google_sheets.cells.D8', 'GamerLegion')
             ->assertJsonPath('data.google_sheets.cells.E8', 'Radiant')
+            ->assertJsonPath('data.google_sheets.cells.F8', '10,6%')
             ->assertJsonPath('data.google_sheets.cells.G8', '10,6%')
-            ->assertJsonPath('data.google_sheets.cells.H8', '10,6%')
+            ->assertJsonPath('data.google_sheets.cells.I8', '0,0%')
             ->assertJsonPath('data.google_sheets.cells.J8', '0,0%')
-            ->assertJsonPath('data.google_sheets.cells.K8', '0,0%')
             ->assertJsonPath('data.raw.match.id', $matchId)
             ->assertJsonPath('data.raw.analysis_summary.hero_stats_by_time_bracket.heroStatsByTime_1.count', 4)
             ->assertJsonPath('data.raw.analysis_summary.synergy.matchUp_Prev_Week_1.count', 0)
+            ->assertJsonPath('data.raw.analysis_summary.stratz_data_windows.active.mode', 'legacy_mixed')
             ->assertJsonMissingPath('data.raw.analysis');
+
+        $snapshot = DraftSnapshot::query()->firstOrFail();
+
+        $this->assertSame('match_id', $snapshot->source);
+        $this->assertSame($matchId, $snapshot->match_id);
+        $this->assertSame('Team Liquid', $snapshot->radiant_team);
+        $this->assertSame('GamerLegion', $snapshot->dire_team);
+        $this->assertSame([114, 25, 23, 79, 112], $snapshot->radiant_heroes);
+        $this->assertSame([70, 59, 39, 83, 37], $snapshot->dire_heroes);
+        $this->assertSame('dematus-rosh-v1', $snapshot->model_version);
+        $this->assertSame($matchId, data_get($snapshot->draft_payload, 'match_id'));
+        $this->assertSame('BLAST SLAM VI', data_get($snapshot->sheet_payload, 'sheet_title'));
+        $this->assertSame('GetMatchPicksBans', data_get($snapshot->stratz_payload, 'request.match.operationName'));
+        $this->assertSame('legacy_mixed', data_get($snapshot->stratz_payload, 'request.analysis.dataWindows.active.mode'));
+        $this->assertSame([1770574943, 1769970143, 1769365343, 1768760543], data_get($snapshot->stratz_payload, 'request.analysis.dataWindows.targets.4w.week_timestamps'));
+        $this->assertIsArray(data_get($snapshot->stratz_payload, 'analysis.heroes_meta_positions'));
+        $this->assertSame('legacy_mixed', data_get($snapshot->feature_payload, 'analysis_summary.stratz_data_windows.active.mode'));
+        $this->assertSame(10.6, data_get($snapshot->feature_payload, 'formatted.radiant_odds_1'));
+        $this->assertCount(3, $snapshot->stratzDataBuckets);
+        $this->assertSame(
+            [
+                'hero_stats_by_time_bracket' => 1,
+                'heroes_meta_positions' => 1,
+                'synergy' => 4,
+            ],
+            $snapshot->stratzDataBuckets
+                ->sortBy('data_type')
+                ->mapWithKeys(fn ($bucket): array => [$bucket->data_type => $bucket->window_weeks])
+                ->all(),
+        );
+        $this->assertSame(
+            [1770574943, 1769970143, 1769365343, 1768760543],
+            $snapshot->stratzDataBuckets->firstWhere('data_type', 'synergy')?->week_timestamps,
+        );
 
         Http::assertSentCount(9);
 
@@ -275,7 +321,7 @@ class StratzRoshTest extends TestCase
         });
 
         Http::assertSent(function (Request $request): bool {
-            return str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!B:B")
+            return str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!A:A")
                 && $request->hasHeader('Authorization', 'Bearer google-access-token');
         });
 
@@ -285,17 +331,22 @@ class StratzRoshTest extends TestCase
                 && $request['valueInputOption'] === 'USER_ENTERED'
                 && $request['data'] === [
                     [
-                        'range' => "'BLAST SLAM VI'!B8:E8",
+                        'range' => "'BLAST SLAM VI'!A8",
                         'majorDimension' => 'ROWS',
-                        'values' => [['8683333901', 'Team Liquid', 'GamerLegion', 'Radiant']],
+                        'values' => [['8683333901']],
                     ],
                     [
-                        'range' => "'BLAST SLAM VI'!G8:H8",
+                        'range' => "'BLAST SLAM VI'!C8:E8",
+                        'majorDimension' => 'ROWS',
+                        'values' => [['Team Liquid', 'GamerLegion', 'Radiant']],
+                    ],
+                    [
+                        'range' => "'BLAST SLAM VI'!F8:G8",
                         'majorDimension' => 'ROWS',
                         'values' => [['10,6%', '10,6%']],
                     ],
                     [
-                        'range' => "'BLAST SLAM VI'!J8:K8",
+                        'range' => "'BLAST SLAM VI'!I8:J8",
                         'majorDimension' => 'ROWS',
                         'values' => [['0,0%', '0,0%']],
                     ],
@@ -1669,6 +1720,20 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.source.type', 'dltv-browser-extension')
             ->assertJsonPath('data.source.page_url', 'https://ru.dltv.org/matches/123-team-liquid-vs-gamerlegion');
 
+        $snapshot = DraftSnapshot::query()->firstOrFail();
+
+        $this->assertSame('live_dltv', $snapshot->source);
+        $this->assertNull($snapshot->match_id);
+        $this->assertSame('https://ru.dltv.org/matches/123-team-liquid-vs-gamerlegion', $snapshot->dltv_url);
+        $this->assertSame('Team Liquid', $snapshot->radiant_team);
+        $this->assertSame('GamerLegion', $snapshot->dire_team);
+        $this->assertSame([114, 25, 23, 79, 112], $snapshot->radiant_heroes);
+        $this->assertSame([70, 59, 39, 83, 37], $snapshot->dire_heroes);
+        $this->assertSame('https://ru.dltv.org/matches/123-team-liquid-vs-gamerlegion', data_get($snapshot->draft_payload, 'page_url'));
+        $this->assertNull($snapshot->sheet_payload);
+        $this->assertSame(10.6, data_get($snapshot->feature_payload, 'formatted.radiant_odds_1'));
+        $this->assertIsArray(data_get($snapshot->stratz_payload, 'analysis.heroes_meta_positions'));
+
         Http::assertSentCount(3);
 
         Carbon::setTestNow();
@@ -1794,13 +1859,7 @@ class StratzRoshTest extends TestCase
 
         $response->assertOk();
 
-        Http::assertSent(function (Request $request): bool {
-            if (! $this->isStratzGraphqlRequest($request)) {
-                return false;
-            }
-
-            return data_get($request->options(), 'curl.'.constant('CURLOPT_IPRESOLVE')) === constant('CURL_IPRESOLVE_V4');
-        });
+        Http::assertSent(fn (Request $request): bool => $this->isStratzGraphqlRequest($request));
     }
 
     public function test_rosh_heroes_request_requires_full_payload(): void
