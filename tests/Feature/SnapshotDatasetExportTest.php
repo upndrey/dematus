@@ -222,6 +222,48 @@ class SnapshotDatasetExportTest extends TestCase
         });
     }
 
+    public function test_it_exports_snapshots_in_bounded_google_sheets_batches(): void
+    {
+        config()->set('services.google_sheets.spreadsheet_url', 'https://docs.google.com/spreadsheets/d/test-sheet-id/edit?gid=673477564');
+        config()->set('services.google_sheets.service_account_credentials', $this->fakeGoogleCredentialsPath());
+
+        DraftSnapshot::factory()->count(101)->create();
+
+        Http::fake(function (Request $request) {
+            if ($request->url() === 'https://oauth2.googleapis.com/token') {
+                return Http::response(['access_token' => 'google-access-token']);
+            }
+
+            if (str_contains($request->url(), 'fields=') && ! str_contains($request->url(), 'values:')) {
+                return Http::response(['sheets' => [['properties' => ['title' => 'Dataset']]]]);
+            }
+
+            if (str_contains(rawurldecode($request->url()), "/values/'Dataset'!A:")) {
+                return Http::response(['values' => [['snapshot_id']]]);
+            }
+
+            if (str_contains($request->url(), '/values:batchUpdate')) {
+                return Http::response(['totalUpdatedRows' => 1]);
+            }
+
+            return Http::response([], 500);
+        });
+
+        $this
+            ->withSession([config('static-auth.session_key') => true])
+            ->postJson(route('stratz.snapshots.export-dataset'))
+            ->assertOk()
+            ->assertJsonPath('data.exported_rows', 101);
+
+        $dataBatchUpdates = collect(Http::recorded())
+            ->filter(fn (array $record): bool => str_contains($record[0]->url(), '/values:batchUpdate'))
+            ->map(fn (array $record): int => count((array) $record[0]['data']))
+            ->values()
+            ->all();
+
+        $this->assertSame([1, 100, 1], $dataBatchUpdates);
+    }
+
     private function fakeGoogleCredentialsPath(): string
     {
         $directory = storage_path('framework/testing');

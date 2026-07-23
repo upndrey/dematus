@@ -134,6 +134,26 @@ class DraftSnapshotService
             }
         }
 
+        if ($heroes !== []) {
+            return $heroes;
+        }
+
+        foreach ((array) data_get($rosh, 'raw.match.players', []) as $player) {
+            if (! is_array($player) || ! is_bool(data_get($player, 'isRadiant'))) {
+                continue;
+            }
+
+            if (data_get($player, 'isRadiant') !== $isRadiant) {
+                continue;
+            }
+
+            $heroId = data_get($player, 'heroId');
+
+            if (is_numeric($heroId)) {
+                $heroes[] = (int) $heroId;
+            }
+        }
+
         return $heroes === [] ? null : $heroes;
     }
 

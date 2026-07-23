@@ -3,6 +3,16 @@ setlocal
 
 cd /d "%~dp0"
 
+if /I "%~1"=="stop" (
+    echo Stopping Dematus local servers...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+      "$ports = 8000,5173; foreach ($port in $ports) { $connections = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue; foreach ($connection in $connections) { Stop-Process -Id $connection.OwningProcess -Force -ErrorAction SilentlyContinue } }"
+    echo Done.
+    pause
+    endlocal
+    exit /b 0
+)
+
 set "PHP_BIN=C:\Users\zaneo\scoop\shims\php.exe"
 set "PHP_HOME=C:\Users\zaneo\scoop\apps\php\8.5.4"
 set "PHP_INI_DIR=C:\Users\zaneo\scoop\apps\php\current\cli"
@@ -18,7 +28,7 @@ echo - Laravel backend: http://127.0.0.1:8000
 echo - Vite frontend helper: http://127.0.0.1:5173
 echo.
 echo Keep those windows open while you use Dematus.
-echo To stop Dematus later, run stop-dematus.bat.
+echo To stop Dematus later, run start-dematus.bat stop.
 echo.
 
 if not exist "%PHP_BIN%" (
@@ -62,8 +72,8 @@ if errorlevel 1 (
 
 echo.
 
-start "Dematus backend" "%~dp0run-dematus-backend.bat"
-start "Dematus frontend" "%~dp0run-dematus-frontend.bat"
+start "Dematus backend" cmd /k ""%PHP_BIN%" -c "%PHP_INI_DIR%\php.ini" -S 127.0.0.1:8000 -t public public\index.php"
+start "Dematus frontend" cmd /k ""%NODE_BIN%" node_modules\vite\bin\vite.js --host 127.0.0.1"
 
 timeout /t 3 >nul
 start http://127.0.0.1:8000

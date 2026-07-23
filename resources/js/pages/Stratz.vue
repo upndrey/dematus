@@ -148,24 +148,6 @@
                 </div>
 
                 <form class="space-y-6" @submit.prevent="submitRoshByHeroes">
-                    <label
-                        class="flex items-start gap-3 rounded-2xl border border-cyan-500/20 bg-cyan-500/8 p-4 text-sm text-slate-200 transition has-checked:border-cyan-400/45 has-checked:bg-cyan-500/12"
-                    >
-                        <input
-                            v-model="heroForm.considerPlayers"
-                            type="checkbox"
-                            class="mt-0.5 h-4 w-4 rounded border border-slate-600 bg-slate-950 text-cyan-400 focus:ring-2 focus:ring-cyan-400/60"
-                        />
-                        <div class="space-y-1">
-                            <div class="font-semibold text-white">Учитывать героев</div>
-                            <p class="max-w-3xl text-sm leading-6 text-slate-400">
-                                Включает расширенный режим: для каждого слота можно указать про-игрока и затем учесть его
-                                статистику на выбранном герое. Если переключатель выключен, расчет идет строго по старому
-                                hero-only формату.
-                            </p>
-                        </div>
-                    </label>
-
                     <div class="grid gap-4 xl:grid-cols-2">
                         <section class="rounded-2xl border border-emerald-500/20 bg-slate-950/70 p-5">
                             <div class="mb-4 space-y-1">
@@ -1690,18 +1672,15 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import {
-    collectSnapshotStratzWindows as collectSnapshotStratzWindowsAction,
     destroyTeamRoster as destroyTeamRosterAction,
-    exportSnapshotDataset as exportSnapshotDatasetAction,
     rosh as roshAction,
     roshGist as roshGistAction,
     roshHeroes as roshHeroesAction,
     searchProPlayers as searchProPlayersAction,
-    snapshot as snapshotAction,
-    snapshots as snapshotsAction,
     storeTeamRoster as storeTeamRosterAction,
     updateTeamRoster as updateTeamRosterAction,
 } from '@/actions/App/Http/Controllers/StratzController';
+import { token as csrfTokenRoute } from '@/routes/csrf';
 import { getHeroSearchAliases } from '@/lib/hero-aliases';
 
 type HeroOption = {
@@ -1763,7 +1742,7 @@ type SearchableHeroOption = {
 type HeroSide = 'radiant' | 'dire';
 type HeroPickerKey = `${HeroSide}-${number}`;
 type PlayerPickerKey = `${HeroSide}-${number}`;
-type StratzTab = 'matchId' | 'heroes' | 'gist' | 'teams' | 'snapshots';
+type StratzTab = 'matchId' | 'heroes' | 'gist' | 'teams';
 type PlayerSearchStatus = 'idle' | 'searching' | 'ready' | 'empty' | 'error';
 
 type RoshFormattedResult = {
@@ -2026,14 +2005,6 @@ const tabs: Array<{
         activeClasses: 'border-amber-400/50 bg-amber-500/10 text-amber-50',
         badgeClasses: 'border-amber-300/40 bg-amber-300/10 text-amber-100',
     },
-    {
-        id: 'snapshots',
-        label: 'Snapshots',
-        shortLabel: 'Data',
-        description: 'Проверить сохраненные расчёты и скачать полный JSON для воспроизведения.',
-        activeClasses: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-50',
-        badgeClasses: 'border-emerald-300/40 bg-emerald-300/10 text-emerald-100',
-    },
 ];
 
 const roles = [
@@ -2105,7 +2076,7 @@ const teamEditorPlayerSearchState = reactive<PlayerSlotState[]>(
 
 const openTeamEditorPlayerPickerIndex = ref<number | null>(null);
 
-const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+let csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
 
 const normalizeSavedTeamPlayer = (player: SavedTeamPlayer): SavedTeamPlayer => {
     if (! player) {
@@ -2291,14 +2262,48 @@ const jsonHeaders = () => ({
     'X-CSRF-Token': csrfToken,
 });
 
+const refreshCsrfToken = async (): Promise<boolean> => {
+    const response = await fetch(csrfTokenRoute().url, {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+    });
+
+    if (! response.ok) {
+        return false;
+    }
+
+    const body: unknown = await response.json();
+
+    if (
+        typeof body !== 'object'
+        || body === null
+        || ! ('csrf_token' in body)
+        || typeof body.csrf_token !== 'string'
+        || body.csrf_token === ''
+    ) {
+        return false;
+    }
+
+    csrfToken = body.csrf_token;
+    document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.setAttribute('content', csrfToken);
+
+    return true;
+};
+
 const apiJson = async <TResponse>(route: RouteTarget, payload?: unknown): Promise<TResponse> => {
     const method = route.method.toUpperCase();
-    const response = await fetch(route.url, {
-        method,
-        headers: jsonHeaders(),
-        credentials: 'same-origin',
-        ...(method === 'GET' || method === 'HEAD' ? {} : { body: JSON.stringify(payload ?? {}) }),
-    });
+    const sendRequest = (): Promise<Response> =>
+        fetch(route.url, {
+            method,
+            headers: jsonHeaders(),
+            credentials: 'same-origin',
+            ...(method === 'GET' || method === 'HEAD' ? {} : { body: JSON.stringify(payload ?? {}) }),
+        });
+    let response = await sendRequest();
+
+    if (response.status === 419 && await refreshCsrfToken()) {
+        response = await sendRequest();
+    }
 
     const contentType = response.headers.get('content-type') || '';
     const body = contentType.includes('application/json') ? await response.json() : await response.text();
@@ -3255,12 +3260,6 @@ watch(
     },
 );
 
-watch(activeTab, (tab) => {
-    if (tab === 'snapshots' && ! snapshotsLoaded.value) {
-        void loadSnapshots();
-    }
-});
-
 onBeforeUnmount(() => {
     document.removeEventListener('pointerdown', handleDocumentPointerDown);
 
@@ -3292,118 +3291,6 @@ const request = async (action: string, route: RouteTarget, payload: unknown): Pr
     } finally {
         loadingAction.value = null;
     }
-};
-
-const loadSnapshots = async (): Promise<void> => {
-    loadingAction.value = 'snapshots';
-    errorMessage.value = '';
-
-    try {
-        const body = await apiJson<ApiEnvelope<DraftSnapshotSummary[]>>(snapshotsAction.get());
-
-        snapshots.value = body.data ?? [];
-        snapshotsLoaded.value = true;
-
-        if (! selectedSnapshot.value && snapshots.value.length > 0) {
-            await selectSnapshot(snapshots.value[0]);
-        }
-    } catch (error) {
-        errorMessage.value = error instanceof Error ? error.message : String(error);
-    } finally {
-        loadingAction.value = null;
-    }
-};
-
-const selectSnapshot = async (snapshot: DraftSnapshotSummary): Promise<void> => {
-    loadingAction.value = `snapshot-${snapshot.id}`;
-    errorMessage.value = '';
-
-    try {
-        const body = await apiJson<ApiEnvelope<DraftSnapshotPayload>>(snapshotAction.get(snapshot.id));
-
-        selectedSnapshot.value = body.data ?? null;
-    } catch (error) {
-        errorMessage.value = error instanceof Error ? error.message : String(error);
-    } finally {
-        loadingAction.value = null;
-    }
-};
-
-const exportSnapshotDataset = async (): Promise<void> => {
-    loadingAction.value = 'snapshot-dataset-export';
-    errorMessage.value = '';
-    snapshotDatasetExport.value = null;
-
-    try {
-        const body = await postJson<ApiEnvelope<SnapshotDatasetExportResult>>(
-            exportSnapshotDatasetAction.post(),
-            {},
-        );
-
-        snapshotDatasetExport.value = body.data ?? null;
-    } catch (error) {
-        errorMessage.value = error instanceof Error ? error.message : String(error);
-    } finally {
-        loadingAction.value = null;
-    }
-};
-
-const collectSnapshotWindows = async (snapshot: DraftSnapshotSummary): Promise<void> => {
-    if (snapshot.stratz_data_bucket_matrix.complete_4_8_12) {
-        return;
-    }
-
-    loadingAction.value = `snapshot-windows-${snapshot.id}`;
-    errorMessage.value = '';
-
-    try {
-        const body = await postJson<ApiEnvelope<DraftSnapshotPayload>>(
-            collectSnapshotStratzWindowsAction.post(snapshot.id),
-            {},
-        );
-        const updatedSnapshot = body.data ?? null;
-
-        if (! updatedSnapshot) {
-            return;
-        }
-
-        selectedSnapshot.value = updatedSnapshot;
-        snapshots.value = snapshots.value.map((snapshotItem) =>
-            snapshotItem.id === updatedSnapshot.id ? updatedSnapshot : snapshotItem,
-        );
-    } catch (error) {
-        errorMessage.value = error instanceof Error ? error.message : String(error);
-    } finally {
-        loadingAction.value = null;
-    }
-};
-
-const collectSnapshotWindowsButtonLabel = (snapshot: DraftSnapshotSummary): string => {
-    if (isLoading(`snapshot-windows-${snapshot.id}`)) {
-        return 'Собираем...';
-    }
-
-    if (snapshot.stratz_data_bucket_matrix.complete_4_8_12) {
-        return 'Already collected';
-    }
-
-    return 'Collect 4w/8w/12w';
-};
-
-const downloadSelectedSnapshot = (): void => {
-    if (! selectedSnapshot.value) {
-        return;
-    }
-
-    const json = formatJson(selectedSnapshot.value);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-
-    link.href = url;
-    link.download = `dematus-snapshot-${selectedSnapshot.value.id}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
 };
 
 const buildHeroIds = (heroes: string[], side: 'Radiant' | 'Dire'): number[] => {
@@ -3455,15 +3342,8 @@ const submitRoshByHeroes = async (): Promise<void> => {
         await request('rosh-heroes', roshHeroesAction.post(), {
             radiant_team: radiantTeam,
             dire_team: direTeam,
-            consider_players: heroForm.considerPlayers,
             radiant_heroes: radiantHeroes,
             dire_heroes: direHeroes,
-            ...(heroForm.considerPlayers
-                ? {
-                      radiant_players: buildSelectedPlayersPayload('radiant'),
-                      dire_players: buildSelectedPlayersPayload('dire'),
-                  }
-                : {}),
         });
     } catch (error) {
         errorMessage.value = error instanceof Error ? error.message : String(error);

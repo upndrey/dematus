@@ -36,6 +36,8 @@ class RoshSheetService
 
     private const DATASET_SHEET_TITLE = 'Dataset';
 
+    private const DATASET_BATCH_SIZE = 100;
+
     /**
      * @var list<string>
      */
@@ -123,7 +125,7 @@ class RoshSheetService
     }
 
     /**
-     * @param  Collection<int, DraftSnapshot>  $snapshots
+     * @param  iterable<DraftSnapshot>  $snapshots
      * @return array{
      *     spreadsheet_id:string,
      *     sheet_title:string,
@@ -131,7 +133,7 @@ class RoshSheetService
      *     rows:array<int, int>
      * }
      */
-    public function syncSnapshotDataset(Collection $snapshots): array
+    public function syncSnapshotDataset(iterable $snapshots): array
     {
         if (! $this->isConfigured()) {
             throw new RuntimeException('Google Sheets dataset sync is not configured.');
@@ -161,8 +163,9 @@ class RoshSheetService
             $sheetTitle,
         );
         $nextRow = $existingRows === [] ? 2 : max(array_column($existingRows, 'row')) + 1;
-        $ranges = [];
         $rows = [];
+        $exportedRows = 0;
+        $ranges = [];
 
         foreach ($snapshots as $snapshot) {
             $snapshotId = (string) $snapshot->id;
@@ -172,16 +175,23 @@ class RoshSheetService
                 $snapshot,
                 $existingRows[$snapshotId]['values'] ?? [],
             );
+
+            if (count($ranges) === self::DATASET_BATCH_SIZE) {
+                $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+                $exportedRows += count($ranges);
+                $ranges = [];
+            }
         }
 
         if ($ranges !== []) {
             $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+            $exportedRows += count($ranges);
         }
 
         return [
             'spreadsheet_id' => $spreadsheet['spreadsheet_id'],
             'sheet_title' => $sheetTitle,
-            'exported_rows' => count($ranges),
+            'exported_rows' => $exportedRows,
             'rows' => $rows,
         ];
     }

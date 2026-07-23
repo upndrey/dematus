@@ -24,6 +24,15 @@ class StratzRoshTest extends TestCase
         $matchId = 8683333901;
         $picks = $this->roshPicks();
         $match = $this->fakeRoshMatch($picks, $matchId);
+        $match['pickBans'] = null;
+        $match['players'] = array_map(
+            fn (array $pick): array => [
+                'heroId' => $pick['heroId'],
+                'position' => null,
+                'isRadiant' => $pick['isRadiant'],
+            ],
+            $picks,
+        );
         $metaPositions = $this->fakeRoshMetaPositions($picks);
         $globalTimeStats = $this->fakeRoshHeroStatsByTime(
             $picks,
@@ -59,6 +68,22 @@ class StratzRoshTest extends TestCase
                                 'index' => 0,
                             ],
                         ],
+                        [
+                            'properties' => [
+                                'sheetId' => 455676083,
+                                'title' => 'Dataset',
+                                'index' => 7,
+                            ],
+                        ],
+                    ],
+                ]);
+            }
+
+            if (str_contains(rawurldecode($request->url()), "/values/'Dataset'!A:")) {
+                return Http::response([
+                    'range' => "'Dataset'!A:AZ",
+                    'values' => [
+                        ['snapshot_id'],
                     ],
                 ]);
             }
@@ -109,6 +134,35 @@ class StratzRoshTest extends TestCase
                     'data' => [
                         'match' => $match,
                     ],
+                ]);
+            }
+
+            if (str_contains($query, 'query HeroesMetaPositionsByWeeks')) {
+                preg_match_all('/week_(\d+): heroStats/', $query, $matches);
+
+                return Http::response([
+                    'data' => array_fill_keys($matches[1], $metaPositions),
+                ]);
+            }
+
+            if (str_contains($query, 'query GetHeroStatsByTimeForWeeks')) {
+                preg_match_all('/week_(\d+): heroStats/', $query, $matches);
+
+                return Http::response([
+                    'data' => array_fill_keys($matches[1], $bracketTimeStats),
+                ]);
+            }
+
+            if (str_contains($query, 'query SynergyForWeeks')) {
+                preg_match_all('/week_(\d+): heroStats/', $query, $matches);
+
+                return Http::response([
+                    'data' => array_fill_keys($matches[1], [
+                        'matchUp_Prev_Week_1' => [],
+                        'matchUp_Prev_Week_2' => [],
+                        'matchUp_Prev_Week_3' => [],
+                        'matchUp_Prev_Week_4' => [],
+                    ]),
                 ]);
             }
 
@@ -207,6 +261,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.google_sheets.cells.G8', '10,6%')
             ->assertJsonPath('data.google_sheets.cells.I8', '0,0%')
             ->assertJsonPath('data.google_sheets.cells.J8', '0,0%')
+            ->assertJsonPath('data.snapshot_dataset.sheet_title', 'Dataset')
+            ->assertJsonPath('data.snapshot_dataset.exported_rows', 1)
             ->assertJsonPath('data.raw.match.id', $matchId)
             ->assertJsonPath('data.raw.analysis_summary.hero_stats_by_time_bracket.heroStatsByTime_1.count', 4)
             ->assertJsonPath('data.raw.analysis_summary.synergy.matchUp_Prev_Week_1.count', 0)
@@ -230,12 +286,12 @@ class StratzRoshTest extends TestCase
         $this->assertIsArray(data_get($snapshot->stratz_payload, 'analysis.heroes_meta_positions'));
         $this->assertSame('legacy_mixed', data_get($snapshot->feature_payload, 'analysis_summary.stratz_data_windows.active.mode'));
         $this->assertSame(10.6, data_get($snapshot->feature_payload, 'formatted.radiant_odds_1'));
-        $this->assertCount(3, $snapshot->stratzDataBuckets);
+        $this->assertCount(12, $snapshot->stratzDataBuckets);
         $this->assertSame(
             [
-                'hero_stats_by_time_bracket' => 1,
-                'heroes_meta_positions' => 1,
-                'synergy' => 4,
+                'hero_stats_by_time_bracket' => 12,
+                'heroes_meta_positions' => 12,
+                'synergy' => 12,
             ],
             $snapshot->stratzDataBuckets
                 ->sortBy('data_type')
@@ -247,7 +303,7 @@ class StratzRoshTest extends TestCase
             $snapshot->stratzDataBuckets->firstWhere('data_type', 'synergy')?->week_timestamps,
         );
 
-        Http::assertSentCount(9);
+        Http::assertSentCount(17);
 
         Http::assertSent(function (Request $request) use ($matchId): bool {
             if (! $this->isStratzGraphqlRequest($request)) {
@@ -255,6 +311,7 @@ class StratzRoshTest extends TestCase
             }
 
             return str_contains((string) $request['query'], 'query GetMatchPicksBans')
+                && str_contains((string) $request['query'], 'isRadiant')
                 && $request->hasHeader('Accept', 'application/json')
                 && $request->hasHeader('Content-Type', 'application/json')
                 && $request->hasHeader('User-Agent', 'STRATZ_API')
@@ -270,9 +327,9 @@ class StratzRoshTest extends TestCase
                 return false;
             }
 
-            return str_contains((string) $request['query'], 'query HeroesMetaPositionsByWeek')
+            return str_contains((string) $request['query'], 'query HeroesMetaPositionsByWeeks')
                 && $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
-                && $request['variables']['week'] === 1770574943
+                && str_contains((string) $request['query'], 'week: 1770574943')
                 && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37];
         });
 
@@ -281,13 +338,13 @@ class StratzRoshTest extends TestCase
                 return false;
             }
 
-            if (! str_contains((string) $request['query'], 'query GetHeroStatsByTime')) {
+            if (! str_contains((string) $request['query'], 'query GetHeroStatsByTimeForWeeks')) {
                 return false;
             }
 
-            return $request['variables']['week'] === 1770574943
-                && $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
+            return $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
                 && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37]
+                && str_contains((string) $request['query'], 'week: 1770574943')
                 && str_contains((string) $request['query'], 'maxTime: 62');
         });
 
@@ -296,14 +353,14 @@ class StratzRoshTest extends TestCase
                 return false;
             }
 
-            return str_contains((string) $request['query'], 'query Synergy')
+            return str_contains((string) $request['query'], 'query SynergyForWeeks')
                 && $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
                 && $request['variables']['matchLimit'] === 0
                 && $request['variables']['take'] === 200
-                && $request['variables']['currentWeek'] === 1770574943
-                && $request['variables']['previousWeek1'] === 1769970143
-                && $request['variables']['previousWeek2'] === 1769365343
-                && $request['variables']['previousWeek3'] === 1768760543
+                && str_contains((string) $request['query'], 'week: 1770574943')
+                && str_contains((string) $request['query'], 'week: 1769970143')
+                && str_contains((string) $request['query'], 'week: 1769365343')
+                && str_contains((string) $request['query'], 'week: 1768760543')
                 && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37];
         });
 
@@ -1734,7 +1791,7 @@ class StratzRoshTest extends TestCase
         $this->assertSame(10.6, data_get($snapshot->feature_payload, 'formatted.radiant_odds_1'));
         $this->assertIsArray(data_get($snapshot->stratz_payload, 'analysis.heroes_meta_positions'));
 
-        Http::assertSentCount(3);
+        Http::assertSentCount(30);
 
         Carbon::setTestNow();
     }

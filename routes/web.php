@@ -8,6 +8,8 @@ Route::get('/login', [StaticAuthenticatedSessionController::class, 'create'])->n
 Route::post('/login', [StaticAuthenticatedSessionController::class, 'store'])
     ->middleware('throttle:5,1')
     ->name('login.store');
+Route::get('/csrf-token', [StaticAuthenticatedSessionController::class, 'csrfToken'])
+    ->name('csrf.token');
 
 Route::options('/api/dltv-match', [StratzController::class, 'dltvExtensionOptions'])
     ->name('dltv-match.options');
@@ -32,10 +34,6 @@ Route::middleware('static.auth')->group(function () {
     Route::post('/stratz/teams', [StratzController::class, 'storeTeamRoster'])->name('stratz.teams.store');
     Route::patch('/stratz/teams/{teamRoster}', [StratzController::class, 'updateTeamRoster'])->name('stratz.teams.update');
     Route::delete('/stratz/teams/{teamRoster}', [StratzController::class, 'destroyTeamRoster'])->name('stratz.teams.destroy');
-    Route::get('/stratz/snapshots', [StratzController::class, 'snapshots'])->name('stratz.snapshots');
-    Route::post('/stratz/snapshots/export-dataset', [StratzController::class, 'exportSnapshotDataset'])->name('stratz.snapshots.export-dataset');
-    Route::get('/stratz/snapshots/{draftSnapshot}', [StratzController::class, 'snapshot'])->name('stratz.snapshots.show');
-    Route::post('/stratz/snapshots/{draftSnapshot}/collect-stratz-windows', [StratzController::class, 'collectSnapshotStratzWindows'])->name('stratz.snapshots.collect-stratz-windows');
     Route::post('/stratz/draft', [StratzController::class, 'draft'])->name('stratz.draft');
     Route::post('/stratz/rosh', [StratzController::class, 'rosh'])->name('stratz.rosh');
     Route::post('/stratz/rosh-heroes', [StratzController::class, 'roshHeroes'])->name('stratz.rosh-heroes');
