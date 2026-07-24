@@ -8,6 +8,8 @@ Route::get('/login', [StaticAuthenticatedSessionController::class, 'create'])->n
 Route::post('/login', [StaticAuthenticatedSessionController::class, 'store'])
     ->middleware('throttle:5,1')
     ->name('login.store');
+Route::get('/csrf-token', [StaticAuthenticatedSessionController::class, 'csrfToken'])
+    ->name('csrf.token');
 
 Route::options('/api/dltv-match', [StratzController::class, 'dltvExtensionOptions'])
     ->name('dltv-match.options');

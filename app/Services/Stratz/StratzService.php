@@ -22,11 +22,16 @@ class StratzService
 
     private const ROSH_SYNERGY_ADJUSTMENT_CAP = 30.0;
 
-    private const ROSH_PLAYER_IMPACT_CAP = 1.5;
-
     private const ROSH_SIDE_WINRATE_BIAS = 0.037;
 
     private const ROSH_TEAM_PLAYER_ADJUSTMENT_CAP = 2.5;
+
+    private const WEEK_SECONDS = 604800;
+
+    /**
+     * @var list<int>
+     */
+    private const ROSH_TARGET_DATA_WINDOWS = [4, 8, 12];
 
     /**
      * @var array<string, int>
@@ -207,6 +212,11 @@ GRAPHQL;
                 'match' => $match,
                 'analysis_summary' => $this->buildRoshRawAnalysisSummary($rosh),
             ],
+            'snapshot_stratz_payload' => [
+                'match' => $match,
+                'request' => $roshRequest,
+                'analysis' => $rosh,
+            ],
         ];
     }
 
@@ -215,20 +225,13 @@ GRAPHQL;
      *     radiant_team:string,
      *     dire_team:string,
      *     radiant_heroes:list<int>,
-     *     dire_heroes:list<int>,
-     *     consider_players?:bool,
-     *     radiant_players?:list<array<string, mixed>|null>,
-     *     dire_players?:list<array<string, mixed>|null>
+     *     dire_heroes:list<int>
      * }  $payload
      */
     public function getRoshFromHeroes(array $payload): array
     {
         $week = now()->timestamp;
         $match = $this->buildRoshHeroMatchContext($payload, $week);
-
-        if ((bool) data_get($match, 'considerPlayers')) {
-            $match = $this->hydrateRoshPlayerHeroHighlights($match);
-        }
 
         $roshRequest = $this->buildRoshRequestFromHeroes($match, $week);
         $rosh = $this->getRosh($roshRequest);
@@ -240,12 +243,12 @@ GRAPHQL;
             'request' => $roshRequest,
             'raw' => [
                 'match' => $match,
-                'analysis_summary' => array_merge(
-                    $this->buildRoshRawAnalysisSummary($rosh),
-                    [
-                        'player_hero_highlights' => $this->buildRoshPlayerAnalysisSummary($match),
-                    ],
-                ),
+                'analysis_summary' => $this->buildRoshRawAnalysisSummary($rosh),
+            ],
+            'snapshot_stratz_payload' => [
+                'match' => $match,
+                'request' => $roshRequest,
+                'analysis' => $rosh,
             ],
         ];
     }
@@ -315,7 +318,99 @@ GRAPHQL;
             'heroes_meta_positions' => $this->getRoshHeroesMetaPositionsByWeek($bracketBasicId, $week, $heroIds),
             'hero_stats_by_time_bracket' => $this->getRoshHeroStatsByTime($week, $bracketBasicId, $heroIds),
             'synergy' => $this->getRoshSynergy($bracketBasicId, $week, $heroIds),
+            'stratz_data_windows' => (array) data_get($request, 'analysis.dataWindows', []),
         ];
+    }
+
+    /**
+     * @param  list<int>  $heroIds
+     * @return array{
+     *     raw_payload:array<string, mixed>,
+     *     normalized_payload:array<string, mixed>
+     * }
+     */
+    public function collectRoshDataWindowBucketPayload(
+        string $dataType,
+        int $anchorWeek,
+        int $windowWeeks,
+        string $bracketBasicId,
+        array $heroIds,
+    ): array {
+        $weekTimestamps = $this->previousRoshWeekTimestamps($anchorWeek, $windowWeeks);
+
+        $rawPayload = match ($dataType) {
+            'heroes_meta_positions' => $this->collectRoshWeeklyStatsPayload(
+                $weekTimestamps,
+                fn (int $week): array => $this->getRoshHeroesMetaPositionsByWeek($bracketBasicId, $week, $heroIds),
+            ),
+            'hero_stats_by_time_bracket' => $this->collectRoshWeeklyStatsPayload(
+                $weekTimestamps,
+                fn (int $week): array => $this->getRoshHeroStatsByTime($week, $bracketBasicId, $heroIds),
+            ),
+            'synergy' => $this->collectRoshSynergyWindowPayload($anchorWeek, $windowWeeks, $bracketBasicId, $heroIds),
+            default => throw new \InvalidArgumentException("Unsupported STRATZ bucket data type '{$dataType}'."),
+        };
+
+        return [
+            'raw_payload' => $rawPayload,
+            'normalized_payload' => [
+                'window_weeks' => $windowWeeks,
+                'week_timestamps' => $weekTimestamps,
+                'summary' => $this->summarizeRoshWindowPayload($rawPayload),
+            ],
+        ];
+    }
+
+    /**
+     * @param  list<int>  $windowWeeks
+     * @param  list<int>  $heroIds
+     * @return list<array{
+     *     data_type:string,
+     *     window_weeks:int,
+     *     raw_payload:array<string, mixed>,
+     *     normalized_payload:array<string, mixed>
+     * }>
+     */
+    public function collectRoshDataWindowBucketPayloads(
+        int $anchorWeek,
+        array $windowWeeks,
+        string $bracketBasicId,
+        array $heroIds,
+    ): array {
+        $windowWeeks = array_values(array_unique(array_map('intval', $windowWeeks)));
+        sort($windowWeeks);
+
+        $maxWindowWeeks = max($windowWeeks);
+        $allWeekTimestamps = $this->previousRoshWeekTimestamps($anchorWeek, $maxWindowWeeks);
+
+        $weeklyPayloads = [
+            'heroes_meta_positions' => [
+                'weeks' => $this->getRoshHeroesMetaPositionsForWeeks($bracketBasicId, $allWeekTimestamps, $heroIds),
+            ],
+            'hero_stats_by_time_bracket' => [
+                'weeks' => $this->getRoshHeroStatsByTimeForWeeks($bracketBasicId, $allWeekTimestamps, $heroIds),
+            ],
+        ];
+        $synergyPayload = [
+            'segments' => $this->getRoshSynergyForWeeks(
+                $bracketBasicId,
+                $this->previousRoshSynergySegmentTimestamps($anchorWeek, $maxWindowWeeks),
+                $heroIds,
+            ),
+        ];
+        $payloads = [];
+
+        foreach ($windowWeeks as $currentWindowWeeks) {
+            foreach ($weeklyPayloads as $dataType => $rawPayload) {
+                $windowPayload = $this->sliceRoshWeeklyStatsPayload($rawPayload, $anchorWeek, $currentWindowWeeks);
+                $payloads[] = $this->buildRoshDataWindowBucketPayload($dataType, $anchorWeek, $currentWindowWeeks, $windowPayload);
+            }
+
+            $windowSynergyPayload = $this->sliceRoshSynergyPayload($synergyPayload, $anchorWeek, $currentWindowWeeks);
+            $payloads[] = $this->buildRoshDataWindowBucketPayload('synergy', $anchorWeek, $currentWindowWeeks, $windowSynergyPayload);
+        }
+
+        return $payloads;
     }
 
     /**
@@ -443,14 +538,14 @@ GRAPHQL;
     private function buildRoshRequestFromMatch(int $matchId, array $match): array
     {
         $bracketValue = data_get($match, 'bracket');
-        $week = data_get($match, 'endDateTime');
+        $week = data_get($match, 'startDateTime');
 
         if (! is_int($bracketValue)) {
             throw new \RuntimeException('STRATZ ROSH match response does not contain bracket.');
         }
 
         if (! is_int($week)) {
-            throw new \RuntimeException('STRATZ ROSH match response does not contain endDateTime.');
+            throw new \RuntimeException('STRATZ ROSH match response does not contain startDateTime.');
         }
 
         $bracket = $this->mapBracketToId($bracketValue);
@@ -470,6 +565,7 @@ GRAPHQL;
                 'bracketBasicIds' => $bracketBasicId,
                 'week' => $week,
                 'heroIds' => $heroIds,
+                'dataWindows' => $this->buildRoshDataWindowPlan($week),
                 'operations' => [
                     [
                         'key' => 'heroes_meta_positions',
@@ -492,14 +588,15 @@ GRAPHQL;
                     [
                         'key' => 'synergy',
                         'operationName' => 'Synergy',
+                        'windowWeeks' => 4,
                         'variables' => [
                             'bracketBasicIds' => $bracketBasicId,
                             'matchLimit' => 0,
                             'take' => 200,
                             'currentWeek' => $week,
-                            'previousWeek1' => $week - 604800,
-                            'previousWeek2' => $week - 1209600,
-                            'previousWeek3' => $week - 1814400,
+                            'previousWeek1' => $week - self::WEEK_SECONDS,
+                            'previousWeek2' => $week - (self::WEEK_SECONDS * 2),
+                            'previousWeek3' => $week - (self::WEEK_SECONDS * 3),
                             'heroIds' => $heroIds,
                         ],
                     ],
@@ -532,7 +629,6 @@ GRAPHQL;
     {
         $bracket = $this->mapBracketToId(8);
         $bracketBasicId = $this->mapBracketToBasicId(8);
-        $considerPlayers = (bool) data_get($match, 'considerPlayers');
         $picks = $this->extractRoshPicksFromMatch($match);
         $radiantHeroIds = array_column($picks['radiant'], 'heroId');
         $direHeroIds = array_column($picks['dire'], 'heroId');
@@ -544,19 +640,15 @@ GRAPHQL;
                 'matchId' => 'LIVE',
                 'radiantTeam' => (string) data_get($match, 'radiantTeam.name', 'Radiant'),
                 'direTeam' => (string) data_get($match, 'direTeam.name', 'Dire'),
-                'considerPlayers' => $considerPlayers,
                 'radiantHeroes' => $radiantHeroIds,
                 'direHeroes' => $direHeroIds,
-                ...($considerPlayers ? [
-                    'radiantPlayers' => $this->buildRoshRequestPlayersFromMatch($match, true),
-                    'direPlayers' => $this->buildRoshRequestPlayersFromMatch($match, false),
-                ] : []),
             ],
             'analysis' => [
                 'bracket' => $bracket,
                 'bracketBasicIds' => $bracketBasicId,
                 'week' => $week,
                 'heroIds' => $heroIds,
+                'dataWindows' => $this->buildRoshDataWindowPlan($week),
                 'operations' => [
                     [
                         'key' => 'heroes_meta_positions',
@@ -579,14 +671,15 @@ GRAPHQL;
                     [
                         'key' => 'synergy',
                         'operationName' => 'Synergy',
+                        'windowWeeks' => 4,
                         'variables' => [
                             'bracketBasicIds' => $bracketBasicId,
                             'matchLimit' => 0,
                             'take' => 200,
                             'currentWeek' => $week,
-                            'previousWeek1' => $week - 604800,
-                            'previousWeek2' => $week - 1209600,
-                            'previousWeek3' => $week - 1814400,
+                            'previousWeek1' => $week - self::WEEK_SECONDS,
+                            'previousWeek2' => $week - (self::WEEK_SECONDS * 2),
+                            'previousWeek3' => $week - (self::WEEK_SECONDS * 3),
                             'heroIds' => $heroIds,
                         ],
                     ],
@@ -596,32 +689,193 @@ GRAPHQL;
     }
 
     /**
-     * @param  array<string, mixed>  $match
-     * @return list<array<string, mixed>|null>
+     * @return array{
+     *     active:array<string, mixed>,
+     *     targets:array<string, array{weeks:int, week_timestamps:list<int>}>
+     * }
      */
-    private function buildRoshRequestPlayersFromMatch(array $match, bool $isRadiant): array
+    private function buildRoshDataWindowPlan(int $week): array
     {
-        $players = array_values(array_filter(
-            (array) data_get($match, 'players', []),
-            static fn (mixed $player): bool => (bool) data_get($player, 'isRadiant') === $isRadiant,
-        ));
+        $targets = [];
 
-        return array_map(static function (array $player): ?array {
-            $steamAccountId = data_get($player, 'steamAccountId');
+        foreach (self::ROSH_TARGET_DATA_WINDOWS as $windowWeeks) {
+            $targets[$windowWeeks.'w'] = [
+                'weeks' => $windowWeeks,
+                'week_timestamps' => $this->previousRoshWeekTimestamps($week, $windowWeeks),
+            ];
+        }
 
-            if (! is_int($steamAccountId)) {
-                return null;
+        return [
+            'active' => [
+                'mode' => 'legacy_mixed',
+                'heroes_meta_positions_weeks' => 1,
+                'hero_stats_by_time_weeks' => 1,
+                'synergy_weeks' => 4,
+                'note' => 'Current formula still uses 1w hero winrate/time stats and 4w synergy. Target buckets are stored for the 4w/8w/12w data layer migration.',
+            ],
+            'targets' => $targets,
+        ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function previousRoshWeekTimestamps(int $week, int $windowWeeks): array
+    {
+        return array_map(
+            static fn (int $index): int => $week - (self::WEEK_SECONDS * $index),
+            range(0, $windowWeeks - 1),
+        );
+    }
+
+    /**
+     * @param  list<int>  $weekTimestamps
+     * @param  callable(int): array<string, mixed>  $fetch
+     * @return array<string, mixed>
+     */
+    private function collectRoshWeeklyStatsPayload(array $weekTimestamps, callable $fetch): array
+    {
+        $weeks = [];
+
+        foreach ($weekTimestamps as $week) {
+            $weeks[(string) $week] = $fetch($week);
+        }
+
+        return [
+            'weeks' => $weeks,
+        ];
+    }
+
+    /**
+     * @param  list<int>  $heroIds
+     * @return array<string, mixed>
+     */
+    private function collectRoshSynergyWindowPayload(int $anchorWeek, int $windowWeeks, string $bracketBasicId, array $heroIds): array
+    {
+        $segments = [];
+
+        foreach ($this->previousRoshSynergySegmentTimestamps($anchorWeek, $windowWeeks) as $segmentAnchorWeek) {
+            $segments[(string) $segmentAnchorWeek] = $this->getRoshSynergy(
+                $bracketBasicId,
+                $segmentAnchorWeek,
+                $heroIds,
+            );
+        }
+
+        return [
+            'segments' => $segments,
+        ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function previousRoshSynergySegmentTimestamps(int $week, int $windowWeeks): array
+    {
+        $timestamps = [];
+
+        for ($offset = 0; $offset < $windowWeeks; $offset += 4) {
+            $timestamps[] = $week - (self::WEEK_SECONDS * $offset);
+        }
+
+        return $timestamps;
+    }
+
+    /**
+     * @param  array<string, mixed>  $rawPayload
+     * @return array<string, mixed>
+     */
+    private function sliceRoshWeeklyStatsPayload(array $rawPayload, int $anchorWeek, int $windowWeeks): array
+    {
+        $weekKeys = array_map('strval', $this->previousRoshWeekTimestamps($anchorWeek, $windowWeeks));
+        $weeks = (array) data_get($rawPayload, 'weeks', []);
+
+        return [
+            'weeks' => array_intersect_key($weeks, array_flip($weekKeys)),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $rawPayload
+     * @return array<string, mixed>
+     */
+    private function sliceRoshSynergyPayload(array $rawPayload, int $anchorWeek, int $windowWeeks): array
+    {
+        $segmentKeys = array_map('strval', $this->previousRoshSynergySegmentTimestamps($anchorWeek, $windowWeeks));
+        $segments = (array) data_get($rawPayload, 'segments', []);
+
+        return [
+            'segments' => array_intersect_key($segments, array_flip($segmentKeys)),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $rawPayload
+     * @return array{
+     *     data_type:string,
+     *     window_weeks:int,
+     *     raw_payload:array<string, mixed>,
+     *     normalized_payload:array<string, mixed>
+     * }
+     */
+    private function buildRoshDataWindowBucketPayload(string $dataType, int $anchorWeek, int $windowWeeks, array $rawPayload): array
+    {
+        return [
+            'data_type' => $dataType,
+            'window_weeks' => $windowWeeks,
+            'raw_payload' => $rawPayload,
+            'normalized_payload' => [
+                'window_weeks' => $windowWeeks,
+                'week_timestamps' => $this->previousRoshWeekTimestamps($anchorWeek, $windowWeeks),
+                'summary' => $this->summarizeRoshWindowPayload($rawPayload),
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $rawPayload
+     * @return array<string, mixed>
+     */
+    private function summarizeRoshWindowPayload(array $rawPayload): array
+    {
+        $summary = [];
+
+        foreach ($rawPayload as $groupKey => $groupValue) {
+            if (! is_array($groupValue)) {
+                continue;
             }
 
+            $summary[$groupKey] = collect($groupValue)
+                ->map(fn (mixed $payload): array => $this->summarizeNestedRoshPayload($payload))
+                ->all();
+        }
+
+        return $summary;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function summarizeNestedRoshPayload(mixed $payload): array
+    {
+        if (! is_array($payload)) {
             return [
-                'steamAccountId' => $steamAccountId,
-                'playerName' => data_get($player, 'playerName'),
-                'proName' => data_get($player, 'proName'),
-                'teamName' => data_get($player, 'teamName'),
-                'isAnonymous' => data_get($player, 'isAnonymous'),
-                'isStratzPublic' => data_get($player, 'isStratzPublic'),
+                'count' => 0,
             ];
-        }, $players);
+        }
+
+        $summary = [];
+
+        foreach ($payload as $key => $value) {
+            if (is_array($value)) {
+                $summary[$key] = [
+                    'count' => count($value),
+                    'sample' => array_slice(array_values($value), 0, 2),
+                ];
+            }
+        }
+
+        return $summary;
     }
 
     /**
@@ -716,10 +970,7 @@ GRAPHQL;
      *     radiant_team:string,
      *     dire_team:string,
      *     radiant_heroes:list<int>,
-     *     dire_heroes:list<int>,
-     *     consider_players?:bool,
-     *     radiant_players?:list<array<string, mixed>|null>,
-     *     dire_players?:list<array<string, mixed>|null>
+     *     dire_heroes:list<int>
      * }  $payload
      * @return array<string, mixed>
      */
@@ -728,7 +979,6 @@ GRAPHQL;
         $players = [];
         $pickBans = [];
         $order = 0;
-        $considerPlayers = (bool) ($payload['consider_players'] ?? false);
 
         foreach ((array) ($payload['radiant_heroes'] ?? []) as $index => $heroId) {
             $positionId = $index + 1;
@@ -737,7 +987,6 @@ GRAPHQL;
                 (int) $heroId,
                 $positionId,
                 true,
-                data_get($payload, 'radiant_players.'.$index),
             );
             $pickBans[] = [
                 'heroId' => (int) $heroId,
@@ -756,7 +1005,6 @@ GRAPHQL;
                 (int) $heroId,
                 $positionId,
                 false,
-                data_get($payload, 'dire_players.'.$index),
             );
             $pickBans[] = [
                 'heroId' => (int) $heroId,
@@ -773,7 +1021,6 @@ GRAPHQL;
             'endDateTime' => $week,
             'bracket' => 8,
             'didRadiantWin' => null,
-            'considerPlayers' => $considerPlayers,
             'radiantTeam' => [
                 'name' => (string) ($payload['radiant_team'] ?? 'Radiant'),
             ],
@@ -786,592 +1033,17 @@ GRAPHQL;
     }
 
     /**
-     * @param  array<string, mixed>|null  $playerPayload
      * @return array<string, mixed>
      */
-    private function buildRoshHeroPlayerSlot(int $heroId, int $positionId, bool $isRadiant, ?array $playerPayload): array
+    private function buildRoshHeroPlayerSlot(int $heroId, int $positionId, bool $isRadiant): array
     {
-        $steamAccountId = data_get($playerPayload, 'steam_account_id');
-        $playerName = data_get($playerPayload, 'name');
-        $proName = data_get($playerPayload, 'pro_name');
-        $teamName = data_get($playerPayload, 'team_name');
-        $isAnonymous = data_get($playerPayload, 'is_anonymous');
-        $isStratzPublic = data_get($playerPayload, 'is_stratz_public');
-
         return [
             'heroId' => $heroId,
             'position' => 'POSITION_'.$positionId,
             'isRadiant' => $isRadiant,
-            'steamAccountId' => is_numeric($steamAccountId) ? (int) $steamAccountId : null,
-            'playerName' => is_string($playerName) && $playerName !== '' ? $playerName : null,
-            'proName' => is_string($proName) && $proName !== '' ? $proName : null,
-            'teamName' => is_string($teamName) && $teamName !== '' ? $teamName : null,
-            'isAnonymous' => is_bool($isAnonymous) ? $isAnonymous : null,
-            'isStratzPublic' => is_bool($isStratzPublic) ? $isStratzPublic : null,
-            'playerHeroStats' => null,
-            'playerImpact' => 0.0,
-            'playerFallbackReason' => is_numeric($steamAccountId) ? null : 'player_not_selected',
-            'playerFallbackMessage' => null,
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $match
-     * @return array<string, mixed>
-     */
-    private function hydrateRoshPlayerHeroHighlights(array $match): array
-    {
-        $players = (array) data_get($match, 'players', []);
-        $variableDefinitions = [];
-        $queryRows = [];
-        $variables = [];
-        $aliasesByIndex = [];
-
-        foreach ($players as $index => $player) {
-            $steamAccountId = data_get($player, 'steamAccountId');
-            $heroId = data_get($player, 'heroId');
-
-            if (! is_int($steamAccountId)) {
-                $players[$index]['playerFallbackReason'] = 'player_not_selected';
-
-                continue;
-            }
-
-            if ((bool) data_get($player, 'isAnonymous')) {
-                $players[$index]['playerFallbackReason'] = 'player_is_anonymous';
-
-                continue;
-            }
-
-            if (! is_int($heroId)) {
-                $players[$index]['playerFallbackReason'] = 'hero_not_selected';
-
-                continue;
-            }
-
-            $alias = 'player_'.$index;
-            $variableDefinitions[] = '$'.$alias.'SteamAccountId: Long!';
-            $variableDefinitions[] = '$'.$alias.'HeroId: Short!';
-            $queryRows[] = <<<GRAPHQL
-    {$alias}: playerHeroHighlight(steamAccountId: \${$alias}SteamAccountId, heroId: \${$alias}HeroId) {
-      lastPlayed
-      winCount
-      matchCount
-      impAllTime
-      winCountLastMonth
-      matchCountLastMonth
-      impLastMonth
-      winCountLastSixMonths
-      matchCountLastSixMonths
-      impLastSixMonths
-    }
-GRAPHQL;
-            $variables[$alias.'SteamAccountId'] = $steamAccountId;
-            $variables[$alias.'HeroId'] = $heroId;
-            $aliasesByIndex[$alias] = $index;
-        }
-
-        if ($queryRows === []) {
-            return $this->finalizeRoshPlayerAnalysis($match, $players);
-        }
-
-        $query = 'query PlayerHeroHighlights('.implode(', ', $variableDefinitions).") {\n".
-            "  plus {\n".
-            implode("\n", $queryRows)."\n".
-            "  }\n".
-            '}';
-
-        try {
-            $response = $this->api->queryAllowPartial($query, $variables);
-        } catch (\Throwable $throwable) {
-            return $this->hydrateRoshPlayerHeroHighlightsIndividually(
-                $match,
-                $players,
-                $aliasesByIndex,
-                $throwable->getMessage(),
-            );
-        }
-
-        $plus = (array) data_get($response, 'data.plus', []);
-        $batchErrorMessages = $this->mapRoshPlayerHighlightErrorsByAlias(
-            (array) data_get($response, 'errors', []),
-        );
-        $genericBatchErrorMessage = $this->firstRoshPlayerHighlightErrorMessage(
-            (array) data_get($response, 'errors', []),
-        );
-        $aliasesToRetry = [];
-
-        foreach ($aliasesByIndex as $alias => $index) {
-            $rawHighlight = data_get($plus, $alias);
-
-            if (is_array($rawHighlight)) {
-                $normalizedHighlight = $this->normalizeRoshPlayerHeroHighlight($rawHighlight);
-
-                $players[$index]['playerHeroStats'] = $normalizedHighlight;
-                $players[$index]['playerImpact'] = $this->calculateRoshPlayerImpact($normalizedHighlight);
-                $players[$index]['playerFallbackReason'] = null;
-                $players[$index]['playerFallbackMessage'] = null;
-
-                continue;
-            }
-
-            $aliasBatchErrorMessage = $batchErrorMessages[$alias] ?? null;
-
-            if (is_string($aliasBatchErrorMessage) && $aliasBatchErrorMessage !== '') {
-                $this->markRoshPlayerHighlightFailure(
-                    $players,
-                    $index,
-                    $this->resolveRoshPlayerHighlightFallbackReason($aliasBatchErrorMessage),
-                    $aliasBatchErrorMessage,
-                );
-
-                if ($this->shouldRetryRoshPlayerHighlightBatchError($aliasBatchErrorMessage)) {
-                    $aliasesToRetry[$alias] = $index;
-                }
-
-                continue;
-            }
-
-            if (is_string($genericBatchErrorMessage) && $genericBatchErrorMessage !== '') {
-                $this->markRoshPlayerHighlightFailure(
-                    $players,
-                    $index,
-                    $this->resolveRoshPlayerHighlightFallbackReason($genericBatchErrorMessage),
-                    $genericBatchErrorMessage,
-                );
-                $aliasesToRetry[$alias] = $index;
-
-                continue;
-            }
-
-            $this->markRoshPlayerHighlightFailure($players, $index, 'player_hero_stats_missing');
-        }
-
-        if ($aliasesToRetry !== []) {
-            return $this->hydrateRoshPlayerHeroHighlightsIndividually(
-                $match,
-                $players,
-                $aliasesToRetry,
-                $genericBatchErrorMessage,
-            );
-        }
-
-        return $this->finalizeRoshPlayerAnalysis($match, $players);
-    }
-
-    /**
-     * @param  array<string, mixed>  $match
-     * @param  array<int, array<string, mixed>>  $players
-     * @param  array<string, int>  $aliasesByIndex
-     * @return array<string, mixed>
-     */
-    private function hydrateRoshPlayerHeroHighlightsIndividually(
-        array $match,
-        array $players,
-        array $aliasesByIndex,
-        ?string $batchErrorMessage = null,
-    ): array {
-        $requestErrors = [];
-        $resolvedPlayers = count(array_filter(
-            $players,
-            static fn (mixed $player): bool => is_array(data_get($player, 'playerHeroStats')),
-        ));
-
-        foreach ($aliasesByIndex as $index) {
-            $steamAccountId = data_get($players, $index.'.steamAccountId');
-            $heroId = data_get($players, $index.'.heroId');
-
-            if (! is_int($steamAccountId) || ! is_int($heroId)) {
-                $this->markRoshPlayerHighlightFailure($players, $index, 'player_stats_request_failed');
-
-                continue;
-            }
-
-            try {
-                $rawHighlight = $this->fetchRoshPlayerHeroHighlight($steamAccountId, $heroId);
-            } catch (\Throwable $throwable) {
-                $fallbackMessage = $throwable->getMessage();
-
-                $this->markRoshPlayerHighlightFailure(
-                    $players,
-                    $index,
-                    $this->resolveRoshPlayerHighlightFallbackReason($fallbackMessage),
-                    $fallbackMessage,
-                );
-                $requestErrors[] = $fallbackMessage;
-
-                continue;
-            }
-
-            if (! is_array($rawHighlight)) {
-                $this->markRoshPlayerHighlightFailure($players, $index, 'player_hero_stats_missing');
-
-                continue;
-            }
-
-            $normalizedHighlight = $this->normalizeRoshPlayerHeroHighlight($rawHighlight);
-
-            $players[$index]['playerHeroStats'] = $normalizedHighlight;
-            $players[$index]['playerImpact'] = $this->calculateRoshPlayerImpact($normalizedHighlight);
-            $players[$index]['playerFallbackReason'] = null;
-            $players[$index]['playerFallbackMessage'] = null;
-            $resolvedPlayers++;
-        }
-
-        $requestError = null;
-
-        if ($resolvedPlayers === 0 && $requestErrors !== []) {
-            $requestError = $requestErrors[0];
-        } elseif ($resolvedPlayers === 0) {
-            $requestError = $batchErrorMessage;
-        }
-
-        return $this->finalizeRoshPlayerAnalysis($match, $players, $requestError);
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $errors
-     * @return array<string, string>
-     */
-    private function mapRoshPlayerHighlightErrorsByAlias(array $errors): array
-    {
-        $messagesByAlias = [];
-
-        foreach ($errors as $error) {
-            $alias = data_get($error, 'path.1');
-            $message = data_get($error, 'message');
-
-            if (! is_string($alias) || $alias === '' || ! is_string($message) || $message === '') {
-                continue;
-            }
-
-            $messagesByAlias[$alias] = $this->normalizeRoshPlayerHighlightErrorMessage($message);
-        }
-
-        return $messagesByAlias;
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $errors
-     */
-    private function firstRoshPlayerHighlightErrorMessage(array $errors): ?string
-    {
-        $message = data_get($errors, '0.message');
-
-        if (! is_string($message) || $message === '') {
-            return null;
-        }
-
-        return $this->normalizeRoshPlayerHighlightErrorMessage($message);
-    }
-
-    private function normalizeRoshPlayerHighlightErrorMessage(string $message): string
-    {
-        return str_starts_with($message, 'STRATZ ')
-            ? $message
-            : 'STRATZ GraphQL error: '.$message;
-    }
-
-    private function resolveRoshPlayerHighlightFallbackReason(string $message): string
-    {
-        $normalizedMessage = mb_strtolower($message);
-
-        if (str_contains($normalizedMessage, 'player id is missing or anonymous')) {
-            return 'player_missing_or_anonymous_in_stratz';
-        }
-
-        return 'player_stats_request_failed';
-    }
-
-    private function shouldRetryRoshPlayerHighlightBatchError(string $message): bool
-    {
-        $normalizedMessage = mb_strtolower($message);
-
-        foreach ([
-            'player id is missing or anonymous',
-            'unsupported value',
-        ] as $permanentFragment) {
-            if (str_contains($normalizedMessage, $permanentFragment)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $players
-     */
-    private function markRoshPlayerHighlightFailure(
-        array &$players,
-        int $index,
-        string $fallbackReason,
-        ?string $fallbackMessage = null,
-    ): void {
-        $players[$index]['playerFallbackReason'] = $fallbackReason;
-        $players[$index]['playerFallbackMessage'] = $fallbackMessage;
-        $players[$index]['playerHeroStats'] = null;
-        $players[$index]['playerImpact'] = 0.0;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function fetchRoshPlayerHeroHighlight(int $steamAccountId, int $heroId): ?array
-    {
-        $query = <<<'GRAPHQL'
-query PlayerHeroHighlight($steamAccountId: Long!, $heroId: Short!) {
-  plus {
-    playerHeroHighlight(steamAccountId: $steamAccountId, heroId: $heroId) {
-      lastPlayed
-      winCount
-      matchCount
-      impAllTime
-      winCountLastMonth
-      matchCountLastMonth
-      impLastMonth
-      winCountLastSixMonths
-      matchCountLastSixMonths
-      impLastSixMonths
-    }
-  }
-}
-GRAPHQL;
-
-        $response = $this->api->query($query, [
-            'steamAccountId' => $steamAccountId,
-            'heroId' => $heroId,
-        ]);
-
-        $rawHighlight = data_get($response, 'plus.playerHeroHighlight');
-
-        return is_array($rawHighlight) ? $rawHighlight : null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $match
-     * @param  array<int, array<string, mixed>>  $players
-     * @return array<string, mixed>
-     */
-    private function finalizeRoshPlayerAnalysis(array $match, array $players, ?string $requestError = null): array
-    {
-        $match['players'] = $players;
-        $match['playerAnalysis'] = $this->buildRoshPlayerAnalysis($players, $requestError);
-
-        return $match;
-    }
-
-    /**
-     * @param  array<string, mixed>  $rawHighlight
-     * @return array{
-     *     lastPlayed:int|null,
-     *     matchCount:int,
-     *     winCount:int,
-     *     winRate:?float,
-     *     impAllTime:?float,
-     *     lastMonth:array{matchCount:int, winCount:int, winRate:?float, imp:?float},
-     *     lastSixMonths:array{matchCount:int, winCount:int, winRate:?float, imp:?float},
-     *     recentWindow:string,
-     *     recentMatchCount:int,
-     *     recentWinCount:int,
-     *     recentWinRate:?float,
-     *     recentImp:?float
-     * }
-     */
-    private function normalizeRoshPlayerHeroHighlight(array $rawHighlight): array
-    {
-        $matchCount = max(0, (int) data_get($rawHighlight, 'matchCount', 0));
-        $winCount = max(0, (int) data_get($rawHighlight, 'winCount', 0));
-        $matchCountLastMonth = max(0, (int) data_get($rawHighlight, 'matchCountLastMonth', 0));
-        $winCountLastMonth = max(0, (int) data_get($rawHighlight, 'winCountLastMonth', 0));
-        $matchCountLastSixMonths = max(0, (int) data_get($rawHighlight, 'matchCountLastSixMonths', 0));
-        $winCountLastSixMonths = max(0, (int) data_get($rawHighlight, 'winCountLastSixMonths', 0));
-
-        $recentWindow = 'all_time';
-        $recentMatchCount = $matchCount;
-        $recentWinCount = $winCount;
-        $recentImp = is_numeric(data_get($rawHighlight, 'impAllTime'))
-            ? (float) data_get($rawHighlight, 'impAllTime')
-            : null;
-
-        if ($matchCountLastMonth > 0) {
-            $recentWindow = 'last_month';
-            $recentMatchCount = $matchCountLastMonth;
-            $recentWinCount = $winCountLastMonth;
-            $recentImp = is_numeric(data_get($rawHighlight, 'impLastMonth'))
-                ? (float) data_get($rawHighlight, 'impLastMonth')
-                : null;
-        } elseif ($matchCountLastSixMonths > 0) {
-            $recentWindow = 'last_six_months';
-            $recentMatchCount = $matchCountLastSixMonths;
-            $recentWinCount = $winCountLastSixMonths;
-            $recentImp = is_numeric(data_get($rawHighlight, 'impLastSixMonths'))
-                ? (float) data_get($rawHighlight, 'impLastSixMonths')
-                : null;
-        }
-
-        return [
-            'lastPlayed' => is_numeric(data_get($rawHighlight, 'lastPlayed'))
-                ? (int) data_get($rawHighlight, 'lastPlayed')
-                : null,
-            'matchCount' => $matchCount,
-            'winCount' => $winCount,
-            'winRate' => $this->calculateWinRateFromCounts($winCount, $matchCount),
-            'impAllTime' => is_numeric(data_get($rawHighlight, 'impAllTime'))
-                ? round((float) data_get($rawHighlight, 'impAllTime'), 2)
-                : null,
-            'lastMonth' => [
-                'matchCount' => $matchCountLastMonth,
-                'winCount' => $winCountLastMonth,
-                'winRate' => $this->calculateWinRateFromCounts($winCountLastMonth, $matchCountLastMonth),
-                'imp' => is_numeric(data_get($rawHighlight, 'impLastMonth'))
-                    ? round((float) data_get($rawHighlight, 'impLastMonth'), 2)
-                    : null,
-            ],
-            'lastSixMonths' => [
-                'matchCount' => $matchCountLastSixMonths,
-                'winCount' => $winCountLastSixMonths,
-                'winRate' => $this->calculateWinRateFromCounts($winCountLastSixMonths, $matchCountLastSixMonths),
-                'imp' => is_numeric(data_get($rawHighlight, 'impLastSixMonths'))
-                    ? round((float) data_get($rawHighlight, 'impLastSixMonths'), 2)
-                    : null,
-            ],
-            'recentWindow' => $recentWindow,
-            'recentMatchCount' => $recentMatchCount,
-            'recentWinCount' => $recentWinCount,
-            'recentWinRate' => $this->calculateWinRateFromCounts($recentWinCount, $recentMatchCount),
-            'recentImp' => $recentImp !== null ? round($recentImp, 2) : null,
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $playerHeroStats
-     */
-    private function calculateRoshPlayerImpact(?array $playerHeroStats): float
-    {
-        if ($playerHeroStats === null) {
-            return 0.0;
-        }
-
-        $matchCount = max(0, (int) data_get($playerHeroStats, 'matchCount', 0));
-        $winRate = data_get($playerHeroStats, 'winRate');
-
-        if (! is_numeric($winRate) || $matchCount === 0) {
-            return 0.0;
-        }
-
-        $recentMatchCount = max(0, (int) data_get($playerHeroStats, 'recentMatchCount', 0));
-        $recentWinRate = data_get($playerHeroStats, 'recentWinRate');
-        $overallDiff = (float) $winRate - 50.0;
-        $recentDiff = is_numeric($recentWinRate)
-            ? (float) $recentWinRate - 50.0
-            : $overallDiff;
-        $overallConfidence = $this->clampFloat($matchCount / 30, 0.0, 1.0);
-        $recentConfidence = $this->clampFloat($recentMatchCount / 10, 0.0, 1.0);
-        $impValue = data_get($playerHeroStats, 'recentImp');
-
-        if (! is_numeric($impValue)) {
-            $impValue = data_get($playerHeroStats, 'impAllTime', 0.0);
-        }
-
-        $impScore = $this->clampFloat(((float) $impValue) / 20.0, -1.2, 1.2);
-        $impact = ($overallDiff * $overallConfidence * 0.03)
-            + ($recentDiff * $recentConfidence * 0.05)
-            + ($impScore * 0.35);
-
-        return round(
-            $this->clampFloat($impact, -self::ROSH_PLAYER_IMPACT_CAP, self::ROSH_PLAYER_IMPACT_CAP),
-            2,
-        );
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $players
-     * @return array<string, mixed>
-     */
-    private function buildRoshPlayerAnalysis(array $players, ?string $requestError = null): array
-    {
-        $selectedCount = 0;
-        $resolvedCount = 0;
-        $fallbackCount = 0;
-        $radiantTotalImpact = 0.0;
-        $direTotalImpact = 0.0;
-
-        foreach ($players as $player) {
-            $steamAccountId = data_get($player, 'steamAccountId');
-            $playerImpact = is_numeric(data_get($player, 'playerImpact'))
-                ? (float) data_get($player, 'playerImpact')
-                : 0.0;
-
-            if ((bool) data_get($player, 'isRadiant')) {
-                $radiantTotalImpact += $playerImpact;
-            } else {
-                $direTotalImpact += $playerImpact;
-            }
-
-            if (! is_int($steamAccountId)) {
-                continue;
-            }
-
-            $selectedCount++;
-
-            if (is_array(data_get($player, 'playerHeroStats'))) {
-                $resolvedCount++;
-            }
-
-            $fallbackReason = data_get($player, 'playerFallbackReason');
-
-            if (is_string($fallbackReason) && $fallbackReason !== '') {
-                $fallbackCount++;
-            }
-        }
-
-        $netAdjustment = round(
-            $this->clampFloat(
-                ($radiantTotalImpact - $direTotalImpact) / 5,
-                -self::ROSH_TEAM_PLAYER_ADJUSTMENT_CAP,
-                self::ROSH_TEAM_PLAYER_ADJUSTMENT_CAP,
-            ),
-            1,
-        );
-
-        return [
-            'enabled' => true,
-            'source' => 'plus.playerHeroHighlight',
-            'selectedCount' => $selectedCount,
-            'resolvedCount' => $resolvedCount,
-            'fallbackCount' => $fallbackCount,
-            'radiantTotalImpact' => round($radiantTotalImpact, 2),
-            'direTotalImpact' => round($direTotalImpact, 2),
-            'netAdjustment' => $netAdjustment,
-            'requestError' => $requestError,
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $match
-     * @param  array{
-     *     heroes_meta_positions:array<string, mixed>,
-     *     hero_stats_by_time_bracket:array<string, mixed>,
-     *     synergy:array<string, mixed>
-     * }  $analysis
-     * @return list<array{
-     *     minute:int,
-     *     time_start:int,
-     *     time_end:int,
-     *     advantage_side:string,
-     *     advantage_percent:float,
-     *     radiant_advantage:float,
-     *     dire_advantage:float,
-     *     match_percentage:float,
-     *     win_rate_graph:float,
-     *     hero_adjustment:float,
-     *     hero_base_adjustment:float,
-     *     hero_tempo_adjustment:float,
-     *     synergy_adjustment:float,
-     *     player_adjustment:float
-     * }>
-     */
     private function buildRoshMinuteTable(array $match, array $analysis): array
     {
         $picks = $this->extractRoshPicksFromMatch($match);
@@ -1407,8 +1079,6 @@ GRAPHQL;
             $direPicks,
             $synergyData,
         );
-        $playerAdjustment = $this->calculateRoshPlayerAdjustment($match);
-
         ksort($computedGraphData);
 
         $minuteTable = [];
@@ -1456,7 +1126,7 @@ GRAPHQL;
                 count($direPicks),
             ) * self::ROSH_HERO_ADJUSTMENT_WEIGHT;
             $heroAdjustment = $heroBaseAdjustment + $heroTempoAdjustment;
-            $winRateGraph = round($heroAdjustment + $synergyOffset + $playerAdjustment, 1);
+            $winRateGraph = round($heroAdjustment + $synergyOffset, 1);
 
             $matchPercentage = $totalMatchCount > 0
                 ? round(($minuteMatchCount / $totalMatchCount) * 100, 1)
@@ -1476,7 +1146,6 @@ GRAPHQL;
                 'hero_base_adjustment' => round($heroBaseAdjustment, 1),
                 'hero_tempo_adjustment' => round($heroTempoAdjustment, 1),
                 'synergy_adjustment' => round($synergyOffset, 1),
-                'player_adjustment' => $playerAdjustment,
             ];
         }
 
@@ -1493,16 +1162,32 @@ GRAPHQL;
     private function extractRoshPicksFromMatch(array $match): array
     {
         $positionIdsByHeroId = [];
+        $fallbackPicks = [
+            'radiant' => [],
+            'dire' => [],
+        ];
 
         foreach ((array) ($match['players'] ?? []) as $player) {
             $heroId = data_get($player, 'heroId');
             $positionId = $this->extractRoshPositionId(data_get($player, 'position'));
 
-            if (! is_int($heroId) || $positionId === null) {
+            if (! is_int($heroId)) {
                 continue;
             }
 
+            $isRadiant = data_get($player, 'isRadiant');
+
+            if (! is_bool($isRadiant)) {
+                continue;
+            }
+
+            $side = $isRadiant ? 'radiant' : 'dire';
+            $positionId ??= count($fallbackPicks[$side]) + 1;
             $positionIdsByHeroId[$heroId] = $positionId;
+            $fallbackPicks[$side][] = [
+                'heroId' => $heroId,
+                'positionId' => $positionId,
+            ];
         }
 
         $radiantPicks = [];
@@ -1550,26 +1235,7 @@ GRAPHQL;
             ];
         }
 
-        $fallbackPlayers = [];
-
-        foreach ((array) ($match['players'] ?? []) as $player) {
-            $heroId = data_get($player, 'heroId');
-            $positionId = $this->extractRoshPositionId(data_get($player, 'position'));
-
-            if (! is_int($heroId) || $positionId === null) {
-                continue;
-            }
-
-            $fallbackPlayers[] = [
-                'heroId' => $heroId,
-                'positionId' => $positionId,
-            ];
-        }
-
-        return [
-            'radiant' => array_slice($fallbackPlayers, 0, 5),
-            'dire' => array_slice($fallbackPlayers, 5, 5),
-        ];
+        return $fallbackPicks;
     }
 
     private function extractRoshPositionId(mixed $position): ?int
@@ -2062,6 +1728,7 @@ query GetMatchPicksBans($matchId: Long!) {
     gameMode
     regionId
     durationSeconds
+    startDateTime
     endDateTime
     lobbyType
     didRadiantWin
@@ -2083,6 +1750,7 @@ query GetMatchPicksBans($matchId: Long!) {
     players {
       heroId
       position
+      isRadiant
     }
     pickBans {
       heroId
@@ -2180,6 +1848,35 @@ GRAPHQL;
     }
 
     /**
+     * @param  list<int>  $weeks
+     * @param  list<int>  $heroIds
+     * @return array<string, array<string, mixed>>
+     */
+    private function getRoshHeroesMetaPositionsForWeeks(string $bracketBasicId, array $weeks, array $heroIds): array
+    {
+        $rows = array_map(fn (int $week): string => 'week_'.$week.': heroStats {'.$this->roshHeroesMetaPositionsSelection($week).'}', $weeks);
+
+        try {
+            $data = $this->api->query(
+                'query HeroesMetaPositionsByWeeks($bracketBasicIds: [RankBracketBasicEnum], $heroIds: [Short]) {'.implode("\n", $rows).'}',
+                ['bracketBasicIds' => $bracketBasicId, 'heroIds' => $heroIds],
+            );
+        } catch (\RuntimeException $exception) {
+            if (! str_contains($exception->getMessage(), 'Error trying to resolve field')) {
+                throw $exception;
+            }
+
+            return collect($weeks)->mapWithKeys(
+                fn (int $week): array => [(string) $week => $this->getRoshHeroesMetaPositionsByWeek($bracketBasicId, $week, $heroIds)],
+            )->all();
+        }
+
+        return collect($weeks)->mapWithKeys(
+            fn (int $week): array => [(string) $week => (array) data_get($data, 'week_'.$week, [])],
+        )->all();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function getRoshHeroStatsByTime(int $week, string $bracketBasicId, array $heroIds): array
@@ -2270,6 +1967,24 @@ GRAPHQL;
         $data = $this->api->query($query, $variables);
 
         return (array) data_get($data, 'heroStats', []);
+    }
+
+    /**
+     * @param  list<int>  $weeks
+     * @param  list<int>  $heroIds
+     * @return array<string, array<string, mixed>>
+     */
+    private function getRoshHeroStatsByTimeForWeeks(string $bracketBasicId, array $weeks, array $heroIds): array
+    {
+        $rows = array_map(fn (int $week): string => 'week_'.$week.': heroStats {'.$this->roshHeroStatsByTimeSelection($week).'}', $weeks);
+        $data = $this->api->query(
+            'query GetHeroStatsByTimeForWeeks($bracketBasicIds: [RankBracketBasicEnum], $heroIds: [Short]) {'.implode("\n", $rows).'}',
+            ['bracketBasicIds' => $bracketBasicId, 'heroIds' => $heroIds],
+        );
+
+        return collect($weeks)->mapWithKeys(
+            fn (int $week): array => [(string) $week => (array) data_get($data, 'week_'.$week, [])],
+        )->all();
     }
 
     /**
@@ -2374,13 +2089,65 @@ GRAPHQL;
             'matchLimit' => 0,
             'take' => 200,
             'currentWeek' => $week,
-            'previousWeek1' => $week - 604800,
-            'previousWeek2' => $week - 1209600,
-            'previousWeek3' => $week - 1814400,
+            'previousWeek1' => $week - self::WEEK_SECONDS,
+            'previousWeek2' => $week - (self::WEEK_SECONDS * 2),
+            'previousWeek3' => $week - (self::WEEK_SECONDS * 3),
             'heroIds' => $heroIds,
         ]);
 
         return (array) data_get($data, 'heroStats', []);
+    }
+
+    /**
+     * @param  list<int>  $weeks
+     * @param  list<int>  $heroIds
+     * @return array<string, array<string, mixed>>
+     */
+    private function getRoshSynergyForWeeks(string $bracketBasicId, array $weeks, array $heroIds): array
+    {
+        $rows = array_map(fn (int $week): string => 'week_'.$week.': heroStats {'.$this->roshSynergySelection($week).'}', $weeks);
+        $data = $this->api->query(
+            'query SynergyForWeeks($bracketBasicIds: [RankBracketBasicEnum], $matchLimit: Int, $take: Int, $heroIds: [Short]) {'.implode("\n", $rows).'}',
+            ['bracketBasicIds' => $bracketBasicId, 'matchLimit' => 0, 'take' => 200, 'heroIds' => $heroIds],
+        );
+
+        return collect($weeks)->mapWithKeys(
+            fn (int $week): array => [(string) $week => (array) data_get($data, 'week_'.$week, [])],
+        )->all();
+    }
+
+    private function roshHeroesMetaPositionsSelection(int $week): string
+    {
+        return "heroesPos_1: stats(positionIds: [POSITION_1], bracketBasicIds: \$bracketBasicIds, week: {$week}, heroIds: \$heroIds) { heroId matchCount winCount }
+heroesPos_2: stats(positionIds: [POSITION_2], bracketBasicIds: \$bracketBasicIds, week: {$week}, heroIds: \$heroIds) { heroId matchCount winCount }
+heroesPos_3: stats(positionIds: [POSITION_3], bracketBasicIds: \$bracketBasicIds, week: {$week}, heroIds: \$heroIds) { heroId matchCount winCount }
+heroesPos_4: stats(positionIds: [POSITION_4], bracketBasicIds: \$bracketBasicIds, week: {$week}, heroIds: \$heroIds) { heroId matchCount winCount }
+heroesPos_5: stats(positionIds: [POSITION_5], bracketBasicIds: \$bracketBasicIds, week: {$week}, heroIds: \$heroIds) { heroId matchCount winCount }
+heroes: stats(bracketBasicIds: \$bracketBasicIds, week: {$week}, heroIds: \$heroIds) { heroId matchCount winCount }";
+    }
+
+    private function roshHeroStatsByTimeSelection(int $week): string
+    {
+        $rows = [];
+
+        foreach (range(1, 5) as $position) {
+            $rows[] = "heroStatsByTime_{$position}: stats(bracketBasicIds: \$bracketBasicIds, positionIds: [POSITION_{$position}], groupByTime: true, minTime: 20, maxTime: 62, week: {$week}, heroIds: \$heroIds) { heroId time winCount matchCount }";
+        }
+
+        return implode("\n", $rows);
+    }
+
+    private function roshSynergySelection(int $week): string
+    {
+        $rows = [];
+
+        foreach (range(0, 3) as $offset) {
+            $currentWeek = $week - (self::WEEK_SECONDS * $offset);
+            $index = $offset + 1;
+            $rows[] = "matchUp_Prev_Week_{$index}: matchUp(bracketBasicIds: \$bracketBasicIds, matchLimit: \$matchLimit, take: \$take, week: {$currentWeek}, heroIds: \$heroIds) { heroId vs { heroId2 synergy matchCount } with { heroId2 synergy matchCount } }";
+        }
+
+        return implode("\n", $rows);
     }
 
     private function mapGameModeToId(string $gameMode): int
@@ -2471,18 +2238,6 @@ GRAPHQL;
     }
 
     /**
-     * @param  array<string, mixed>  $match
-     */
-    private function calculateRoshPlayerAdjustment(array $match): float
-    {
-        if (! (bool) data_get($match, 'considerPlayers')) {
-            return 0.0;
-        }
-
-        return round((float) data_get($match, 'playerAnalysis.netAdjustment', 0.0), 1);
-    }
-
-    /**
      * @param  list<array{
      *     minute:int,
      *     time_start:int,
@@ -2545,6 +2300,7 @@ GRAPHQL;
                     'matchUp_Prev_Week_4',
                 ],
             ),
+            'stratz_data_windows' => (array) ($analysis['stratz_data_windows'] ?? []),
         ];
     }
 
@@ -2552,23 +2308,6 @@ GRAPHQL;
      * @param  array<string, mixed>  $match
      * @return array<string, mixed>
      */
-    private function buildRoshPlayerAnalysisSummary(array $match): array
-    {
-        $analysis = (array) data_get($match, 'playerAnalysis', []);
-
-        return [
-            'enabled' => (bool) data_get($match, 'considerPlayers', false),
-            'source' => (string) ($analysis['source'] ?? 'plus.playerHeroHighlight'),
-            'selected_count' => (int) ($analysis['selectedCount'] ?? 0),
-            'resolved_count' => (int) ($analysis['resolvedCount'] ?? 0),
-            'fallback_count' => (int) ($analysis['fallbackCount'] ?? 0),
-            'radiant_total_impact' => round((float) ($analysis['radiantTotalImpact'] ?? 0.0), 2),
-            'dire_total_impact' => round((float) ($analysis['direTotalImpact'] ?? 0.0), 2),
-            'net_adjustment' => round((float) ($analysis['netAdjustment'] ?? 0.0), 1),
-            'request_error' => $analysis['requestError'] ?? null,
-        ];
-    }
-
     /**
      * @param  array<string, mixed>  $buckets
      * @param  list<string>  $keys

@@ -9,7 +9,7 @@ class DltvExtensionPayloadParser
 {
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{radiant_team:string,dire_team:string,radiant_heroes:list<int>,dire_heroes:list<int>,consider_players:bool,radiant_players:list<array<string, mixed>|null>,dire_players:list<array<string, mixed>|null>}
+     * @return array{radiant_team:string,dire_team:string,radiant_heroes:list<int>,dire_heroes:list<int>}
      */
     public function parse(array $payload): array
     {
@@ -28,9 +28,6 @@ class DltvExtensionPayloadParser
             'dire_team' => $this->teamName($payload, $direTeam, 2, 'Dire'),
             'radiant_heroes' => $this->heroIds($radiantPlayers, 'Radiant'),
             'dire_heroes' => $this->heroIds($direPlayers, 'Dire'),
-            'consider_players' => false,
-            'radiant_players' => $this->playerSlots($radiantPlayers),
-            'dire_players' => $this->playerSlots($direPlayers),
         ];
     }
 
@@ -135,26 +132,5 @@ class DltvExtensionPayloadParser
     private function normalizeHeroName(string $name): string
     {
         return strtolower((string) preg_replace('/[^a-z0-9]+/i', '', $name));
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $players
-     * @return list<array<string, mixed>|null>
-     */
-    private function playerSlots(array $players): array
-    {
-        return array_map(function (array $player): array {
-            $playerName = data_get($player, 'player_name');
-            $teamName = data_get($player, 'team_name');
-
-            return [
-                'steam_account_id' => null,
-                'name' => is_string($playerName) && trim($playerName) !== '' ? trim($playerName) : null,
-                'pro_name' => is_string($playerName) && trim($playerName) !== '' ? trim($playerName) : null,
-                'is_anonymous' => null,
-                'is_stratz_public' => null,
-                'team_name' => is_string($teamName) && trim($teamName) !== '' ? trim($teamName) : null,
-            ];
-        }, $players);
     }
 }

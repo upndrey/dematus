@@ -15,11 +15,14 @@ use App\Http\Requests\Stratz\FetchRoshRequest;
 use App\Http\Requests\Stratz\SearchProPlayersRequest;
 use App\Http\Requests\Stratz\StoreTeamRosterRequest;
 use App\Http\Requests\Stratz\UpdateTeamRosterRequest;
+use App\Models\DraftSnapshot;
 use App\Services\Dltv\DltvExtensionPayloadParser;
 use App\Services\Dltv\DltvGistHtmlFetcher;
 use App\Services\Dltv\DltvMatchHtmlParser;
+use App\Services\DraftSnapshots\DraftSnapshotService;
 use App\Services\GoogleSheets\RoshSheetService;
 use App\Services\Liquipedia\LiquipediaService;
+use App\Services\Stratz\StratzDataWindowCollector;
 use App\Services\Stratz\StratzService;
 use App\Services\Stratz\TeamRosterRepository;
 use Illuminate\Http\JsonResponse;
@@ -117,6 +120,8 @@ class StratzController
         FetchRoshRequest $request,
         StratzService $stratzService,
         RoshSheetService $roshSheetService,
+        DraftSnapshotService $draftSnapshotService,
+        StratzDataWindowCollector $stratzDataWindowCollector,
     ): JsonResponse|RedirectResponse {
         try {
             $rosh = $stratzService->getRoshFromMatchId($request->integer('match_id'));
@@ -128,6 +133,16 @@ class StratzController
                 );
             }
 
+            $rosh = $this->storeDraftSnapshotAndSyncDataset(
+                $draftSnapshotService,
+                $stratzDataWindowCollector,
+                $roshSheetService,
+                'match_id',
+                ['match_id' => $request->integer('match_id')],
+                $rosh,
+                ['match_id' => $request->integer('match_id')],
+            );
+
             return $this->respond($request, 'rosh', $rosh);
         } catch (Throwable $throwable) {
             return $this->respondWithError($request, $throwable);
@@ -138,15 +153,27 @@ class StratzController
         FetchRoshHeroesRequest $request,
         StratzService $stratzService,
         RoshSheetService $roshSheetService,
+        DraftSnapshotService $draftSnapshotService,
+        StratzDataWindowCollector $stratzDataWindowCollector,
     ): JsonResponse|RedirectResponse {
         try {
-            $rosh = $stratzService->getRoshFromHeroes($request->validated());
+            $payload = $request->validated();
+            $rosh = $stratzService->getRoshFromHeroes($payload);
 
             if ($roshSheetService->isConfigured()) {
                 $rosh['google_sheets'] = $roshSheetService->appendLiveOdds(
                     (array) data_get($rosh, 'formatted', []),
                 );
             }
+
+            $rosh = $this->storeDraftSnapshotAndSyncDataset(
+                $draftSnapshotService,
+                $stratzDataWindowCollector,
+                $roshSheetService,
+                'manual',
+                $payload,
+                $rosh,
+            );
 
             return $this->respond($request, 'rosh', $rosh);
         } catch (Throwable $throwable) {
@@ -159,6 +186,8 @@ class StratzController
         DltvMatchHtmlParser $dltvMatchHtmlParser,
         StratzService $stratzService,
         RoshSheetService $roshSheetService,
+        DraftSnapshotService $draftSnapshotService,
+        StratzDataWindowCollector $stratzDataWindowCollector,
     ): JsonResponse|RedirectResponse {
         try {
             $payload = $dltvMatchHtmlParser->parse($request->validated('html'));
@@ -170,6 +199,15 @@ class StratzController
                     (array) data_get($rosh, 'formatted', []),
                 );
             }
+
+            $rosh = $this->storeDraftSnapshotAndSyncDataset(
+                $draftSnapshotService,
+                $stratzDataWindowCollector,
+                $roshSheetService,
+                'live_dltv',
+                $payload,
+                $rosh,
+            );
 
             return $this->respond($request, 'rosh', $rosh);
         } catch (Throwable $throwable) {
@@ -183,6 +221,8 @@ class StratzController
         DltvMatchHtmlParser $dltvMatchHtmlParser,
         StratzService $stratzService,
         RoshSheetService $roshSheetService,
+        DraftSnapshotService $draftSnapshotService,
+        StratzDataWindowCollector $stratzDataWindowCollector,
     ): JsonResponse|RedirectResponse {
         try {
             $payload = $dltvMatchHtmlParser->parse($dltvGistHtmlFetcher->fetch());
@@ -199,6 +239,16 @@ class StratzController
                 );
             }
 
+            $rosh = $this->storeDraftSnapshotAndSyncDataset(
+                $draftSnapshotService,
+                $stratzDataWindowCollector,
+                $roshSheetService,
+                'live_dltv',
+                $payload,
+                $rosh,
+                ['dltv_url' => (string) config('services.dltv.gist_url')],
+            );
+
             return $this->respond($request, 'rosh', $rosh);
         } catch (Throwable $throwable) {
             return $this->respondWithError($request, $throwable);
@@ -210,11 +260,14 @@ class StratzController
         DltvExtensionPayloadParser $dltvExtensionPayloadParser,
         StratzService $stratzService,
         RoshSheetService $roshSheetService,
+        DraftSnapshotService $draftSnapshotService,
+        StratzDataWindowCollector $stratzDataWindowCollector,
     ): JsonResponse {
         try {
-            $payload = $dltvExtensionPayloadParser->parse($request->validated());
+            $extensionPayload = $request->validated();
+            $payload = $dltvExtensionPayloadParser->parse($extensionPayload);
             $rosh = $stratzService->getRoshFromHeroes($payload);
-            $rosh['parsed_extension_payload'] = $request->validated();
+            $rosh['parsed_extension_payload'] = $extensionPayload;
             $rosh['parsed_extension_rosh_payload'] = $payload;
             $rosh['source'] = [
                 'type' => 'dltv-browser-extension',
@@ -227,6 +280,19 @@ class StratzController
                     (array) data_get($rosh, 'formatted', []),
                 );
             }
+
+            $rosh = $this->storeDraftSnapshotAndSyncDataset(
+                $draftSnapshotService,
+                $stratzDataWindowCollector,
+                $roshSheetService,
+                'live_dltv',
+                $extensionPayload,
+                $rosh,
+                [
+                    'captured_at' => $request->validated('captured_at'),
+                    'dltv_url' => $request->validated('page_url'),
+                ],
+            );
 
             return $this->extensionResponse([
                 'type' => 'rosh',
@@ -307,6 +373,56 @@ class StratzController
             'type' => $type,
             'data' => $data,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $draftPayload
+     * @param  array<string, mixed>  $rosh
+     * @param  array<string, mixed>  $metadata
+     * @return array<string, mixed>
+     */
+    private function storeDraftSnapshot(
+        DraftSnapshotService $draftSnapshotService,
+        string $source,
+        array $draftPayload,
+        array $rosh,
+        array $metadata = [],
+    ): array {
+        $draftSnapshot = $draftSnapshotService->store($source, $draftPayload, $rosh, $metadata);
+        $rosh = $draftSnapshotService->withoutInternalPayload($rosh);
+        $rosh['draft_snapshot_id'] = $draftSnapshot->id;
+
+        return $rosh;
+    }
+
+    /**
+     * @param  array<string, mixed>  $draftPayload
+     * @param  array<string, mixed>  $rosh
+     * @param  array<string, mixed>  $metadata
+     * @return array<string, mixed>
+     */
+    private function storeDraftSnapshotAndSyncDataset(
+        DraftSnapshotService $draftSnapshotService,
+        StratzDataWindowCollector $stratzDataWindowCollector,
+        RoshSheetService $roshSheetService,
+        string $source,
+        array $draftPayload,
+        array $rosh,
+        array $metadata = [],
+    ): array {
+        set_time_limit(180);
+
+        $rosh = $this->storeDraftSnapshot($draftSnapshotService, $source, $draftPayload, $rosh, $metadata);
+        $draftSnapshot = DraftSnapshot::query()->findOrFail((int) $rosh['draft_snapshot_id']);
+        $stratzDataWindowCollector->collect($draftSnapshot);
+
+        if ($roshSheetService->isConfigured()) {
+            $rosh['snapshot_dataset'] = $roshSheetService->syncSnapshotDataset([
+                $draftSnapshot->fresh('stratzDataBuckets'),
+            ]);
+        }
+
+        return $rosh;
     }
 
     private function respondWithError(Request $request, Throwable $throwable): JsonResponse|RedirectResponse

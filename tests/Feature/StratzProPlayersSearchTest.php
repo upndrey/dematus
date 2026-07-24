@@ -9,6 +9,13 @@ use Tests\TestCase;
 
 class StratzProPlayersSearchTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateStatically();
+    }
+
     public function test_pro_players_search_uses_liquipedia_prefix_search_for_direct_player_queries(): void
     {
         config()->set('services.liquipedia.endpoint', 'https://liquipedia.net/dota2/api.php');
