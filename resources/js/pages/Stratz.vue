@@ -1811,7 +1811,6 @@ import {
     onMounted,
     reactive,
     ref,
-    watch,
 } from 'vue';
 
 import {
@@ -2159,10 +2158,6 @@ const searchableHeroes = computed<SearchableHeroOption[]>(() =>
         searchableId: String(hero.id),
         searchableAliases: getHeroSearchAliases(hero).map(normalizeHeroQuery),
     })),
-);
-
-const heroesById = computed(
-    () => new Map(props.heroes.map((hero) => [hero.id, hero])),
 );
 
 const heroLookup = computed(() => {
