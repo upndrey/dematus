@@ -2044,7 +2044,6 @@ const errorMessage = ref('');
 const result = ref<StratzResult | null>(null);
 const snapshots = ref<DraftSnapshotSummary[]>([]);
 const selectedSnapshot = ref<DraftSnapshotPayload | null>(null);
-const snapshotsLoaded = ref(false);
 const snapshotDatasetExport = ref<SnapshotDatasetExportResult | null>(null);
 const proPlayerSearchCache = new Map<string, ProPlayerCandidate[]>();
 const savedTeams = ref<SavedTeamRoster[]>(props.savedTeams);
@@ -2762,9 +2761,6 @@ const serializeSelectedPlayer = (player: ProPlayerCandidate | null): RoshPlayerP
         team_name: player.team?.name ?? null,
     };
 };
-
-const buildSelectedPlayersPayload = (side: HeroSide): RoshPlayerPayload[] =>
-    Array.from({ length: 5 }, (_, index) => serializeSelectedPlayer(selectedPlayerFor(side, index)));
 
 const applySavedTeamToHeroForm = (side: HeroSide, slug: string): void => {
     const team = findSavedTeamRoster(slug);
