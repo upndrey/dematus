@@ -1822,8 +1822,8 @@ import {
     storeTeamRoster as storeTeamRosterAction,
     updateTeamRoster as updateTeamRosterAction,
 } from '@/actions/App/Http/Controllers/StratzController';
-import { token as csrfTokenRoute } from '@/routes/csrf';
 import { getHeroSearchAliases } from '@/lib/hero-aliases';
+import { token as csrfTokenRoute } from '@/routes/csrf';
 
 type HeroOption = {
     id: number;
