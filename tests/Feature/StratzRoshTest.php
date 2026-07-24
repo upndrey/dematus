@@ -12,6 +12,13 @@ use Tests\TestCase;
 
 class StratzRoshTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateStatically();
+    }
+
     use RefreshDatabase;
 
     public function test_rosh_request_builds_analysis_from_match_id(): void
@@ -20,6 +27,7 @@ class StratzRoshTest extends TestCase
         config()->set('services.google_sheets.spreadsheet_url', 'https://docs.google.com/spreadsheets/d/test-sheet-id/edit?gid=0');
         config()->set('services.google_sheets.service_account_credentials', $this->fakeGoogleCredentialsPath());
         config()->set('services.google_sheets.timeout', 20);
+        config()->set('services.google_sheets.dataset_sheet', 'BLAST SLAM VI');
 
         $matchId = 8683333901;
         $picks = $this->roshPicks();
@@ -88,6 +96,13 @@ class StratzRoshTest extends TestCase
                 ]);
             }
 
+            if (
+                str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!A:")
+                && ! str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!A:A")
+            ) {
+                return Http::response(['values' => []]);
+            }
+
             if (str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!A:A")) {
                 return Http::response([
                     'range' => "'BLAST SLAM VI'!A:A",
@@ -101,6 +116,12 @@ class StratzRoshTest extends TestCase
                         ['8679012467'],
                         ['8683333901'],
                     ],
+                ]);
+            }
+
+            if (str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id:batchUpdate')) {
+                return Http::response([
+                    'replies' => [],
                 ]);
             }
 
@@ -123,6 +144,10 @@ class StratzRoshTest extends TestCase
                         ['range' => "'BLAST SLAM VI'!J8", 'values' => [['0,0%']]],
                     ],
                 ]);
+            }
+
+            if (str_contains($request->url(), 'https://sheets.googleapis.com/')) {
+                return Http::response([]);
             }
 
             $query = $request->offsetExists('query')
@@ -217,7 +242,7 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.formatted.dire_team', 'GamerLegion')
             ->assertJsonPath('data.formatted.bracket', 'IMMORTAL')
             ->assertJsonPath('data.formatted.bracket_basic', 'DIVINE_IMMORTAL')
-            ->assertJsonPath('data.formatted.date_time', 1770574943)
+            ->assertJsonPath('data.formatted.date_time', 1770571343)
             ->assertJsonPath('data.formatted.radiant_odds_1', 10.6)
             ->assertJsonPath('data.formatted.radiant_odds_2', 10.6)
             ->assertJsonPath('data.formatted.dire_odds_1', 0)
@@ -243,7 +268,7 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.request.match.variables.matchId', $matchId)
             ->assertJsonPath('data.request.analysis.bracket', 'IMMORTAL')
             ->assertJsonPath('data.request.analysis.bracketBasicIds', 'DIVINE_IMMORTAL')
-            ->assertJsonPath('data.request.analysis.week', 1770574943)
+            ->assertJsonPath('data.request.analysis.week', 1770571343)
             ->assertJsonPath('data.request.analysis.dataWindows.active.mode', 'legacy_mixed')
             ->assertJsonPath('data.request.analysis.dataWindows.active.heroes_meta_positions_weeks', 1)
             ->assertJsonPath('data.request.analysis.dataWindows.active.hero_stats_by_time_weeks', 1)
@@ -282,7 +307,7 @@ class StratzRoshTest extends TestCase
         $this->assertSame('BLAST SLAM VI', data_get($snapshot->sheet_payload, 'sheet_title'));
         $this->assertSame('GetMatchPicksBans', data_get($snapshot->stratz_payload, 'request.match.operationName'));
         $this->assertSame('legacy_mixed', data_get($snapshot->stratz_payload, 'request.analysis.dataWindows.active.mode'));
-        $this->assertSame([1770574943, 1769970143, 1769365343, 1768760543], data_get($snapshot->stratz_payload, 'request.analysis.dataWindows.targets.4w.week_timestamps'));
+        $this->assertSame([1770571343, 1769966543, 1769361743, 1768756943], data_get($snapshot->stratz_payload, 'request.analysis.dataWindows.targets.4w.week_timestamps'));
         $this->assertIsArray(data_get($snapshot->stratz_payload, 'analysis.heroes_meta_positions'));
         $this->assertSame('legacy_mixed', data_get($snapshot->feature_payload, 'analysis_summary.stratz_data_windows.active.mode'));
         $this->assertSame(10.6, data_get($snapshot->feature_payload, 'formatted.radiant_odds_1'));
@@ -299,7 +324,7 @@ class StratzRoshTest extends TestCase
                 ->all(),
         );
         $this->assertSame(
-            [1770574943, 1769970143, 1769365343, 1768760543],
+            [1770571343, 1769966543, 1769361743, 1768756943],
             $snapshot->stratzDataBuckets->firstWhere('data_type', 'synergy')?->week_timestamps,
         );
 
@@ -329,7 +354,7 @@ class StratzRoshTest extends TestCase
 
             return str_contains((string) $request['query'], 'query HeroesMetaPositionsByWeeks')
                 && $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
-                && str_contains((string) $request['query'], 'week: 1770574943')
+                && str_contains((string) $request['query'], 'week: 1770571343')
                 && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37];
         });
 
@@ -344,7 +369,7 @@ class StratzRoshTest extends TestCase
 
             return $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
                 && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37]
-                && str_contains((string) $request['query'], 'week: 1770574943')
+                && str_contains((string) $request['query'], 'week: 1770571343')
                 && str_contains((string) $request['query'], 'maxTime: 62');
         });
 
@@ -357,10 +382,10 @@ class StratzRoshTest extends TestCase
                 && $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
                 && $request['variables']['matchLimit'] === 0
                 && $request['variables']['take'] === 200
-                && str_contains((string) $request['query'], 'week: 1770574943')
-                && str_contains((string) $request['query'], 'week: 1769970143')
-                && str_contains((string) $request['query'], 'week: 1769365343')
-                && str_contains((string) $request['query'], 'week: 1768760543')
+                && str_contains((string) $request['query'], 'week: 1770571343')
+                && str_contains((string) $request['query'], 'week: 1769966543')
+                && str_contains((string) $request['query'], 'week: 1769361743')
+                && str_contains((string) $request['query'], 'week: 1768756943')
                 && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37];
         });
 
@@ -422,6 +447,7 @@ class StratzRoshTest extends TestCase
         config()->set('services.google_sheets.spreadsheet_url', 'https://docs.google.com/spreadsheets/d/test-sheet-id/edit?gid=0');
         config()->set('services.google_sheets.service_account_credentials', $this->fakeGoogleCredentialsPath());
         config()->set('services.google_sheets.timeout', 20);
+        config()->set('services.google_sheets.dataset_sheet', 'BLAST SLAM VI');
 
         $matchId = 9999999999;
         $picks = $this->roshPicks();
@@ -465,9 +491,16 @@ class StratzRoshTest extends TestCase
                 ]);
             }
 
-            if (str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!B:B")) {
+            if (
+                str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!A:")
+                && ! str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!A:A")
+            ) {
+                return Http::response(['values' => []]);
+            }
+
+            if (str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!A:A")) {
                 return Http::response([
-                    'range' => "'BLAST SLAM VI'!B:B",
+                    'range' => "'BLAST SLAM VI'!A:A",
                     'values' => [
                         ['ROSH Winrate'],
                         ['Match ID'],
@@ -481,6 +514,12 @@ class StratzRoshTest extends TestCase
                 ]);
             }
 
+            if (str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id:batchUpdate')) {
+                return Http::response([
+                    'replies' => [],
+                ]);
+            }
+
             if (str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchUpdate')) {
                 return Http::response([
                     'totalUpdatedRows' => 3,
@@ -490,16 +529,20 @@ class StratzRoshTest extends TestCase
             if (str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchGet')) {
                 return Http::response([
                     'valueRanges' => [
-                        ['range' => "'BLAST SLAM VI'!B9", 'values' => [['9999999999']]],
+                        ['range' => "'BLAST SLAM VI'!A9", 'values' => [['9999999999']]],
                         ['range' => "'BLAST SLAM VI'!C9", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D9", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E9", 'values' => [['Radiant']]],
+                        ['range' => "'BLAST SLAM VI'!F9", 'values' => [['10,6%']]],
                         ['range' => "'BLAST SLAM VI'!G9", 'values' => [['10,6%']]],
-                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['10,6%']]],
+                        ['range' => "'BLAST SLAM VI'!I9", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!J9", 'values' => [['0,0%']]],
-                        ['range' => "'BLAST SLAM VI'!K9", 'values' => [['0,0%']]],
                     ],
                 ]);
+            }
+
+            if (str_contains($request->url(), 'https://sheets.googleapis.com/')) {
+                return Http::response([]);
             }
 
             $query = $request->offsetExists('query')
@@ -558,31 +601,36 @@ class StratzRoshTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.formatted.match_id', $matchId)
             ->assertJsonPath('data.google_sheets.row', 9)
-            ->assertJsonPath('data.google_sheets.cells.B9', '9999999999')
+            ->assertJsonPath('data.google_sheets.cells.A9', '9999999999')
             ->assertJsonPath('data.google_sheets.cells.C9', 'Team Liquid')
             ->assertJsonPath('data.google_sheets.cells.D9', 'GamerLegion')
             ->assertJsonPath('data.google_sheets.cells.E9', 'Radiant')
+            ->assertJsonPath('data.google_sheets.cells.F9', '10,6%')
             ->assertJsonPath('data.google_sheets.cells.G9', '10,6%')
-            ->assertJsonPath('data.google_sheets.cells.H9', '10,6%')
-            ->assertJsonPath('data.google_sheets.cells.J9', '0,0%')
-            ->assertJsonPath('data.google_sheets.cells.K9', '0,0%');
+            ->assertJsonPath('data.google_sheets.cells.I9', '0,0%')
+            ->assertJsonPath('data.google_sheets.cells.J9', '0,0%');
 
         Http::assertSent(function (Request $request): bool {
             return str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchUpdate')
                 && $request->hasHeader('Authorization', 'Bearer google-access-token')
                 && $request['data'] === [
                     [
-                        'range' => "'BLAST SLAM VI'!B9:E9",
+                        'range' => "'BLAST SLAM VI'!A9",
                         'majorDimension' => 'ROWS',
-                        'values' => [['9999999999', 'Team Liquid', 'GamerLegion', 'Radiant']],
+                        'values' => [['9999999999']],
                     ],
                     [
-                        'range' => "'BLAST SLAM VI'!G9:H9",
+                        'range' => "'BLAST SLAM VI'!C9:E9",
+                        'majorDimension' => 'ROWS',
+                        'values' => [['Team Liquid', 'GamerLegion', 'Radiant']],
+                    ],
+                    [
+                        'range' => "'BLAST SLAM VI'!F9:G9",
                         'majorDimension' => 'ROWS',
                         'values' => [['10,6%', '10,6%']],
                     ],
                     [
-                        'range' => "'BLAST SLAM VI'!J9:K9",
+                        'range' => "'BLAST SLAM VI'!I9:J9",
                         'majorDimension' => 'ROWS',
                         'values' => [['0,0%', '0,0%']],
                     ],
@@ -813,6 +861,7 @@ class StratzRoshTest extends TestCase
         config()->set('services.google_sheets.spreadsheet_url', 'https://docs.google.com/spreadsheets/d/test-sheet-id/edit?gid=0');
         config()->set('services.google_sheets.service_account_credentials', $this->fakeGoogleCredentialsPath());
         config()->set('services.google_sheets.timeout', 20);
+        config()->set('services.google_sheets.dataset_sheet', 'BLAST SLAM VI');
 
         $week = now()->timestamp;
         $picks = $this->roshPicks();
@@ -855,9 +904,9 @@ class StratzRoshTest extends TestCase
                 ]);
             }
 
-            if (str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!B:B")) {
+            if (str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!A:A")) {
                 return Http::response([
-                    'range' => "'BLAST SLAM VI'!B:B",
+                    'range' => "'BLAST SLAM VI'!A:A",
                     'values' => [
                         ['ROSH Winrate'],
                         ['Match ID'],
@@ -880,16 +929,20 @@ class StratzRoshTest extends TestCase
             if (str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchGet')) {
                 return Http::response([
                     'valueRanges' => [
-                        ['range' => "'BLAST SLAM VI'!B9", 'values' => [['LIVE']]],
+                        ['range' => "'BLAST SLAM VI'!A9", 'values' => [['LIVE']]],
                         ['range' => "'BLAST SLAM VI'!C9", 'values' => [['Team Liquid']]],
                         ['range' => "'BLAST SLAM VI'!D9", 'values' => [['GamerLegion']]],
                         ['range' => "'BLAST SLAM VI'!E9", 'values' => [['Radiant']]],
+                        ['range' => "'BLAST SLAM VI'!F9", 'values' => [['10,6%']]],
                         ['range' => "'BLAST SLAM VI'!G9", 'values' => [['10,6%']]],
-                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['10,6%']]],
+                        ['range' => "'BLAST SLAM VI'!I9", 'values' => [['0,0%']]],
                         ['range' => "'BLAST SLAM VI'!J9", 'values' => [['0,0%']]],
-                        ['range' => "'BLAST SLAM VI'!K9", 'values' => [['0,0%']]],
                     ],
                 ]);
+            }
+
+            if (str_contains($request->url(), 'https://sheets.googleapis.com/')) {
+                return Http::response([]);
             }
 
             $query = $request->offsetExists('query')
@@ -957,19 +1010,18 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.request.input.matchId', 'LIVE')
             ->assertJsonPath('data.request.input.radiantTeam', 'Team Liquid')
             ->assertJsonPath('data.request.input.direTeam', 'GamerLegion')
-            ->assertJsonPath('data.request.input.considerPlayers', false)
             ->assertJsonPath('data.request.input.radiantHeroes.0', 114)
             ->assertJsonPath('data.request.input.direHeroes.4', 37)
             ->assertJsonPath('data.request.analysis.week', $week)
             ->assertJsonPath('data.google_sheets.row', 9)
-            ->assertJsonPath('data.google_sheets.cells.B9', 'LIVE')
+            ->assertJsonPath('data.google_sheets.cells.A9', 'LIVE')
             ->assertJsonPath('data.google_sheets.cells.C9', 'Team Liquid')
             ->assertJsonPath('data.google_sheets.cells.D9', 'GamerLegion')
             ->assertJsonPath('data.google_sheets.cells.E9', 'Radiant')
+            ->assertJsonPath('data.google_sheets.cells.F9', '10,6%')
             ->assertJsonPath('data.google_sheets.cells.G9', '10,6%')
-            ->assertJsonPath('data.google_sheets.cells.H9', '10,6%')
+            ->assertJsonPath('data.google_sheets.cells.I9', '0,0%')
             ->assertJsonPath('data.google_sheets.cells.J9', '0,0%')
-            ->assertJsonPath('data.google_sheets.cells.K9', '0,0%')
             ->assertJsonPath('data.raw.match.id', 'LIVE')
             ->assertJsonPath('data.raw.match.players.0.heroId', 114)
             ->assertJsonPath('data.raw.match.players.9.heroId', 37);
@@ -981,7 +1033,7 @@ class StratzRoshTest extends TestCase
 
             return str_contains((string) $request['query'], 'query HeroesMetaPositionsByWeek')
                 && $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
-                && $request['variables']['week'] === $week;
+                && str_contains((string) $request['query'], "week: {$week}");
         });
 
         Http::assertSent(function (Request $request): bool {
@@ -989,17 +1041,22 @@ class StratzRoshTest extends TestCase
                 && $request->hasHeader('Authorization', 'Bearer google-access-token')
                 && $request['data'] === [
                     [
-                        'range' => "'BLAST SLAM VI'!B9:E9",
+                        'range' => "'BLAST SLAM VI'!A9",
                         'majorDimension' => 'ROWS',
-                        'values' => [['LIVE', 'Team Liquid', 'GamerLegion', 'Radiant']],
+                        'values' => [['LIVE']],
                     ],
                     [
-                        'range' => "'BLAST SLAM VI'!G9:H9",
+                        'range' => "'BLAST SLAM VI'!C9:E9",
+                        'majorDimension' => 'ROWS',
+                        'values' => [['Team Liquid', 'GamerLegion', 'Radiant']],
+                    ],
+                    [
+                        'range' => "'BLAST SLAM VI'!F9:G9",
                         'majorDimension' => 'ROWS',
                         'values' => [['10,6%', '10,6%']],
                     ],
                     [
-                        'range' => "'BLAST SLAM VI'!J9:K9",
+                        'range' => "'BLAST SLAM VI'!I9:J9",
                         'majorDimension' => 'ROWS',
                         'values' => [['0,0%', '0,0%']],
                     ],
@@ -1141,562 +1198,6 @@ class StratzRoshTest extends TestCase
         $this->assertSame(1.3, $minuteSixty['hero_adjustment']);
     }
 
-    public function test_rosh_heroes_request_can_apply_pro_player_adjustment_when_player_mode_is_enabled(): void
-    {
-        Carbon::setTestNow(Carbon::parse('2026-03-25 12:00:00 UTC'));
-
-        config()->set('services.stratz.token', 'test-token');
-        config()->set('services.google_sheets.spreadsheet_url', 'https://docs.google.com/spreadsheets/d/test-sheet-id/edit?gid=0');
-        config()->set('services.google_sheets.service_account_credentials', $this->fakeGoogleCredentialsPath());
-        config()->set('services.google_sheets.timeout', 20);
-
-        $week = now()->timestamp;
-        $picks = $this->roshPicks();
-        $metaPositions = $this->fakeRoshMetaPositions($picks);
-        $globalTimeStats = $this->fakeRoshHeroStatsByTime(
-            $picks,
-            [37 => 0.0],
-            [37 => [20 => 2100, 21 => 1000]],
-        );
-        $bracketTimeStats = $this->fakeRoshHeroStatsByTime(
-            $picks,
-            [],
-            [37 => [20 => 2100, 21 => 900]],
-        );
-
-        Http::fake(function (Request $request) use ($metaPositions, $globalTimeStats, $bracketTimeStats) {
-            if ($request->url() === 'https://oauth2.googleapis.com/token') {
-                return Http::response([
-                    'access_token' => 'google-access-token',
-                    'expires_in' => 3600,
-                    'token_type' => 'Bearer',
-                ]);
-            }
-
-            if (
-                str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id')
-                && str_contains($request->url(), 'fields=')
-                && ! str_contains($request->url(), 'values:')
-            ) {
-                return Http::response([
-                    'sheets' => [
-                        [
-                            'properties' => [
-                                'sheetId' => 0,
-                                'title' => 'BLAST SLAM VI',
-                                'index' => 0,
-                            ],
-                        ],
-                    ],
-                ]);
-            }
-
-            if (str_contains(rawurldecode($request->url()), "/values/'BLAST SLAM VI'!B:B")) {
-                return Http::response([
-                    'range' => "'BLAST SLAM VI'!B:B",
-                    'values' => [
-                        ['ROSH Winrate'],
-                        ['Match ID'],
-                        ['8678737586'],
-                        ['8678680298'],
-                        ['8678799687'],
-                        ['8678990124'],
-                        ['8679012467'],
-                        ['8683333901'],
-                    ],
-                ]);
-            }
-
-            if (str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchUpdate')) {
-                return Http::response([
-                    'totalUpdatedRows' => 3,
-                ]);
-            }
-
-            if (str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchGet')) {
-                return Http::response([
-                    'valueRanges' => [
-                        ['range' => "'BLAST SLAM VI'!B9", 'values' => [['LIVE']]],
-                        ['range' => "'BLAST SLAM VI'!C9", 'values' => [['Team Liquid']]],
-                        ['range' => "'BLAST SLAM VI'!D9", 'values' => [['GamerLegion']]],
-                        ['range' => "'BLAST SLAM VI'!E9", 'values' => [['Radiant']]],
-                        ['range' => "'BLAST SLAM VI'!G9", 'values' => [['11,2%']]],
-                        ['range' => "'BLAST SLAM VI'!H9", 'values' => [['11,2%']]],
-                        ['range' => "'BLAST SLAM VI'!J9", 'values' => [['0,0%']]],
-                        ['range' => "'BLAST SLAM VI'!K9", 'values' => [['0,0%']]],
-                    ],
-                ]);
-            }
-
-            $query = $request->offsetExists('query')
-                ? (string) $request['query']
-                : '';
-
-            if (str_contains($query, 'query HeroesMetaPositionsByWeek')) {
-                return Http::response([
-                    'data' => [
-                        'heroStats' => $metaPositions,
-                    ],
-                ]);
-            }
-
-            if (str_contains($query, 'query GetHeroStatsByTime')) {
-                $heroStats = isset($request['variables']['bracketBasicIds'])
-                    ? $bracketTimeStats
-                    : $globalTimeStats;
-
-                return Http::response([
-                    'data' => [
-                        'heroStats' => $heroStats,
-                    ],
-                ]);
-            }
-
-            if (str_contains($query, 'query Synergy')) {
-                return Http::response([
-                    'data' => [
-                        'heroStats' => [
-                            'matchUp_Prev_Week_1' => [],
-                            'matchUp_Prev_Week_2' => [],
-                            'matchUp_Prev_Week_3' => [],
-                            'matchUp_Prev_Week_4' => [],
-                        ],
-                    ],
-                ]);
-            }
-
-            if (str_contains($query, 'query PlayerHeroHighlights')) {
-                return Http::response([
-                    'data' => [
-                        'plus' => [
-                            'player_0' => $this->fakePlayerHeroHighlight(
-                                matchCount: 60,
-                                winCount: 48,
-                                matchCountLastMonth: 12,
-                                winCountLastMonth: 12,
-                                impAllTime: 30.0,
-                                impLastMonth: 30.0,
-                                impLastSixMonths: 30.0,
-                            ),
-                            'player_5' => $this->fakePlayerHeroHighlight(
-                                matchCount: 60,
-                                winCount: 12,
-                                matchCountLastMonth: 12,
-                                winCountLastMonth: 0,
-                                impAllTime: -30.0,
-                                impLastMonth: -30.0,
-                                impLastSixMonths: -30.0,
-                            ),
-                        ],
-                    ],
-                ]);
-            }
-
-            return Http::response([], 500);
-        });
-
-        $response = $this->postJson(route('stratz.rosh-heroes'), [
-            'radiant_team' => 'Team Liquid',
-            'dire_team' => 'GamerLegion',
-            'consider_players' => true,
-            'radiant_heroes' => [114, 25, 23, 79, 112],
-            'dire_heroes' => [70, 59, 39, 83, 37],
-            'radiant_players' => [
-                [
-                    'steam_account_id' => 111111,
-                    'name' => 'miCKe',
-                    'pro_name' => 'miCKe',
-                    'is_anonymous' => false,
-                    'is_stratz_public' => true,
-                    'team_name' => 'Team Liquid',
-                ],
-                null,
-                null,
-                null,
-                null,
-            ],
-            'dire_players' => [
-                [
-                    'steam_account_id' => 222222,
-                    'name' => 'watson',
-                    'pro_name' => 'watson',
-                    'is_anonymous' => false,
-                    'is_stratz_public' => true,
-                    'team_name' => 'GamerLegion',
-                ],
-                null,
-                null,
-                null,
-                null,
-            ],
-        ]);
-
-        $response
-            ->assertOk()
-            ->assertJsonPath('type', 'rosh')
-            ->assertJsonPath('data.formatted.match_id', 'LIVE')
-            ->assertJsonPath('data.formatted.radiant_odds_1', 11.2)
-            ->assertJsonPath('data.formatted.radiant_odds_2', 11.2)
-            ->assertJsonPath('data.formatted.dire_odds_1', 0)
-            ->assertJsonPath('data.formatted.dire_odds_2', 0)
-            ->assertJsonPath('data.request.input.considerPlayers', true)
-            ->assertJsonPath('data.request.input.radiantPlayers.0.steamAccountId', 111111)
-            ->assertJsonPath('data.request.input.radiantPlayers.1', null)
-            ->assertJsonPath('data.request.input.direPlayers.0.steamAccountId', 222222)
-            ->assertJsonPath('data.minute_table.0.player_adjustment', 0.6)
-            ->assertJsonPath('data.minute_table.1.player_adjustment', 0.6)
-            ->assertJsonPath('data.raw.match.considerPlayers', true)
-            ->assertJsonPath('data.raw.match.players.0.steamAccountId', 111111)
-            ->assertJsonPath('data.raw.match.players.0.playerHeroStats.matchCount', 60)
-            ->assertJsonPath('data.raw.match.players.0.playerHeroStats.recentWindow', 'last_month')
-            ->assertJsonPath('data.raw.match.players.0.playerImpact', 1.5)
-            ->assertJsonPath('data.raw.match.players.5.steamAccountId', 222222)
-            ->assertJsonPath('data.raw.match.players.5.playerImpact', -1.5)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.enabled', true)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.selected_count', 2)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.resolved_count', 2)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.fallback_count', 0)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.net_adjustment', 0.6);
-
-        Http::assertSent(function (Request $request): bool {
-            if (! $this->isStratzGraphqlRequest($request)) {
-                return false;
-            }
-
-            return str_contains((string) $request['query'], 'query PlayerHeroHighlights')
-                && $request['variables']['player_0SteamAccountId'] === 111111
-                && $request['variables']['player_0HeroId'] === 114
-                && $request['variables']['player_5SteamAccountId'] === 222222
-                && $request['variables']['player_5HeroId'] === 70;
-        });
-
-        Carbon::setTestNow();
-    }
-
-    public function test_rosh_heroes_request_recovers_with_individual_player_queries_when_batch_highlight_request_fails(): void
-    {
-        Carbon::setTestNow(Carbon::parse('2026-03-25 12:00:00 UTC'));
-
-        config()->set('services.stratz.token', 'test-token');
-        config()->set('services.google_sheets.spreadsheet_url', null);
-        config()->set('services.google_sheets.service_account_credentials', null);
-
-        $week = now()->timestamp;
-        $picks = $this->roshPicks();
-        $metaPositions = $this->fakeRoshMetaPositions($picks);
-        $globalTimeStats = $this->fakeRoshHeroStatsByTime(
-            $picks,
-            [37 => 0.0],
-            [37 => [20 => 2100, 21 => 1000]],
-        );
-        $bracketTimeStats = $this->fakeRoshHeroStatsByTime(
-            $picks,
-            [],
-            [37 => [20 => 2100, 21 => 900]],
-        );
-
-        Http::fake(function (Request $request) use ($metaPositions, $globalTimeStats, $bracketTimeStats) {
-            $query = $request->offsetExists('query')
-                ? (string) $request['query']
-                : '';
-
-            if (str_contains($query, 'query HeroesMetaPositionsByWeek')) {
-                return Http::response([
-                    'data' => [
-                        'heroStats' => $metaPositions,
-                    ],
-                ]);
-            }
-
-            if (str_contains($query, 'query GetHeroStatsByTime')) {
-                $heroStats = isset($request['variables']['bracketBasicIds'])
-                    ? $bracketTimeStats
-                    : $globalTimeStats;
-
-                return Http::response([
-                    'data' => [
-                        'heroStats' => $heroStats,
-                    ],
-                ]);
-            }
-
-            if (str_contains($query, 'query Synergy')) {
-                return Http::response([
-                    'data' => [
-                        'heroStats' => [
-                            'matchUp_Prev_Week_1' => [],
-                            'matchUp_Prev_Week_2' => [],
-                            'matchUp_Prev_Week_3' => [],
-                            'matchUp_Prev_Week_4' => [],
-                        ],
-                    ],
-                ]);
-            }
-
-            if (str_contains($query, 'query PlayerHeroHighlights')) {
-                return Http::response([
-                    'errors' => [
-                        [
-                            'message' => 'Player Id is missing or anonymous.',
-                        ],
-                    ],
-                ], 200);
-            }
-
-            if (str_contains($query, 'query PlayerHeroHighlight')) {
-                if (($request['variables']['steamAccountId'] ?? null) === 111111) {
-                    return Http::response([
-                        'data' => [
-                            'plus' => [
-                                'playerHeroHighlight' => $this->fakePlayerHeroHighlight(
-                                    matchCount: 60,
-                                    winCount: 48,
-                                    matchCountLastMonth: 12,
-                                    winCountLastMonth: 12,
-                                    impAllTime: 30.0,
-                                    impLastMonth: 30.0,
-                                    impLastSixMonths: 30.0,
-                                ),
-                            ],
-                        ],
-                    ]);
-                }
-
-                return Http::response([
-                    'errors' => [
-                        [
-                            'message' => 'Player Id is missing or anonymous.',
-                        ],
-                    ],
-                ], 200);
-            }
-
-            return Http::response([], 500);
-        });
-
-        $response = $this->postJson(route('stratz.rosh-heroes'), [
-            'radiant_team' => 'Team Liquid',
-            'dire_team' => 'GamerLegion',
-            'consider_players' => true,
-            'radiant_heroes' => [114, 25, 23, 79, 112],
-            'dire_heroes' => [70, 59, 39, 83, 37],
-            'radiant_players' => [
-                [
-                    'steam_account_id' => 111111,
-                    'name' => 'miCKe',
-                    'pro_name' => 'miCKe',
-                    'is_anonymous' => false,
-                    'is_stratz_public' => true,
-                    'team_name' => 'Team Liquid',
-                ],
-                null,
-                null,
-                null,
-                null,
-            ],
-            'dire_players' => [
-                [
-                    'steam_account_id' => 222222,
-                    'name' => 'watson',
-                    'pro_name' => 'watson',
-                    'is_anonymous' => false,
-                    'is_stratz_public' => true,
-                    'team_name' => 'GamerLegion',
-                ],
-                null,
-                null,
-                null,
-                null,
-            ],
-        ]);
-
-        $response
-            ->assertOk()
-            ->assertJsonPath('type', 'rosh')
-            ->assertJsonPath('data.minute_table.0.player_adjustment', 0.3)
-            ->assertJsonPath('data.minute_table.1.player_adjustment', 0.3)
-            ->assertJsonPath('data.raw.match.players.0.playerHeroStats.matchCount', 60)
-            ->assertJsonPath('data.raw.match.players.0.playerImpact', 1.5)
-            ->assertJsonPath('data.raw.match.players.0.playerFallbackReason', null)
-            ->assertJsonPath('data.raw.match.players.0.playerFallbackMessage', null)
-            ->assertJsonPath('data.raw.match.players.5.playerHeroStats', null)
-            ->assertJsonPath('data.raw.match.players.5.playerImpact', 0)
-            ->assertJsonPath('data.raw.match.players.5.playerFallbackReason', 'player_missing_or_anonymous_in_stratz')
-            ->assertJsonPath('data.raw.match.players.5.playerFallbackMessage', 'STRATZ GraphQL error: Player Id is missing or anonymous.')
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.selected_count', 2)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.resolved_count', 1)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.fallback_count', 1)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.net_adjustment', 0.3)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.request_error', null);
-
-        Http::assertSent(function (Request $request): bool {
-            return str_contains((string) $request['query'], 'query PlayerHeroHighlights');
-        });
-
-        Http::assertSent(function (Request $request): bool {
-            return str_contains((string) $request['query'], 'query PlayerHeroHighlight')
-                && ($request['variables']['steamAccountId'] ?? null) === 111111
-                && ($request['variables']['heroId'] ?? null) === 114;
-        });
-
-        Http::assertSent(function (Request $request): bool {
-            return str_contains((string) $request['query'], 'query PlayerHeroHighlight')
-                && ($request['variables']['steamAccountId'] ?? null) === 222222
-                && ($request['variables']['heroId'] ?? null) === 70;
-        });
-
-        Carbon::setTestNow();
-    }
-
-    public function test_rosh_heroes_request_keeps_partial_batch_player_highlights_and_does_not_retry_permanent_alias_errors(): void
-    {
-        Carbon::setTestNow(Carbon::parse('2026-03-25 12:00:00 UTC'));
-
-        config()->set('services.stratz.token', 'test-token');
-        config()->set('services.google_sheets.spreadsheet_url', null);
-        config()->set('services.google_sheets.service_account_credentials', null);
-
-        $week = now()->timestamp;
-        $picks = $this->roshPicks();
-        $metaPositions = $this->fakeRoshMetaPositions($picks);
-        $globalTimeStats = $this->fakeRoshHeroStatsByTime(
-            $picks,
-            [37 => 0.0],
-            [37 => [20 => 2100, 21 => 1000]],
-        );
-        $bracketTimeStats = $this->fakeRoshHeroStatsByTime(
-            $picks,
-            [],
-            [37 => [20 => 2100, 21 => 900]],
-        );
-
-        Http::fake(function (Request $request) use ($metaPositions, $globalTimeStats, $bracketTimeStats) {
-            $query = $request->offsetExists('query')
-                ? (string) $request['query']
-                : '';
-
-            if (str_contains($query, 'query HeroesMetaPositionsByWeek')) {
-                return Http::response([
-                    'data' => [
-                        'heroStats' => $metaPositions,
-                    ],
-                ]);
-            }
-
-            if (str_contains($query, 'query GetHeroStatsByTime')) {
-                $heroStats = isset($request['variables']['bracketBasicIds'])
-                    ? $bracketTimeStats
-                    : $globalTimeStats;
-
-                return Http::response([
-                    'data' => [
-                        'heroStats' => $heroStats,
-                    ],
-                ]);
-            }
-
-            if (str_contains($query, 'query Synergy')) {
-                return Http::response([
-                    'data' => [
-                        'heroStats' => [
-                            'matchUp_Prev_Week_1' => [],
-                            'matchUp_Prev_Week_2' => [],
-                            'matchUp_Prev_Week_3' => [],
-                            'matchUp_Prev_Week_4' => [],
-                        ],
-                    ],
-                ]);
-            }
-
-            if (str_contains($query, 'query PlayerHeroHighlights')) {
-                return Http::response([
-                    'data' => [
-                        'plus' => [
-                            'player_0' => $this->fakePlayerHeroHighlight(
-                                matchCount: 60,
-                                winCount: 48,
-                                matchCountLastMonth: 12,
-                                winCountLastMonth: 12,
-                                impAllTime: 30.0,
-                                impLastMonth: 30.0,
-                                impLastSixMonths: 30.0,
-                            ),
-                        ],
-                    ],
-                    'errors' => [
-                        [
-                            'message' => 'Player Id is missing or anonymous.',
-                            'path' => ['plus', 'player_5'],
-                        ],
-                    ],
-                ]);
-            }
-
-            return Http::response([], 500);
-        });
-
-        $response = $this->postJson(route('stratz.rosh-heroes'), [
-            'radiant_team' => 'Team Liquid',
-            'dire_team' => 'GamerLegion',
-            'consider_players' => true,
-            'radiant_heroes' => [114, 25, 23, 79, 112],
-            'dire_heroes' => [70, 59, 39, 83, 37],
-            'radiant_players' => [
-                [
-                    'steam_account_id' => 111111,
-                    'name' => 'miCKe',
-                    'pro_name' => 'miCKe',
-                    'is_anonymous' => false,
-                    'is_stratz_public' => true,
-                    'team_name' => 'Team Liquid',
-                ],
-                null,
-                null,
-                null,
-                null,
-            ],
-            'dire_players' => [
-                [
-                    'steam_account_id' => 222222,
-                    'name' => 'watson',
-                    'pro_name' => 'watson',
-                    'is_anonymous' => false,
-                    'is_stratz_public' => true,
-                    'team_name' => 'GamerLegion',
-                ],
-                null,
-                null,
-                null,
-                null,
-            ],
-        ]);
-
-        $response
-            ->assertOk()
-            ->assertJsonPath('type', 'rosh')
-            ->assertJsonPath('data.minute_table.0.player_adjustment', 0.3)
-            ->assertJsonPath('data.minute_table.1.player_adjustment', 0.3)
-            ->assertJsonPath('data.raw.match.players.0.playerHeroStats.matchCount', 60)
-            ->assertJsonPath('data.raw.match.players.0.playerFallbackReason', null)
-            ->assertJsonPath('data.raw.match.players.0.playerFallbackMessage', null)
-            ->assertJsonPath('data.raw.match.players.5.playerHeroStats', null)
-            ->assertJsonPath('data.raw.match.players.5.playerFallbackReason', 'player_missing_or_anonymous_in_stratz')
-            ->assertJsonPath('data.raw.match.players.5.playerFallbackMessage', 'STRATZ GraphQL error: Player Id is missing or anonymous.')
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.resolved_count', 1)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.fallback_count', 1)
-            ->assertJsonPath('data.raw.analysis_summary.player_hero_highlights.request_error', null);
-
-        Http::assertSent(function (Request $request): bool {
-            return str_contains((string) $request['query'], 'query PlayerHeroHighlights');
-        });
-
-        Http::assertNotSent(function (Request $request): bool {
-            return str_contains((string) $request['query'], 'query PlayerHeroHighlight(');
-        });
-
-        Carbon::setTestNow();
-    }
-
     public function test_dltv_extension_payload_runs_full_rosh_calculation(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-03-25 12:00:00 UTC'));
@@ -1791,7 +1292,7 @@ class StratzRoshTest extends TestCase
         $this->assertSame(10.6, data_get($snapshot->feature_payload, 'formatted.radiant_odds_1'));
         $this->assertIsArray(data_get($snapshot->stratz_payload, 'analysis.heroes_meta_positions'));
 
-        Http::assertSentCount(30);
+        Http::assertSentCount(6);
 
         Carbon::setTestNow();
     }
@@ -1933,36 +1434,6 @@ class StratzRoshTest extends TestCase
             ->assertJsonValidationErrors(['radiant_heroes']);
     }
 
-    public function test_rosh_heroes_request_validates_selected_pro_player_payload_when_player_mode_is_enabled(): void
-    {
-        $response = $this->postJson(route('stratz.rosh-heroes'), [
-            'radiant_team' => 'Radiant',
-            'dire_team' => 'Dire',
-            'consider_players' => true,
-            'radiant_heroes' => [114, 25, 23, 79, 112],
-            'dire_heroes' => [70, 59, 39, 83, 37],
-            'radiant_players' => [
-                [
-                    'steam_account_id' => 'invalid-id',
-                    'name' => 'miCKe',
-                    'pro_name' => 'miCKe',
-                    'is_anonymous' => false,
-                    'is_stratz_public' => true,
-                    'team_name' => 'Team Liquid',
-                ],
-                null,
-                null,
-                null,
-                null,
-            ],
-            'dire_players' => array_fill(0, 5, null),
-        ]);
-
-        $response
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['radiant_players.0.steam_account_id']);
-    }
-
     /**
      * @return list<array{heroId:int, positionId:int, isRadiant:bool, baseDiff:float}>
      */
@@ -1992,6 +1463,7 @@ class StratzRoshTest extends TestCase
             fn (array $pick) => [
                 'heroId' => $pick['heroId'],
                 'position' => 'POSITION_'.$pick['positionId'],
+                'isRadiant' => $pick['isRadiant'],
             ],
             $picks,
         );
@@ -2012,6 +1484,7 @@ class StratzRoshTest extends TestCase
         return [
             'id' => $matchId,
             'didRadiantWin' => true,
+            'startDateTime' => 1770571343,
             'endDateTime' => 1770574943,
             'bracket' => 8,
             'radiantTeam' => [
@@ -2175,33 +1648,8 @@ class StratzRoshTest extends TestCase
 
     /**
      * @return array<string, int|float>
+     * @return array<string, mixed>
      */
-    private function fakePlayerHeroHighlight(
-        int $matchCount,
-        int $winCount,
-        int $matchCountLastMonth,
-        int $winCountLastMonth,
-        float $impAllTime,
-        float $impLastMonth,
-        float $impLastSixMonths,
-        ?int $lastPlayed = 1_711_577_600,
-        ?int $matchCountLastSixMonths = null,
-        ?int $winCountLastSixMonths = null,
-    ): array {
-        return [
-            'lastPlayed' => $lastPlayed,
-            'matchCount' => $matchCount,
-            'winCount' => $winCount,
-            'impAllTime' => $impAllTime,
-            'matchCountLastMonth' => $matchCountLastMonth,
-            'winCountLastMonth' => $winCountLastMonth,
-            'impLastMonth' => $impLastMonth,
-            'matchCountLastSixMonths' => $matchCountLastSixMonths ?? $matchCount,
-            'winCountLastSixMonths' => $winCountLastSixMonths ?? $winCount,
-            'impLastSixMonths' => $impLastSixMonths,
-        ];
-    }
-
     private function fakeDltvDraftHtml(): string
     {
         return <<<'HTML'
