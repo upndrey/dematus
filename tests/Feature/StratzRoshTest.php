@@ -268,7 +268,8 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.request.match.variables.matchId', $matchId)
             ->assertJsonPath('data.request.analysis.bracket', 'IMMORTAL')
             ->assertJsonPath('data.request.analysis.bracketBasicIds', 'DIVINE_IMMORTAL')
-            ->assertJsonPath('data.request.analysis.week', 1770571343)
+            ->assertJsonPath('data.request.analysis.draftCutoff', 1770571343)
+            ->assertJsonPath('data.request.analysis.week', 1769644800)
             ->assertJsonPath('data.request.analysis.dataWindows.active.mode', 'legacy_mixed')
             ->assertJsonPath('data.request.analysis.dataWindows.active.heroes_meta_positions_weeks', 1)
             ->assertJsonPath('data.request.analysis.dataWindows.active.hero_stats_by_time_weeks', 1)
@@ -307,7 +308,7 @@ class StratzRoshTest extends TestCase
         $this->assertSame('BLAST SLAM VI', data_get($snapshot->sheet_payload, 'sheet_title'));
         $this->assertSame('GetMatchPicksBans', data_get($snapshot->stratz_payload, 'request.match.operationName'));
         $this->assertSame('legacy_mixed', data_get($snapshot->stratz_payload, 'request.analysis.dataWindows.active.mode'));
-        $this->assertSame([1770571343, 1769966543, 1769361743, 1768756943], data_get($snapshot->stratz_payload, 'request.analysis.dataWindows.targets.4w.week_timestamps'));
+        $this->assertSame([1769644800, 1769040000, 1768435200, 1767830400], data_get($snapshot->stratz_payload, 'request.analysis.dataWindows.targets.4w.week_timestamps'));
         $this->assertIsArray(data_get($snapshot->stratz_payload, 'analysis.heroes_meta_positions'));
         $this->assertSame('legacy_mixed', data_get($snapshot->feature_payload, 'analysis_summary.stratz_data_windows.active.mode'));
         $this->assertSame(10.6, data_get($snapshot->feature_payload, 'formatted.radiant_odds_1'));
@@ -324,11 +325,11 @@ class StratzRoshTest extends TestCase
                 ->all(),
         );
         $this->assertSame(
-            [1770571343, 1769966543, 1769361743, 1768756943],
+            [1769644800, 1769040000, 1768435200, 1767830400],
             $snapshot->stratzDataBuckets->firstWhere('data_type', 'synergy')?->week_timestamps,
         );
 
-        Http::assertSentCount(17);
+        Http::assertSentCount(18);
 
         Http::assertSent(function (Request $request) use ($matchId): bool {
             if (! $this->isStratzGraphqlRequest($request)) {
@@ -354,7 +355,7 @@ class StratzRoshTest extends TestCase
 
             return str_contains((string) $request['query'], 'query HeroesMetaPositionsByWeeks')
                 && $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
-                && str_contains((string) $request['query'], 'week: 1770571343')
+                && str_contains((string) $request['query'], 'week: 1769644800')
                 && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37];
         });
 
@@ -369,7 +370,7 @@ class StratzRoshTest extends TestCase
 
             return $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
                 && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37]
-                && str_contains((string) $request['query'], 'week: 1770571343')
+                && str_contains((string) $request['query'], 'week: 1769644800')
                 && str_contains((string) $request['query'], 'maxTime: 62');
         });
 
@@ -382,10 +383,10 @@ class StratzRoshTest extends TestCase
                 && $request['variables']['bracketBasicIds'] === 'DIVINE_IMMORTAL'
                 && $request['variables']['matchLimit'] === 0
                 && $request['variables']['take'] === 200
-                && str_contains((string) $request['query'], 'week: 1770571343')
-                && str_contains((string) $request['query'], 'week: 1769966543')
-                && str_contains((string) $request['query'], 'week: 1769361743')
-                && str_contains((string) $request['query'], 'week: 1768756943')
+                && str_contains((string) $request['query'], 'week: 1769644800')
+                && str_contains((string) $request['query'], 'week: 1769040000')
+                && str_contains((string) $request['query'], 'week: 1768435200')
+                && str_contains((string) $request['query'], 'week: 1767830400')
                 && $request['variables']['heroIds'] === [114, 25, 23, 79, 112, 70, 59, 39, 83, 37];
         });
 
@@ -438,6 +439,40 @@ class StratzRoshTest extends TestCase
         Http::assertSent(function (Request $request): bool {
             return str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchGet')
                 && $request->hasHeader('Authorization', 'Bearer google-access-token');
+        });
+
+        Http::assertSent(function (Request $request): bool {
+            return str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchUpdate')
+                && collect($request['data'])->contains(function (array $entry): bool {
+                    $headers = data_get($entry, 'values.0', []);
+
+                    return array_slice($headers, 0, 24) === [
+                        'snapshot_id',
+                        'source',
+                        'captured_at',
+                        'match_id',
+                        'tournament',
+                        'radiant_team',
+                        'dire_team',
+                        'winner',
+                        'model_version',
+                        'sheet_title',
+                        'sheet_row',
+                        'baseline_ready',
+                        'windows_4_8_12_ready',
+                        'bucket_count',
+                        'radiant_odds_1',
+                        'radiant_odds_2',
+                        'dire_odds_1',
+                        'dire_odds_2',
+                        'avg_radiant_odds',
+                        'avg_dire_odds',
+                        'bookmaker_odds_radiant',
+                        'bookmaker_odds_dire',
+                        'bookmaker_odds_unverified',
+                        'raw_size_mb',
+                    ] && last($headers) === 'first_pick_side';
+                });
         });
     }
 
@@ -609,6 +644,11 @@ class StratzRoshTest extends TestCase
             ->assertJsonPath('data.google_sheets.cells.G9', '10,6%')
             ->assertJsonPath('data.google_sheets.cells.I9', '0,0%')
             ->assertJsonPath('data.google_sheets.cells.J9', '0,0%');
+
+        $this->assertSame(
+            'radiant',
+            DraftSnapshot::query()->where('match_id', $matchId)->value('first_pick_side'),
+        );
 
         Http::assertSent(function (Request $request): bool {
             return str_contains($request->url(), 'https://sheets.googleapis.com/v4/spreadsheets/test-sheet-id/values:batchUpdate')

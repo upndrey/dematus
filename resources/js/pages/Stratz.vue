@@ -190,6 +190,268 @@
             </section>
 
             <section
+                v-else-if="activeTab === 'bulkImport'"
+                class="rounded-3xl border border-emerald-500/20 bg-slate-900/60 p-6 shadow-xl shadow-slate-950/30"
+            >
+                <div
+                    class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+                >
+                    <div class="space-y-2">
+                        <p
+                            class="text-xs font-semibold tracking-[0.3em] text-emerald-300 uppercase"
+                        >
+                            Исторический датасет
+                        </p>
+                        <h2 class="text-xl font-semibold text-white">
+                            Пакетный импорт MatchID
+                        </h2>
+                        <p class="max-w-3xl text-sm leading-6 text-slate-300">
+                            Вставьте до 500 MatchID через новую строку, пробел
+                            или запятую. Импортёр будет сохранять snapshot на
+                            момент начала драфта и продолжит работу с последней
+                            успешно обработанной игры.
+                        </p>
+                    </div>
+                    <div
+                        class="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-xs leading-5 text-emerald-100"
+                    >
+                        <p class="font-semibold">Безопасный режим</p>
+                        <p class="mt-1 text-emerald-100/75">
+                            1 запрос / 3 сек · 1 задача одновременно · backoff при
+                            429
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+                    <div class="space-y-4">
+                        <div
+                            class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
+                        >
+                            <label class="text-sm font-medium text-slate-200"
+                                >MatchID карты для поиска лиги</label
+                            >
+                            <div class="mt-2 flex gap-2">
+                                <input
+                                    v-model="leagueSeedMatchId"
+                                    type="number"
+                                    min="1"
+                                    class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                                /><button
+                                    type="button"
+                                    class="rounded-xl border border-sky-400/40 px-3 py-2 text-xs text-sky-200 disabled:cursor-not-allowed disabled:opacity-60"
+                                    :disabled="isLoading('resolve-league')"
+                                    @click="resolveLeagueFromMatch"
+                                >
+                                    {{
+                                        isLoading('resolve-league')
+                                            ? 'Ищем...'
+                                            : 'Найти лигу'
+                                    }}
+                                </button>
+                            </div>
+                            <div
+                                v-if="resolvedLeague"
+                                class="mt-3 rounded-xl border border-sky-400/20 p-3 text-xs text-sky-100"
+                            >
+                                Найдена лига: {{ resolvedLeague.displayName }} ·
+                                ID {{ resolvedLeague.id }}
+                            </div>
+                            <label class="text-sm font-medium text-slate-200"
+                                >League ID STRATZ (не MatchID)</label
+                            >
+                            <div class="mt-2 flex gap-2">
+                                <input
+                                    v-model="leagueImportId"
+                                    type="number"
+                                    min="1"
+                                    class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                                /><button
+                                    type="button"
+                                    class="rounded-xl border border-emerald-400/40 px-3 py-2 text-xs text-emerald-200 disabled:cursor-not-allowed disabled:opacity-60"
+                                    :disabled="isLoading('preview-league-import')"
+                                    @click="previewLeagueImport"
+                                >
+                                    {{ isLoading('preview-league-import') ? 'Ищем...' : 'Найти игры' }}
+                                </button>
+                            </div>
+                            <p
+                                v-if="leagueImportMessage"
+                                class="mt-2 text-xs text-slate-400"
+                            >
+                                {{ leagueImportMessage }}
+                            </p>
+                        </div>
+                        <label
+                            class="flex flex-col gap-2 text-sm font-medium text-slate-200"
+                        >
+                            Список MatchID
+                            <textarea
+                                v-model="bulkImportForm.matchIds"
+                                rows="12"
+                                placeholder="8683333901\n8683333902\n8683333903"
+                                class="min-h-64 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-sm text-slate-100 transition outline-none placeholder:text-slate-600 focus:border-emerald-400"
+                            />
+                        </label>
+
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <div
+                                class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
+                            >
+                                <p class="text-xs text-slate-500">
+                                    Корректных ID
+                                </p>
+                                <p
+                                    class="mt-1 text-2xl font-semibold text-white"
+                                >
+                                    {{ bulkImportMatchIds.length }}
+                                </p>
+                            </div>
+                            <div
+                                class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
+                            >
+                                <p class="text-xs text-slate-500">Дубликатов</p>
+                                <p
+                                    class="mt-1 text-2xl font-semibold text-white"
+                                >
+                                    {{ bulkImportDuplicateCount }}
+                                </p>
+                            </div>
+                            <div
+                                class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
+                            >
+                                <p class="text-xs text-slate-500">
+                                    Некорректных строк
+                                </p>
+                                <p
+                                    class="mt-1 text-2xl font-semibold text-white"
+                                >
+                                    {{ bulkImportInvalidTokens.length }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            v-if="bulkImportInvalidTokens.length > 0"
+                            class="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100"
+                        >
+                            Не будут импортированы:
+                            {{ bulkImportInvalidTokens.slice(0, 5).join(', ')
+                            }}<span v-if="bulkImportInvalidTokens.length > 5">
+                                и ещё
+                                {{ bulkImportInvalidTokens.length - 5 }}</span
+                            >.
+                        </div>
+                    </div>
+
+                    <aside
+                        class="space-y-4 rounded-3xl border border-slate-800 bg-slate-950/60 p-5"
+                    >
+                        <div>
+                            <p
+                                class="text-xs font-semibold tracking-[0.25em] text-slate-500 uppercase"
+                            >
+                                План очереди
+                            </p>
+                            <p class="mt-2 text-lg font-semibold text-white">
+                                {{ bulkImportEstimatedDuration }}
+                            </p>
+                            <p class="mt-1 text-sm leading-6 text-slate-400">
+                                Оценка учитывает до 7 запросов STRATZ на матч и
+                                паузу между ними.
+                            </p>
+                        </div>
+
+                        <dl
+                            class="space-y-3 border-y border-slate-800 py-4 text-sm"
+                        >
+                            <div
+                                class="flex items-center justify-between gap-3"
+                            >
+                                <dt class="text-slate-400">
+                                    Одновременных задач
+                                </dt>
+                                <dd class="font-semibold text-emerald-200">
+                                    1
+                                </dd>
+                            </div>
+                            <div
+                                class="flex items-center justify-between gap-3"
+                            >
+                                <dt class="text-slate-400">
+                                    Максимум ID в пакете
+                                </dt>
+                                <dd class="font-semibold text-slate-100">
+                                    500
+                                </dd>
+                            </div>
+                            <div
+                                class="flex items-center justify-between gap-3"
+                            >
+                                <dt class="text-slate-400">Повторный запуск</dt>
+                                <dd class="font-semibold text-slate-100">
+                                    пропустит готовые
+                                </dd>
+                            </div>
+                        </dl>
+
+                        <button
+                            type="button"
+                            class="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                            :disabled="
+                                bulkImportMatchIds.length === 0 ||
+                                bulkImportMatchIds.length > 500 ||
+                                isLoading('bulk-import')
+                            "
+                            @click="previewBulkImport"
+                        >
+                            {{
+                                isLoading('bulk-import')
+                                    ? 'Создаём очередь...'
+                                    : 'Запустить импорт'
+                            }}
+                        </button>
+                        <p
+                            v-if="bulkImportPreviewMessage"
+                            class="text-center text-xs leading-5 text-slate-400"
+                        >
+                            {{ bulkImportPreviewMessage }}
+                        </p>
+                        <div
+                            v-if="bulkImportBatch"
+                            class="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-100"
+                        >
+                            <p class="font-semibold">
+                                {{ bulkImportBatch.status }}
+                            </p>
+                            <p>
+                                Обработано:
+                                {{ bulkImportBatch.processed_items }} /
+                                {{ bulkImportBatch.total_items }}
+                            </p>
+                            <p>
+                                Успешно: {{ bulkImportBatch.succeeded_items }} ·
+                                пропущено: {{ bulkImportBatch.skipped_items }} ·
+                                ошибок: {{ bulkImportBatch.failed_items }}
+                            </p>
+                        </div>
+                    </aside>
+                </div>
+
+                <div
+                    class="mt-6 rounded-2xl border border-sky-400/15 bg-sky-500/5 p-4 text-sm leading-6 text-sky-100/85"
+                >
+                    <span class="font-semibold text-sky-100"
+                        >До запуска импорта:</span
+                    >
+                    этот экран только проверяет пакет. Реальный запуск будет
+                    выполнять фоновый job с rate limit, повторами и журналом
+                    статусов — вкладка не отправляет пачку запросов напрямую из
+                    браузера.
+                </div>
+            </section>
+
+            <section
                 v-else-if="activeTab === 'heroes'"
                 class="rounded-3xl border border-cyan-500/20 bg-slate-900/60 p-6 shadow-xl shadow-slate-950/30"
             >
@@ -1805,20 +2067,18 @@
 </template>
 
 <script setup lang="ts">
-import {
-    computed,
-    onBeforeUnmount,
-    onMounted,
-    reactive,
-    ref,
-} from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 import {
     destroyTeamRoster as destroyTeamRosterAction,
     rosh as roshAction,
     roshGist as roshGistAction,
     roshHeroes as roshHeroesAction,
+    previewLeagueImport as previewLeagueImportAction,
+    resolveLeagueFromMatch as resolveLeagueFromMatchAction,
     searchProPlayers as searchProPlayersAction,
+    showImportBatch as showImportBatchAction,
+    storeImportBatch as storeImportBatchAction,
     storeTeamRoster as storeTeamRosterAction,
     updateTeamRoster as updateTeamRosterAction,
 } from '@/actions/App/Http/Controllers/StratzController';
@@ -1883,7 +2143,7 @@ type SearchableHeroOption = {
 
 type HeroSide = 'radiant' | 'dire';
 type HeroPickerKey = `${HeroSide}-${number}`;
-type StratzTab = 'matchId' | 'heroes' | 'gist' | 'teams';
+type StratzTab = 'matchId' | 'bulkImport' | 'heroes' | 'gist' | 'teams';
 type PlayerSearchStatus = 'idle' | 'searching' | 'ready' | 'empty' | 'error';
 
 type RoshFormattedResult = {
@@ -1932,6 +2192,22 @@ type RoshResultPayload = {
 type StratzResult = {
     type: string;
     data: unknown;
+};
+
+type StratzImportBatch = {
+    id: number;
+    status: string;
+    total_items: number;
+    processed_items: number;
+    succeeded_items: number;
+    skipped_items: number;
+    failed_items: number;
+};
+type StratzLeague = {
+    id: number;
+    displayName: string;
+    startDateTime: number | null;
+    endDateTime: number | null;
 };
 
 type RouteTarget = {
@@ -1992,6 +2268,17 @@ const tabs: Array<{
         badgeClasses: 'border-rose-300/40 bg-rose-300/10 text-rose-100',
     },
     {
+        id: 'bulkImport',
+        label: 'Импорт пакета',
+        shortLabel: 'Batch',
+        description:
+            'Проверить и подготовить десятки или сотни исторических MatchID для безопасной фоновой загрузки.',
+        activeClasses:
+            'border-emerald-400/50 bg-emerald-500/10 text-emerald-50',
+        badgeClasses:
+            'border-emerald-300/40 bg-emerald-300/10 text-emerald-100',
+    },
+    {
         id: 'gist',
         label: 'По HTML',
         shortLabel: 'HTML',
@@ -2024,6 +2311,18 @@ const activeTab = ref<StratzTab>('heroes');
 const matchForm = reactive({
     matchId: '',
 });
+
+const bulkImportForm = reactive({
+    matchIds: '',
+});
+
+const bulkImportPreviewMessage = ref('');
+const bulkImportBatch = ref<StratzImportBatch | null>(null);
+const leagueImportId = ref('');
+const leagueImportMessage = ref('');
+const leagueSeedMatchId = ref('');
+const resolvedLeague = ref<StratzLeague | null>(null);
+let bulkImportPollTimer: number | null = null;
 
 const heroForm = reactive({
     radiantTeam: '',
@@ -2213,6 +2512,192 @@ const roshGoogleSheets = computed<RoshGoogleSheetsResult | null>(() => {
 });
 
 const isLoading = (action: string): boolean => loadingAction.value === action;
+
+const bulkImportTokens = computed(() =>
+    bulkImportForm.matchIds
+        .split(/[\s,;]+/)
+        .map((value) => value.trim())
+        .filter((value) => value !== ''),
+);
+
+const bulkImportInvalidTokens = computed(() =>
+    bulkImportTokens.value.filter((value) => !/^\d{6,15}$/.test(value)),
+);
+
+const bulkImportMatchIds = computed(() => {
+    const uniqueMatchIds = new Set<string>();
+
+    for (const token of bulkImportTokens.value) {
+        if (/^\d{6,15}$/.test(token)) {
+            uniqueMatchIds.add(token);
+        }
+    }
+
+    return [...uniqueMatchIds];
+});
+
+const bulkImportDuplicateCount = computed(
+    () =>
+        bulkImportTokens.value.filter((value) => /^\d{6,15}$/.test(value))
+            .length - bulkImportMatchIds.value.length,
+);
+
+const bulkImportEstimatedDuration = computed(() => {
+    const estimatedSeconds = bulkImportMatchIds.value.length * 45;
+
+    if (estimatedSeconds === 0) {
+        return 'Добавьте MatchID';
+    }
+
+    if (estimatedSeconds < 60) {
+        return `Около ${estimatedSeconds} сек.`;
+    }
+
+    return `Около ${Math.ceil(estimatedSeconds / 60)} мин.`;
+});
+
+const previewBulkImport = async (): Promise<void> => {
+    const matchCount = bulkImportMatchIds.value.length;
+
+    if (matchCount > 500) {
+        bulkImportPreviewMessage.value =
+            'В одном пакете разрешено не больше 500 MatchID.';
+        return;
+    }
+
+    loadingAction.value = 'bulk-import';
+    errorMessage.value = '';
+
+    try {
+        const response = await postJson<ApiEnvelope<StratzImportBatch>>(
+            storeImportBatchAction.post(),
+            {
+                match_ids: bulkImportMatchIds.value.map(Number),
+                tournament: resolvedLeague.value?.displayName ?? null,
+            },
+        );
+        bulkImportBatch.value = response.data ?? null;
+        bulkImportPreviewMessage.value = `Импорт запущен: ${matchCount} матчей добавлено в очередь.`;
+        startBulkImportPolling();
+    } catch (error) {
+        errorMessage.value =
+            error instanceof Error ? error.message : String(error);
+        bulkImportPreviewMessage.value = errorMessage.value;
+    } finally {
+        loadingAction.value = null;
+    }
+};
+
+const previewLeagueImport = async (): Promise<void> => {
+    if (!/^\d+$/.test(leagueImportId.value)) {
+        leagueImportMessage.value = 'Укажите числовой League ID.';
+        return;
+    }
+
+    if (Number(leagueImportId.value) > 2_147_483_647) {
+        leagueSeedMatchId.value = leagueImportId.value;
+        await resolveLeagueFromMatch();
+
+        if (resolvedLeague.value) {
+            await previewLeagueImport();
+        }
+
+        return;
+    }
+
+    loadingAction.value = 'preview-league-import';
+    leagueImportMessage.value = '';
+
+    try {
+        const response = await postJson<
+            ApiEnvelope<{ match_ids: number[]; source: 'stratz' | 'opendota' }>
+        >(
+            previewLeagueImportAction.post(),
+            { league_id: Number(leagueImportId.value) },
+        );
+        const matchIds = response.data?.match_ids ?? [];
+        bulkImportForm.matchIds = matchIds.join('\n');
+        const source =
+            response.data?.source === 'opendota' ? ' через OpenDota' : '';
+        leagueImportMessage.value = `Найдено ${matchIds.length} игр${source}. Проверьте список и отдельно запустите импорт.`;
+    } catch (error) {
+        leagueImportMessage.value =
+            error instanceof Error ? error.message : String(error);
+    } finally {
+        loadingAction.value = null;
+    }
+};
+
+const resolveLeagueFromMatch = async (): Promise<void> => {
+    if (!/^\d+$/.test(leagueSeedMatchId.value)) {
+        leagueImportMessage.value = 'Укажите числовой MatchID.';
+        return;
+    }
+
+    loadingAction.value = 'resolve-league';
+    leagueImportMessage.value = '';
+    resolvedLeague.value = null;
+
+    try {
+        const response = await postJson<ApiEnvelope<StratzLeague>>(
+            resolveLeagueFromMatchAction.post(),
+            { match_id: Number(leagueSeedMatchId.value) },
+        );
+
+        if (!response.data) {
+            throw new Error('STRATZ не вернул данные лиги.');
+        }
+
+        resolvedLeague.value = response.data;
+        leagueImportId.value = String(response.data.id);
+        leagueImportMessage.value =
+            'Лига найдена. Нажмите «Найти игры», затем отдельно запустите импорт.';
+    } catch (error) {
+        leagueImportMessage.value =
+            error instanceof Error
+                ? error.message
+                : 'Не удалось определить лигу по этому MatchID.';
+    } finally {
+        loadingAction.value = null;
+    }
+};
+
+const stopBulkImportPolling = (): void => {
+    if (bulkImportPollTimer !== null) {
+        window.clearInterval(bulkImportPollTimer);
+        bulkImportPollTimer = null;
+    }
+};
+
+const refreshBulkImportStatus = async (): Promise<void> => {
+    if (!bulkImportBatch.value) {
+        stopBulkImportPolling();
+        return;
+    }
+
+    const response = await apiJson<ApiEnvelope<StratzImportBatch>>(
+        showImportBatchAction.get(bulkImportBatch.value.id),
+    );
+    bulkImportBatch.value = response.data ?? bulkImportBatch.value;
+
+    if (
+        ['completed', 'completed_with_errors'].includes(
+            bulkImportBatch.value.status,
+        )
+    ) {
+        bulkImportPreviewMessage.value = 'Импорт завершён.';
+        stopBulkImportPolling();
+    }
+};
+
+const startBulkImportPolling = (): void => {
+    stopBulkImportPolling();
+    void refreshBulkImportStatus();
+    bulkImportPollTimer = window.setInterval(
+        () => void refreshBulkImportStatus(),
+        3000,
+    );
+};
 
 const jsonHeaders = () => ({
     'Content-Type': 'application/json',
@@ -3126,6 +3611,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     document.removeEventListener('pointerdown', handleDocumentPointerDown);
+    stopBulkImportPolling();
 
     for (const slot of teamEditorPlayerSearchState) {
         clearPlayerSearchTimer(slot);

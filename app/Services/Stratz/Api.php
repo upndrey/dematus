@@ -43,6 +43,12 @@ class Api
      */
     private function queryPayload(string $query, array $variables = [], bool $allowGraphQLErrors = false): array
     {
+        $requestIntervalSeconds = (int) config('services.stratz.request_interval_seconds', 0);
+
+        if ($requestIntervalSeconds > 0 && ! app()->environment('testing')) {
+            sleep($requestIntervalSeconds);
+        }
+
         $token = config('services.stratz.token');
 
         if (! is_string($token) || $token === '') {

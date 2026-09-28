@@ -2,6 +2,8 @@
 
 namespace App\Services\Stratz;
 
+use App\Services\OpenDota\OpenDotaService;
+
 class StratzService
 {
     private const ROSH_MIN_TIME = 20;
@@ -100,7 +102,10 @@ class StratzService
         8 => 'DIVINE_IMMORTAL',
     ];
 
-    public function __construct(protected Api $api) {}
+    public function __construct(
+        protected Api $api,
+        protected OpenDotaService $openDotaService,
+    ) {}
 
     public function getLeagueMatches(int $leagueId, int $take = 20, int $skip = 0): array
     {
@@ -194,6 +199,30 @@ GRAPHQL;
             'formatted' => $this->buildDraftSummary($matchId, $match, $draft),
             'request' => $draftRequest,
             'raw' => $draft,
+        ];
+    }
+
+    /** @return array{id:int, displayName:string, startDateTime:int|null, endDateTime:int|null} */
+    public function getLeagueFromMatchId(int $matchId): array
+    {
+        $data = $this->api->query('query MatchLeague($matchId: Long!) { match(id: $matchId) { league { id displayName startDateTime endDateTime } } }', ['matchId' => $matchId]);
+        $league = data_get($data, 'match.league');
+
+        if (is_array($league) && is_int(data_get($league, 'id'))) {
+            return $league;
+        }
+
+        $leagueId = $this->openDotaService->getLeagueIdForMatch($matchId);
+
+        if ($leagueId === null) {
+            throw new \RuntimeException('Neither STRATZ nor OpenDota contains a league for this match.');
+        }
+
+        return [
+            'id' => $leagueId,
+            'displayName' => $this->openDotaService->getLeagueName($leagueId) ?? 'League #'.$leagueId.' (OpenDota)',
+            'startDateTime' => null,
+            'endDateTime' => null,
         ];
     }
 
@@ -294,6 +323,7 @@ GRAPHQL;
      *     analysis: array{
      *         bracket:string,
      *         bracketBasicIds:string,
+     *         draftCutoff:int,
      *         week:int,
      *         heroIds:list<int>,
      *         operations:array<int, array{key:string, operationName:string, variables:array<string, mixed>}>
@@ -538,16 +568,17 @@ GRAPHQL;
     private function buildRoshRequestFromMatch(int $matchId, array $match): array
     {
         $bracketValue = data_get($match, 'bracket');
-        $week = data_get($match, 'startDateTime');
+        $draftCutoff = data_get($match, 'startDateTime');
 
         if (! is_int($bracketValue)) {
             throw new \RuntimeException('STRATZ ROSH match response does not contain bracket.');
         }
 
-        if (! is_int($week)) {
+        if (! is_int($draftCutoff)) {
             throw new \RuntimeException('STRATZ ROSH match response does not contain startDateTime.');
         }
 
+        $week = $this->previousCompletedRoshWeekStart($draftCutoff);
         $bracket = $this->mapBracketToId($bracketValue);
         $bracketBasicId = $this->mapBracketToBasicId($bracketValue);
         $picks = $this->extractRoshPicksFromMatch($match);
@@ -563,6 +594,7 @@ GRAPHQL;
             'analysis' => [
                 'bracket' => $bracket,
                 'bracketBasicIds' => $bracketBasicId,
+                'draftCutoff' => $draftCutoff,
                 'week' => $week,
                 'heroIds' => $heroIds,
                 'dataWindows' => $this->buildRoshDataWindowPlan($week),
@@ -715,6 +747,11 @@ GRAPHQL;
             ],
             'targets' => $targets,
         ];
+    }
+
+    private function previousCompletedRoshWeekStart(int $draftCutoff): int
+    {
+        return (intdiv($draftCutoff, self::WEEK_SECONDS) - 1) * self::WEEK_SECONDS;
     }
 
     /**
@@ -925,6 +962,7 @@ GRAPHQL;
      * }  $request
      * @return array{
      *     match_id:int|string,
+     *     tournament:?string,
      *     winner:string,
      *     radiant_team:string,
      *     dire_team:string,
@@ -952,12 +990,13 @@ GRAPHQL;
 
         return [
             'match_id' => $matchId,
+            'tournament' => $this->nullableString(data_get($match, 'league.displayName')),
             'winner' => $winner,
             'radiant_team' => (string) data_get($match, 'radiantTeam.name', 'Radiant'),
             'dire_team' => (string) data_get($match, 'direTeam.name', 'Dire'),
             'bracket' => (string) data_get($request, 'analysis.bracket'),
             'bracket_basic' => (string) data_get($request, 'analysis.bracketBasicIds'),
-            'date_time' => (int) data_get($request, 'analysis.week'),
+            'date_time' => (int) data_get($request, 'analysis.draftCutoff', data_get($request, 'analysis.week')),
             'radiant_odds_1' => $radiantOddsStart,
             'radiant_odds_2' => $radiantOddsEnd,
             'dire_odds_1' => $direOddsStart,
@@ -2344,5 +2383,14 @@ heroes: stats(bracketBasicIds: \$bracketBasicIds, week: {$week}, heroIds: \$hero
     private function clampFloat(float $value, float $min, float $max): float
     {
         return max($min, min($max, $value));
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return trim($value);
     }
 }

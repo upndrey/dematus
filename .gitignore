@@ -31,5 +31,10 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Local tooling and generated model artifacts
+/.pnpm-store
+/catboost_info
+/tmp
 upheld-shield-221606-be4a23ada5ea.json
 .playwright-mcp

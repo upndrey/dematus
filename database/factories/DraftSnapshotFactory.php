@@ -25,6 +25,7 @@ class DraftSnapshotFactory extends Factory
             'tournament' => null,
             'radiant_team' => fake()->company(),
             'dire_team' => fake()->company(),
+            'first_pick_side' => null,
             'radiant_heroes' => [1, 2, 3, 4, 5],
             'dire_heroes' => [6, 7, 8, 9, 10],
             'bookmaker_odds_radiant' => null,

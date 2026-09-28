@@ -64,6 +64,7 @@ class RoshSheetService
         'avg_dire_odds',
         'bookmaker_odds_radiant',
         'bookmaker_odds_dire',
+        'bookmaker_odds_unverified',
         'raw_size_mb',
     ];
 
@@ -133,7 +134,7 @@ class RoshSheetService
      *     rows:array<int, int>
      * }
      */
-    public function syncSnapshotDataset(iterable $snapshots): array
+    public function syncSnapshotDataset(iterable $snapshots, bool $overwriteBookmakerOdds = false): array
     {
         if (! $this->isConfigured()) {
             throw new RuntimeException('Google Sheets dataset sync is not configured.');
@@ -174,6 +175,7 @@ class RoshSheetService
             $ranges[$this->sheetRange($sheetTitle, $this->rowRange($row))] = $this->snapshotDatasetRow(
                 $snapshot,
                 $existingRows[$snapshotId]['values'] ?? [],
+                $overwriteBookmakerOdds,
             );
 
             if (count($ranges) === self::DATASET_BATCH_SIZE) {
@@ -194,6 +196,131 @@ class RoshSheetService
             'exported_rows' => $exportedRows,
             'rows' => $rows,
         ];
+    }
+
+    /**
+     * @param  iterable<DraftSnapshot>  $snapshots
+     */
+    public function syncSnapshotFirstPickSides(iterable $snapshots): int
+    {
+        if (! $this->isConfigured()) {
+            throw new RuntimeException('Google Sheets dataset sync is not configured.');
+        }
+
+        $spreadsheet = $this->parseSpreadsheetConfig((string) config('services.google_sheets.spreadsheet_url'));
+        $accessToken = $this->requestAccessToken();
+        $sheetTitle = $this->ensureSheetExists(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            self::DATASET_SHEET_TITLE,
+        );
+
+        $this->batchUpdateValues(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            [$this->sheetRange($sheetTitle, $this->rowRange(1)) => $this->datasetHeaders()],
+        );
+
+        $existingRows = $this->datasetExistingRows(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            $sheetTitle,
+        );
+        $firstPickColumn = $this->columnName(array_search('first_pick_side', $this->datasetHeaders(), true) + 1);
+        $ranges = [];
+        $exportedRows = 0;
+
+        foreach ($snapshots as $snapshot) {
+            $existingRow = $existingRows[(string) $snapshot->id] ?? null;
+
+            if ($existingRow === null) {
+                continue;
+            }
+
+            $ranges[$this->sheetRange($sheetTitle, $firstPickColumn.$existingRow['row'])] = [
+                $this->formatSheetTextValue($snapshot->first_pick_side),
+            ];
+
+            if (count($ranges) === self::DATASET_BATCH_SIZE) {
+                $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+                $exportedRows += count($ranges);
+                $ranges = [];
+            }
+        }
+
+        if ($ranges !== []) {
+            $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+            $exportedRows += count($ranges);
+        }
+
+        return $exportedRows;
+    }
+
+    /**
+     * Repairs Dataset rows created before the bookmaker verification flag existed.
+     *
+     * @param  iterable<DraftSnapshot>  $snapshots
+     */
+    public function repairSnapshotDatasetBookmakerColumnLayout(iterable $snapshots): int
+    {
+        if (! $this->isConfigured()) {
+            throw new RuntimeException('Google Sheets dataset sync is not configured.');
+        }
+
+        $spreadsheet = $this->parseSpreadsheetConfig(
+            (string) config('services.google_sheets.spreadsheet_url'),
+        );
+        $accessToken = $this->requestAccessToken();
+        $sheetTitle = $this->ensureSheetExists(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            self::DATASET_SHEET_TITLE,
+        );
+        $existingRows = $this->datasetExistingRows(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            $sheetTitle,
+        );
+        $unverifiedIndex = array_search('bookmaker_odds_unverified', $this->datasetHeaders(), true);
+
+        if (! is_int($unverifiedIndex)) {
+            throw new RuntimeException('Dataset bookmaker verification column is missing.');
+        }
+
+        $ranges = [];
+        $repairedRows = 0;
+
+        foreach ($snapshots as $snapshot) {
+            $existing = $existingRows[(string) $snapshot->id] ?? null;
+
+            if ($existing === null) {
+                continue;
+            }
+
+            $values = $existing['values'];
+            $marker = $this->bookmakerOddsUnverifiedValue($snapshot);
+            $legacyRow = is_numeric(trim((string) data_get($values, (string) $unverifiedIndex, '')));
+
+            if ($legacyRow) {
+                array_splice($values, $unverifiedIndex, 0, [$marker]);
+            } else {
+                $values[$unverifiedIndex] = $marker;
+            }
+
+            $ranges[$this->sheetRange($sheetTitle, $this->rowRange($existing['row']))] = $values;
+            $repairedRows++;
+
+            if (count($ranges) === self::DATASET_BATCH_SIZE) {
+                $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+                $ranges = [];
+            }
+        }
+
+        if ($ranges !== []) {
+            $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+        }
+
+        return $repairedRows;
     }
 
     /**
@@ -235,6 +362,12 @@ class RoshSheetService
             $sheetTitle,
             $matchIdValue,
             $alwaysAppend,
+        );
+        $this->ensureSheetHasRows(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            $sheetTitle,
+            $row,
         );
         $teamMetadata = [
             $this->formatSheetTextValue($formatted['radiant_team'] ?? null),
@@ -439,6 +572,48 @@ class RoshSheetService
         return $sheetTitle;
     }
 
+    private function ensureSheetHasRows(
+        string $accessToken,
+        string $spreadsheetId,
+        string $sheetTitle,
+        int $requiredRow,
+    ): void {
+        $response = $this->authorizedRequest($accessToken)
+            ->get(self::SHEETS_API_BASE.'/'.$spreadsheetId, [
+                'fields' => 'sheets(properties(sheetId,title,gridProperties(rowCount)))',
+            ]);
+        $data = $this->decodeResponse($response, 'Google Sheets grid metadata request failed.');
+
+        foreach ((array) data_get($data, 'sheets', []) as $sheet) {
+            if (data_get($sheet, 'properties.title') !== $sheetTitle) {
+                continue;
+            }
+
+            $sheetId = data_get($sheet, 'properties.sheetId');
+            $rowCount = data_get($sheet, 'properties.gridProperties.rowCount');
+
+            if (! is_numeric($sheetId) || ! is_numeric($rowCount) || (int) $rowCount >= $requiredRow) {
+                return;
+            }
+
+            $resizeResponse = $this->authorizedRequest($accessToken)
+                ->post(self::SHEETS_API_BASE.'/'.$spreadsheetId.':batchUpdate', [
+                    'requests' => [[
+                        'appendDimension' => [
+                            'sheetId' => (int) $sheetId,
+                            'dimension' => 'ROWS',
+                            'length' => $requiredRow - (int) $rowCount,
+                        ],
+                    ]],
+                ]);
+            $this->decodeResponse($resizeResponse, 'Google Sheets grid resize failed.');
+
+            return;
+        }
+
+        throw new RuntimeException('Unable to resolve the Google Sheets tab for grid resize.');
+    }
+
     /**
      * @return array<string, array{row:int, values:list<string>}>
      */
@@ -476,6 +651,7 @@ class RoshSheetService
         return [
             ...self::BASE_DATASET_HEADERS,
             ...$this->featureAggregator->headers(),
+            'first_pick_side',
         ];
     }
 
@@ -501,8 +677,11 @@ class RoshSheetService
      * @param  list<string>  $existingRow
      * @return list<string>
      */
-    private function snapshotDatasetRow(DraftSnapshot $snapshot, array $existingRow = []): array
-    {
+    private function snapshotDatasetRow(
+        DraftSnapshot $snapshot,
+        array $existingRow = [],
+        bool $overwriteBookmakerOdds = false,
+    ): array {
         $formatted = (array) data_get($snapshot->feature_payload, 'formatted', []);
         $radiantOdds = [
             $this->numericOrNull(data_get($formatted, 'radiant_odds_1')),
@@ -534,21 +713,27 @@ class RoshSheetService
             $this->formatDecimalValue($direOdds[1]),
             $this->formatDecimalValue($this->averageNumericValues($radiantOdds)),
             $this->formatDecimalValue($this->averageNumericValues($direOdds)),
-            $this->manualDatasetValue(
-                $existingRow,
-                'bookmaker_odds_radiant',
-                $this->formatDecimalValue($this->numericOrNull($snapshot->bookmaker_odds_radiant)),
-            ),
-            $this->manualDatasetValue(
-                $existingRow,
-                'bookmaker_odds_dire',
-                $this->formatDecimalValue($this->numericOrNull($snapshot->bookmaker_odds_dire)),
-            ),
+            $overwriteBookmakerOdds
+                ? $this->formatDecimalValue($this->numericOrNull($snapshot->bookmaker_odds_radiant))
+                : $this->manualDatasetValue(
+                    $existingRow,
+                    'bookmaker_odds_radiant',
+                    $this->formatDecimalValue($this->numericOrNull($snapshot->bookmaker_odds_radiant)),
+                ),
+            $overwriteBookmakerOdds
+                ? $this->formatDecimalValue($this->numericOrNull($snapshot->bookmaker_odds_dire))
+                : $this->manualDatasetValue(
+                    $existingRow,
+                    'bookmaker_odds_dire',
+                    $this->formatDecimalValue($this->numericOrNull($snapshot->bookmaker_odds_dire)),
+                ),
+            $this->bookmakerOddsUnverifiedValue($snapshot),
             $this->formatDecimalValue($this->snapshotRawSizeMegabytes($snapshot)),
             ...array_map(
                 fn (?float $value): string => $this->formatDecimalValue($value),
                 array_values($this->featureAggregator->aggregate($snapshot)),
             ),
+            $this->formatSheetTextValue($snapshot->first_pick_side),
         ];
     }
 
@@ -566,6 +751,13 @@ class RoshSheetService
         $existingValue = trim((string) data_get($existingRow, (string) $index, ''));
 
         return $existingValue !== '' ? $existingValue : $fallback;
+    }
+
+    private function bookmakerOddsUnverifiedValue(DraftSnapshot $snapshot): string
+    {
+        return data_get($snapshot->book_payload, 'verification.orientation') === 'unverified'
+            ? 'YES'
+            : '';
     }
 
     private function hasBaselineBuckets(DraftSnapshot $snapshot): bool

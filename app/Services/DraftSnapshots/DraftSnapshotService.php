@@ -11,6 +11,8 @@ class DraftSnapshotService
 {
     public const MODEL_VERSION = 'dematus-rosh-v1';
 
+    public function __construct(private readonly DraftSnapshotFeatureAggregator $featureAggregator) {}
+
     /**
      * @param  array<string, mixed>  $draftPayload
      * @param  array<string, mixed>  $rosh
@@ -20,15 +22,20 @@ class DraftSnapshotService
     {
         $formatted = (array) data_get($rosh, 'formatted', []);
         $sheetPayload = data_get($rosh, 'google_sheets');
+        $matchId = $this->matchId($formatted, $metadata);
+        $radiantTeam = $this->nullableString(data_get($formatted, 'radiant_team'));
+        $direTeam = $this->nullableString(data_get($formatted, 'dire_team'));
 
         $draftSnapshot = DraftSnapshot::query()->create([
             'source' => $source,
             'captured_at' => $this->capturedAt($metadata, $formatted),
-            'match_id' => $this->matchId($formatted, $metadata),
+            'match_id' => $matchId,
             'dltv_url' => $this->nullableString(data_get($metadata, 'dltv_url')),
-            'tournament' => $this->nullableString(data_get($metadata, 'tournament')),
-            'radiant_team' => $this->nullableString(data_get($formatted, 'radiant_team')),
-            'dire_team' => $this->nullableString(data_get($formatted, 'dire_team')),
+            'tournament' => $this->nullableString(data_get($metadata, 'tournament'))
+                ?? $this->nullableString(data_get($formatted, 'tournament')),
+            'radiant_team' => $radiantTeam,
+            'dire_team' => $direTeam,
+            'first_pick_side' => $this->firstPickSideFromRosh($matchId, $rosh),
             'radiant_heroes' => $this->heroIds($draftPayload, $rosh, true),
             'dire_heroes' => $this->heroIds($draftPayload, $rosh, false),
             'bookmaker_odds_radiant' => $this->numericOrNull(data_get($metadata, 'bookmaker_odds_radiant')),
@@ -44,7 +51,12 @@ class DraftSnapshotService
 
         $this->storeStratzDataBuckets($draftSnapshot, $rosh);
 
-        return $draftSnapshot;
+        $draftSnapshot->load('stratzDataBuckets');
+        $draftSnapshot->update([
+            'ml_feature_payload' => $this->featureAggregator->aggregate($draftSnapshot),
+        ]);
+
+        return $draftSnapshot->refresh();
     }
 
     /**
@@ -67,6 +79,32 @@ class DraftSnapshotService
                 'analysis_summary' => data_get($draftSnapshot->feature_payload, 'analysis_summary', []),
             ],
         ]);
+    }
+
+    public function refreshMlFeaturePayload(DraftSnapshot $draftSnapshot): DraftSnapshot
+    {
+        $draftSnapshot->load('stratzDataBuckets');
+        $draftSnapshot->update([
+            'ml_feature_payload' => $this->featureAggregator->aggregate($draftSnapshot),
+        ]);
+
+        return $draftSnapshot->refresh();
+    }
+
+    public function backfillFirstPickSide(DraftSnapshot $draftSnapshot): bool
+    {
+        $firstPickSide = $this->firstPickSideFromRosh(
+            $draftSnapshot->match_id,
+            ['snapshot_stratz_payload' => $draftSnapshot->stratz_payload ?? []],
+        );
+
+        if ($firstPickSide === $draftSnapshot->first_pick_side) {
+            return false;
+        }
+
+        $draftSnapshot->update(['first_pick_side' => $firstPickSide]);
+
+        return true;
     }
 
     /**
@@ -99,6 +137,50 @@ class DraftSnapshotService
         $matchId = data_get($metadata, 'match_id') ?? data_get($formatted, 'match_id');
 
         return is_numeric($matchId) ? (int) $matchId : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $rosh
+     */
+    private function firstPickSideFromRosh(?int $matchId, array $rosh): ?string
+    {
+        if ($matchId === null) {
+            return null;
+        }
+
+        $firstPick = null;
+
+        $pickBans = (array) data_get($rosh, 'snapshot_stratz_payload.match.pickBans', []);
+
+        if ($pickBans === []) {
+            $pickBans = (array) data_get($rosh, 'raw.match.pickBans', []);
+        }
+
+        foreach ($pickBans as $pickBan) {
+            if (! is_array($pickBan) || data_get($pickBan, 'isPick') !== true) {
+                continue;
+            }
+
+            $order = data_get($pickBan, 'order');
+            $isRadiant = data_get($pickBan, 'isRadiant');
+
+            if (! is_numeric($order) || ! is_bool($isRadiant)) {
+                continue;
+            }
+
+            if ($firstPick === null || (int) $order < $firstPick['order']) {
+                $firstPick = [
+                    'order' => (int) $order,
+                    'isRadiant' => $isRadiant,
+                ];
+            }
+        }
+
+        if ($firstPick === null) {
+            return null;
+        }
+
+        return $firstPick['isRadiant'] ? 'radiant' : 'dire';
     }
 
     /**

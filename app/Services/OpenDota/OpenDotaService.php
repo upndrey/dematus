@@ -104,6 +104,81 @@ class OpenDotaService
         ));
     }
 
+    public function getLeagueIdForMatch(int $matchId): ?int
+    {
+        $response = Http::acceptJson()
+            ->withHeaders([
+                'User-Agent' => self::USER_AGENT,
+            ])
+            ->timeout($this->timeout())
+            ->retry(2, 200, throw: false)
+            ->get($this->matchEndpoint($matchId));
+
+        if ($response->failed()) {
+            throw new RuntimeException(
+                'OpenDota match request failed with HTTP '.$response->status().'.',
+            );
+        }
+
+        $leagueId = data_get($response->json(), 'leagueid');
+
+        return is_numeric($leagueId) && (int) $leagueId > 0
+            ? (int) $leagueId
+            : null;
+    }
+
+    public function getLeagueName(int $leagueId): ?string
+    {
+        $response = Http::acceptJson()
+            ->withHeaders([
+                'User-Agent' => self::USER_AGENT,
+            ])
+            ->timeout($this->timeout())
+            ->retry(2, 200, throw: false)
+            ->get(rtrim((string) config('services.opendota.api_base_url'), '/').'/leagues/'.$leagueId);
+
+        if ($response->failed()) {
+            return null;
+        }
+
+        $name = data_get($response->json(), 'name');
+
+        return is_string($name) && trim($name) !== '' ? trim($name) : null;
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function getLeagueMatchIds(int $leagueId, int $limit = 500): array
+    {
+        $response = Http::acceptJson()
+            ->withHeaders([
+                'User-Agent' => self::USER_AGENT,
+            ])
+            ->timeout($this->timeout())
+            ->retry(2, 200, throw: false)
+            ->get(rtrim((string) config('services.opendota.api_base_url'), '/').'/leagues/'.$leagueId.'/matches');
+
+        if ($response->failed()) {
+            throw new RuntimeException(
+                'OpenDota league matches request failed with HTTP '.$response->status().'.',
+            );
+        }
+
+        $payload = $response->json();
+
+        if (! is_array($payload)) {
+            throw new RuntimeException('Invalid OpenDota league matches response format.');
+        }
+
+        return array_slice(array_values(array_unique(array_filter(array_map(
+            static fn (mixed $match): ?int => is_numeric(data_get($match, 'match_id'))
+                ? (int) data_get($match, 'match_id')
+                : null,
+            $payload,
+        )))), 0, $limit);
+    }
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -330,6 +405,11 @@ class OpenDotaService
     private function proPlayersEndpoint(): string
     {
         return (string) config('services.opendota.pro_players_endpoint');
+    }
+
+    private function matchEndpoint(int $matchId): string
+    {
+        return rtrim((string) config('services.opendota.api_base_url'), '/').'/matches/'.$matchId;
     }
 
     private function timeout(): int

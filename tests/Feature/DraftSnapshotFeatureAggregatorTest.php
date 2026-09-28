@@ -56,6 +56,56 @@ class DraftSnapshotFeatureAggregatorTest extends TestCase
         $this->assertNull($features['diff_8w_hero_winrate_avg']);
     }
 
+    public function test_it_backfills_ml_features_onto_existing_snapshots(): void
+    {
+        $snapshot = DraftSnapshot::factory()->create([
+            'radiant_heroes' => [1, 2, 3, 4, 5],
+            'dire_heroes' => [6, 7, 8, 9, 10],
+        ]);
+
+        StratzDataBucket::factory()->create([
+            'draft_snapshot_id' => $snapshot->id,
+            'bucket_key' => 'stratz_window_collector:match_id:heroes_meta_positions:4w',
+            'data_type' => 'heroes_meta_positions',
+            'window_weeks' => 4,
+            'raw_payload' => ['weeks' => ['1770000000' => $this->heroMetaPayload()]],
+        ]);
+
+        $this->artisan('snapshots:backfill-ml-features')->assertExitCode(0);
+
+        $snapshot->refresh();
+
+        $this->assertEquals(20.0, $snapshot->ml_feature_payload['diff_4w_hero_winrate_avg']);
+        $this->assertNull($snapshot->ml_feature_payload['diff_8w_hero_winrate_avg']);
+    }
+
+    public function test_it_backfills_the_first_pick_side_from_saved_stratz_events(): void
+    {
+        $snapshot = DraftSnapshot::factory()->create([
+            'match_id' => 8_921_931_974,
+            'first_pick_side' => null,
+            'stratz_payload' => [
+                'match' => [
+                    'pickBans' => [
+                        ['isPick' => false, 'order' => 0, 'isRadiant' => true],
+                        ['isPick' => true, 'order' => 3, 'isRadiant' => true],
+                        ['isPick' => true, 'order' => 1, 'isRadiant' => false],
+                    ],
+                ],
+            ],
+        ]);
+
+        $manualSnapshot = DraftSnapshot::factory()->create([
+            'match_id' => null,
+            'first_pick_side' => null,
+        ]);
+
+        $this->artisan('snapshots:backfill-first-picks')->assertExitCode(0);
+
+        $this->assertSame('dire', $snapshot->fresh()->first_pick_side);
+        $this->assertNull($manualSnapshot->fresh()->first_pick_side);
+    }
+
     /**
      * @return array<string, list<array<string, int>>>
      */
