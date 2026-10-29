@@ -232,4 +232,17 @@ class TelegramDraftBotTest extends TestCase
         $this->assertSame($draft->players, $draft->fresh()->players);
         $this->assertSame(1, $draft->fresh()->revision);
     }
+
+    public function test_allowed_username_can_use_bot_without_granting_group_access(): void
+    {
+        config(['telegram.allowed_usernames' => ['peskoffartem']]);
+        $bot = app(DraftBot::class);
+        $this->assertTrue($bot->authorized('99', '99', 'PeskoffArtem'));
+        $this->assertFalse($bot->authorized('99', '99', 'peskoffartem_fake'));
+        $bot->update(['message' => ['chat' => ['id' => '-10'], 'from' => ['id' => '99', 'username' => 'peskoffartem'], 'text' => '/allow']]);
+        $this->assertFalse($bot->authorized('-10', '100', 'someone_else'));
+        $draft = $this->draft();
+        $bot->callback(['id' => 'allowed', 'from' => ['id' => '99', 'username' => 'peskoffartem'], 'message' => ['chat' => ['id' => '42'], 'message_id' => 77], 'data' => 'd:'.$draft->id.':'.$draft->revision.':confirm']);
+        Queue::assertPushed(CalculateTelegramDraft::class, 1);
+    }
 }

@@ -65,4 +65,3 @@ function request(kind, uid, matchId) {
     return field(kind, Buffer.concat(parts));
 }
 export { decode, responseSchema, request };
-

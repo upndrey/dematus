@@ -13,9 +13,12 @@ class DraftBot
 {
     public function __construct(private TelegramClient $telegram, private BetBoomDraftSource $source) {}
 
-    public function authorized(string $chatId, string $userId): bool
+    public function authorized(string $chatId, string $userId, string $username = ''): bool
     {
-        return ($userId !== '' && $userId === config('telegram.owner_id')) || in_array($chatId, config('telegram.allowed_chats'), true) || Cache::get('telegram:allowed:'.$chatId, false);
+        return ($userId !== '' && $userId === config('telegram.owner_id'))
+            || ($username !== '' && in_array(strtolower($username), config('telegram.allowed_usernames', []), true))
+            || in_array($chatId, config('telegram.allowed_chats'), true)
+            || Cache::get('telegram:allowed:'.$chatId, false);
     }
 
     public function update(array $update): void
@@ -28,7 +31,7 @@ class DraftBot
         $message = $update['message'] ?? [];
         $chatId = (string) data_get($message, 'chat.id', '');
         $userId = (string) data_get($message, 'from.id', '');
-        if (! $this->authorized($chatId, $userId)) {
+        if (! $this->authorized($chatId, $userId, (string) data_get($message, 'from.username', ''))) {
             return;
         }
         $text = trim($message['text'] ?? '');
@@ -175,7 +178,7 @@ class DraftBot
         $chatId = (string) data_get($callback, 'message.chat.id', '');
         $userId = (string) data_get($callback, 'from.id', '');
         $answer = 'Нет доступа.';
-        if ($this->authorized($chatId, $userId) || Cache::get('telegram:allowed:'.$chatId, false)) {
+        if ($this->authorized($chatId, $userId, (string) data_get($callback, 'from.username', ''))) {
             $parts = explode(':', $callback['data'] ?? '');
             if (count($parts) >= 4 && $parts[0] === 'd') {
                 $draft = TelegramDraft::query()->find((int) $parts[1]);
