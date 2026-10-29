@@ -209,6 +209,32 @@ class TelegramDraftBotTest extends TestCase
         $this->assertSame(10, count(TelegramDraft::query()->sole()->players));
     }
 
+    public function test_collector_announces_matching_connection_once_before_draft_is_complete(): void
+    {
+        $payload = $this->payload();
+        $payload['players'] = array_slice($payload['players'], 0, 1);
+        $events = [
+            ['event' => 'connected', 'matchId' => '999'],
+            ['event' => 'warning', 'code' => 'source_unavailable'],
+            ['event' => 'connected', 'matchId' => '6344550'],
+            ['event' => 'connected', 'matchId' => '6344550'],
+            $payload,
+        ];
+        $process = \Mockery::mock(\Illuminate\Process\InvokedProcess::class);
+        $process->shouldReceive('latestOutput')->once()->andReturn(implode("\n", array_map(fn (array $event): string => json_encode($event), $events))."\n");
+        $process->shouldReceive('latestErrorOutput')->once()->andReturn('');
+        $process->shouldReceive('stop')->once();
+        \Illuminate\Support\Facades\Process::shouldReceive('forever')->once()->andReturnSelf();
+        \Illuminate\Support\Facades\Process::shouldReceive('start')->once()->andReturn($process);
+        TelegramWatch::factory()->create(['chat_id' => '42', 'match_id' => '6344550']);
+
+        $this->artisan('telegram:watch --once')->assertSuccessful();
+
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($request): bool => str_starts_with($request['text'], 'Подключились к матчу 6344550.'));
+        $this->assertSame(0, TelegramDraft::query()->count());
+    }
+
     public function test_polling_command_persists_offset_after_processing_update(): void
     {
         Http::swap(new \Illuminate\Http\Client\Factory);

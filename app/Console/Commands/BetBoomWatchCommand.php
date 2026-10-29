@@ -21,6 +21,7 @@ class BetBoomWatchCommand extends Command
         $processes = [];
         $buffers = [];
         $warnings = [];
+        $connected = [];
         $lock = Cache::lock('telegram:watcher', 120);
         if (! $lock->get()) {
             $this->error('A watcher is already running.');
@@ -52,6 +53,11 @@ class BetBoomWatchCommand extends Command
                         }
                         foreach ($subscribers as $watch) {
                             try {
+                                $subscription = $watch->id.':'.$watch->expires_at->getTimestamp();
+                                if (($payload['event'] ?? '') === 'connected' && (string) ($payload['matchId'] ?? '') === (string) $matchId && ! isset($connected[$subscription])) {
+                                    $telegram->send($watch->chat_id, 'Подключились к матчу '.$matchId.'. Получаем данные. Когда все 10 героев будут привязаны к игрокам, пришлю составы для проверки.');
+                                    $connected[$subscription] = true;
+                                }
                                 if (($payload['event'] ?? '') === 'draft') {
                                     $bot->ingest($watch->chat_id, $payload);
                                 } elseif (($payload['code'] ?? '') === 'source_unavailable' && ! isset($warnings[$watch->id])) {

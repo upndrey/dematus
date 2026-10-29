@@ -63,6 +63,7 @@ async function connect() {
                 const dota = match?.widget?.dota;
                 if (!dota || String(match.id) !== matchId) return;
                 lastMessage = Date.now();
+                emit({ event: 'connected', matchId });
                 const game = dota.games?.find(g => g.current);
                 if (!game) return;
                 if (game.pick_ban_road?.length) roads.set(game.sequence, game.pick_ban_road);
