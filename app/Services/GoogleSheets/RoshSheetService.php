@@ -4,9 +4,11 @@ namespace App\Services\GoogleSheets;
 
 use App\Models\DraftSnapshot;
 use App\Services\DraftSnapshots\DraftSnapshotFeatureAggregator;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -79,6 +81,15 @@ class RoshSheetService
             && is_file($this->resolveCredentialsPath($credentialsPath));
     }
 
+    public function syncBetBoomOdds(string $matchId, int $mapNumber, array $formatted): array
+    {
+        if (! ctype_digit($matchId) || $mapNumber < 1) {
+            throw new RuntimeException('Invalid BetBoom match or map.');
+        }
+
+        return $this->syncOdds('BETBOOM:'.$matchId.':'.$mapNumber, $formatted);
+    }
+
     /**
      * @param  array{
      *     match_id?:int,
@@ -135,6 +146,11 @@ class RoshSheetService
      * }
      */
     public function syncSnapshotDataset(iterable $snapshots, bool $overwriteBookmakerOdds = false): array
+    {
+        return $this->withWriteLock(fn (): array => $this->syncSnapshotDatasetUnlocked($snapshots, $overwriteBookmakerOdds));
+    }
+
+    private function syncSnapshotDatasetUnlocked(iterable $snapshots, bool $overwriteBookmakerOdds = false): array
     {
         if (! $this->isConfigured()) {
             throw new RuntimeException('Google Sheets dataset sync is not configured.');
@@ -203,6 +219,11 @@ class RoshSheetService
      */
     public function syncSnapshotFirstPickSides(iterable $snapshots): int
     {
+        return $this->withWriteLock(fn (): int => $this->syncSnapshotFirstPickSidesUnlocked($snapshots));
+    }
+
+    private function syncSnapshotFirstPickSidesUnlocked(iterable $snapshots): int
+    {
         if (! $this->isConfigured()) {
             throw new RuntimeException('Google Sheets dataset sync is not configured.');
         }
@@ -262,6 +283,11 @@ class RoshSheetService
      * @param  iterable<DraftSnapshot>  $snapshots
      */
     public function repairSnapshotDatasetBookmakerColumnLayout(iterable $snapshots): int
+    {
+        return $this->withWriteLock(fn (): int => $this->repairSnapshotDatasetBookmakerColumnLayoutUnlocked($snapshots));
+    }
+
+    private function repairSnapshotDatasetBookmakerColumnLayoutUnlocked(iterable $snapshots): int
     {
         if (! $this->isConfigured()) {
             throw new RuntimeException('Google Sheets dataset sync is not configured.');
@@ -342,6 +368,11 @@ class RoshSheetService
      * }
      */
     private function syncOdds(string $matchIdValue, array $formatted, bool $alwaysAppend = false): array
+    {
+        return $this->withWriteLock(fn (): array => $this->syncOddsUnlocked($matchIdValue, $formatted, $alwaysAppend));
+    }
+
+    private function syncOddsUnlocked(string $matchIdValue, array $formatted, bool $alwaysAppend = false): array
     {
         if (! $this->isConfigured()) {
             throw new RuntimeException('Google Sheets ROSH sync is not configured.');
@@ -429,6 +460,18 @@ class RoshSheetService
             'row' => $row,
             'cells' => $verifiedValues,
         ];
+    }
+
+    private function withWriteLock(callable $write): mixed
+    {
+        $spreadsheet = $this->parseSpreadsheetConfig((string) config('services.google_sheets.spreadsheet_url'));
+        $key = 'google-sheets:write:'.$spreadsheet['spreadsheet_id'];
+
+        try {
+            return Cache::lock($key, 900)->block(10, $write);
+        } catch (LockTimeoutException) {
+            throw new RuntimeException('Таблица занята другим сохранением. Повторите попытку чуть позже.');
+        }
     }
 
     /**
