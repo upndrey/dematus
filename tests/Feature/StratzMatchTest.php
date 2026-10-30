@@ -8,6 +8,13 @@ use Tests\TestCase;
 
 class StratzMatchTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateStatically();
+    }
+
     public function test_match_request_sends_the_required_stratz_user_agent(): void
     {
         config()->set('services.stratz.token', 'test-token');
