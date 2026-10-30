@@ -111,7 +111,7 @@ class BetBoomWatchCommand extends Command
                                 if (($payload['event'] ?? '') === 'draft') {
                                     $bot->ingest($watch->chat_id, $payload);
                                 } elseif (($payload['code'] ?? '') === 'source_unavailable' && ! isset($warnings[$watch->id])) {
-                                    $telegram->send($watch->chat_id, 'Драфт матча '.$matchId.' пока недоступен. Продолжаю попытки подключения. /stop — остановить.', [[['text' => 'Игнорировать игру', 'callback_data' => 'ignore:'.$matchId]]]);
+                                    app(\App\Services\Telegram\MatchNotifications::class)->send($watch->chat_id, (string) $matchId, 'Драфт матча '.$matchId.' пока недоступен. Продолжаю попытки подключения.', [[['text' => 'Игнорировать игру', 'callback_data' => 'ignore:'.$matchId]]]);
                                     $warnings[$watch->id] = true;
                                 }
                             } catch (Throwable $error) {

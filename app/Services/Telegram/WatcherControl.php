@@ -67,7 +67,7 @@ class WatcherControl
             }
             (new TelegramIgnoredMatch)->getConnection()->transaction(function () use ($matchId, $userId, $drafts): void {
                 TelegramIgnoredMatch::query()->create(['match_id' => $matchId, 'ignored_by' => $userId]);
-                TelegramWatch::query()->where('match_id', $matchId)->update(['active' => false]);
+                TelegramWatch::query()->where('match_id', $matchId)->update(['active' => false, 'ignore_update_pending' => true]);
                 foreach ($drafts as $draft) {
                     $draft->update(['status' => 'ignored', 'revision' => $draft->revision + 1, 'message_hash' => null]);
                 }

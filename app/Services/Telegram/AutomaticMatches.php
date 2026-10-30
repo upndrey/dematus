@@ -45,7 +45,7 @@ class AutomaticMatches
                 $key = 'telegram:announced:'.$subscriber->chat_id.':'.$match['id'];
                 if (! Cache::has($key)) {
                     try {
-                        app(TelegramClient::class)->send($subscriber->chat_id, ($start->isFuture() ? 'Скоро начнётся матч: ' : 'Наблюдаем за матчем: ').$match['home'].' — '.$match['away']."\n".$match['tournament']."\nНачало по расписанию: ".$start->copy()->timezone('Asia/Novosibirsk')->format('d.m H:i').' (Новосибирск). Дождусь выбора героев и пришлю составы для проверки.', [[['text' => 'Игнорировать игру', 'callback_data' => 'ignore:'.$match['id']]]]);
+                        app(MatchNotifications::class)->send($subscriber->chat_id, (string) $match['id'], ($start->isFuture() ? 'Скоро начнётся матч: ' : 'Наблюдаем за матчем: ').$match['home'].' — '.$match['away']."\n".$match['tournament']."\nНачало по расписанию: ".$start->copy()->timezone('Asia/Novosibirsk')->format('d.m H:i').' (Новосибирск). Дождусь выбора героев и пришлю составы для проверки.', [[['text' => 'Игнорировать игру', 'callback_data' => 'ignore:'.$match['id']]]]);
                         Cache::put($key, true, now()->addDays(14));
                     } catch (\Throwable) {
                         continue;

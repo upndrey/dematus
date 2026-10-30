@@ -14,6 +14,6 @@ class TelegramWatch extends Model
 
     protected function casts(): array
     {
-        return ['active' => 'boolean', 'expires_at' => 'datetime'];
+        return ['active' => 'boolean', 'expires_at' => 'datetime', 'notification_messages' => 'array', 'ignore_update_pending' => 'boolean'];
     }
 }

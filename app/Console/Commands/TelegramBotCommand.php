@@ -31,6 +31,7 @@ class TelegramBotCommand extends Command
         try {
             do {
                 try {
+                    app(\App\Services\Telegram\MatchNotifications::class)->flush();
                     foreach (TelegramDraft::query()->whereNull('message_hash')->limit(5)->get() as $draft) {
                         try {
                             $bot->deliver($draft);

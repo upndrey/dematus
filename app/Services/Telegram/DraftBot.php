@@ -245,6 +245,7 @@ class DraftBot
             if (count($parts) === 2 && $parts[0] === 'ignore' && ctype_digit($parts[1])) {
                 $known = TelegramWatch::query()->where('chat_id', $chatId)->where('match_id', $parts[1])->exists();
                 if ($known) {
+                    app(MatchNotifications::class)->rememberClicked($chatId, $parts[1], (string) data_get($callback, 'message.message_id'));
                     $answer = app(WatcherControl::class)->ignore($parts[1], $userId);
                 }
             }
@@ -311,6 +312,9 @@ class DraftBot
             }
         }
         $this->telegram->call('answerCallbackQuery', ['callback_query_id' => $callback['id'], 'text' => $answer]);
+        if (isset($parts) && ($parts[0] ?? '') === 'ignore' && isset($parts[1]) && $this->authorized($chatId, $userId, (string) data_get($callback, 'from.username', ''))) {
+            app(MatchNotifications::class)->flush($parts[1]);
+        }
     }
 
     private function enqueue(TelegramDraft $draft, array $values): void
