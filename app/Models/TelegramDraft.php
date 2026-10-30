@@ -12,6 +12,11 @@ class TelegramDraft extends Model
 
     protected $guarded = [];
 
+    public function deliveries(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TelegramDraftDelivery::class);
+    }
+
     protected function casts(): array
     {
         return ['players' => 'array', 'source_payload' => 'array', 'calculation' => 'array', 'sheet_result' => 'array', 'seen_at' => 'datetime', 'confirmed_at' => 'datetime', 'revision' => 'integer', 'source_changed' => 'boolean'];

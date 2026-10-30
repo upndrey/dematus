@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\TelegramSubscriber;
 use App\Models\TelegramWatch;
+use App\Services\Telegram\AutomaticMatches;
 use App\Services\Telegram\DraftBot;
 use App\Services\Telegram\TelegramClient;
 use Illuminate\Console\Command;
@@ -18,6 +20,9 @@ class BetBoomWatchCommand extends Command
 
     public function handle(DraftBot $bot, TelegramClient $telegram): int
     {
+        $discovery = null;
+        $discoveryBuffer = '';
+        $nextTick = 0;
         $processes = [];
         $buffers = [];
         $warnings = [];
@@ -30,6 +35,28 @@ class BetBoomWatchCommand extends Command
         }
         try {
             do {
+                if (! $this->option('once') && TelegramSubscriber::query()->where('active', true)->exists()) {
+                    if (! $discovery || ! $discovery->running()) {
+                        $discovery = Process::forever()->start([config('telegram.node_binary'), resource_path('js/betboom/discover.mjs')]);
+                        $discoveryBuffer = '';
+                    }
+                    $discoveryBuffer .= $discovery->latestOutput();
+                    $discovery->latestErrorOutput();
+                    while (($end = strpos($discoveryBuffer, "\n")) !== false) {
+                        $event = json_decode(substr($discoveryBuffer, 0, $end), true);
+                        $discoveryBuffer = substr($discoveryBuffer, $end + 1);
+                        if (is_array($event)) {
+                            app(AutomaticMatches::class)->receive($event);
+                        }
+                    }
+                    if (time() >= $nextTick) {
+                        app(AutomaticMatches::class)->tick();
+                        $nextTick = time() + 10;
+                    }
+                } elseif ($discovery) {
+                    $discovery->stop();
+                    $discovery = null;
+                }
                 $watches = TelegramWatch::query()->where('active', true)->where('expires_at', '>', now())->get();
                 foreach ($processes as $matchId => $process) {
                     if (! $watches->contains('match_id', (string) $matchId)) {
@@ -39,7 +66,11 @@ class BetBoomWatchCommand extends Command
                 }
                 foreach ($watches->groupBy('match_id') as $matchId => $subscribers) {
                     if (! isset($processes[$matchId]) || ! $processes[$matchId]->running()) {
-                        $processes[$matchId] = Process::forever()->start([config('telegram.node_binary'), resource_path('js/betboom/watch.mjs'), (string) $matchId]);
+                        $arguments = [config('telegram.node_binary'), resource_path('js/betboom/watch.mjs'), (string) $matchId];
+                        if ($start = Cache::get('telegram:match-start:'.$matchId)) {
+                            $arguments[] = $start;
+                        }
+                        $processes[$matchId] = Process::forever()->start($arguments);
                         $buffers[$matchId] = '';
                     }
                     $buffers[$matchId] .= $processes[$matchId]->latestOutput();
@@ -79,6 +110,7 @@ class BetBoomWatchCommand extends Command
                 }
             } while (! $this->option('once'));
         } finally {
+            $discovery?->stop();
             foreach ($processes as $process) {
                 $process->stop();
             }

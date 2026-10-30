@@ -6,7 +6,7 @@ const schemas = JSON.parse(readFileSync(new URL('grid-schema.json', base), 'utf8
 const bySymbol = new Map(schemas.map(s => [s.symbol, s]));
 const responseSchema = schemas.find(s => s.name === 'bb.grid_widget.MainResponse');
 
-function decode(buffer, schema) {
+function decode(buffer, schema, registry = bySymbol) {
     assert.ok(schema, 'Message schema must exist');
     let offset = 0;
     const result = {};
@@ -35,7 +35,7 @@ function decode(buffer, schema) {
             assert.ok(offset + size <= buffer.length, 'Truncated message');
             const bytes = buffer.subarray(offset, offset + size);
             offset += size;
-            value = field?.kind === 'message' ? decode(bytes, bySymbol.get(field.message)) : bytes.toString('utf8');
+            value = field?.kind === 'message' ? decode(bytes, registry.get(field.message), registry) : bytes.toString('utf8');
         } else if (wire === 1 || wire === 5) {
             const size = wire === 1 ? 8 : 4;
             assert.ok(offset + size <= buffer.length, 'Truncated fixed field');

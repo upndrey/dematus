@@ -6,6 +6,13 @@ const emit = value => process.stdout.write(JSON.stringify(value) + '\n');
 const roles = new Map();
 let socket, heartbeat, retry, stopping = false, lastMessage = 0, lastEmit = 0, lastSignature = '';
 const roads = new Map();
+const scheduled = Date.parse(process.argv[3] ?? '');
+let failures = 0, pauseUntil = 0, socketUrl = null;
+function retryDelay() {
+ const difference = scheduled - Date.now();
+ const base = Number.isFinite(scheduled) && (difference > 120000 || difference < -900000) ? 60000 : 30000;
+ return Math.max(pauseUntil-Date.now(),Math.min(900000,base*2**Math.min(failures,5))) + Math.random()*3000;
+}
 
 async function metadata() {
     const response = await fetch('https://siteapi.betboom.ru/api/site_api/v1/sporthub/tree/get_match_details_info', {
@@ -13,7 +20,12 @@ async function metadata() {
         body: JSON.stringify({ match_id: Number(matchId), language: 'LANGUAGES_RU', theme: 'THEMES_BLACK' }),
         signal: AbortSignal.timeout(15000),
     });
-    if (!response.ok) throw new Error('metadata');
+    if ([401,403,429].includes(response.status)) {
+        const header = response.headers.get('retry-after');
+        const seconds = Number(header);
+        pauseUntil = Date.now() + Math.max(1800000, Number.isFinite(seconds) ? seconds*1000 : (Date.parse(header)-Date.now() || 0));
+    }
+    if (!response.ok) { failures++; throw new Error('metadata'); }
     const data = await response.json();
     const url = new URL(data.live_stat_socket?.url);
     if (url.protocol !== 'wss:' || url.hostname !== 'ru-ws.sporthub.bet') throw new Error('unsupported');
@@ -38,12 +50,13 @@ async function metadata() {
             }
         } catch { emit({ event: 'warning', code: 'roles_unavailable' }); }
     }
-    return url.href;
+    socketUrl = url.href;
+    return socketUrl;
 }
 
 async function connect() {
     try {
-        socket = new WebSocket(await metadata());
+        socket = new WebSocket(socketUrl ?? await metadata());
         socket.binaryType = 'arraybuffer';
         socket.addEventListener('open', () => {
             lastMessage = Date.now();
@@ -63,6 +76,7 @@ async function connect() {
                 const dota = match?.widget?.dota;
                 if (!dota || String(match.id) !== matchId) return;
                 lastMessage = Date.now();
+                failures = 0;
                 emit({ event: 'connected', matchId });
                 const game = dota.games?.find(g => g.current);
                 if (!game) return;
@@ -82,10 +96,10 @@ async function connect() {
             } catch { emit({ event: 'warning', code: 'decode_failed' }); }
         });
         socket.addEventListener('error', () => socket.close());
-        socket.addEventListener('close', () => { clearInterval(heartbeat); if (!stopping) retry = setTimeout(connect, 5000); });
+        socket.addEventListener('close', event => { failures++; if(event.code===3003)pauseUntil=Date.now()+1800000; clearInterval(heartbeat); if (!stopping) retry = setTimeout(connect, retryDelay()); });
     } catch {
         emit({ event: 'warning', code: 'source_unavailable' });
-        if (!stopping) retry = setTimeout(connect, 15000);
+        if (!stopping) retry = setTimeout(connect, retryDelay());
     }
 }
 for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => {

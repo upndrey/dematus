@@ -245,7 +245,7 @@ class TelegramDraftBotTest extends TestCase
         ]);
         $this->artisan('telegram:bot --once')->assertSuccessful();
         $this->assertSame(55, \Illuminate\Support\Facades\Cache::get('telegram:offset'));
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
     }
 
     public function test_older_source_packet_cannot_restore_an_old_assignment(): void

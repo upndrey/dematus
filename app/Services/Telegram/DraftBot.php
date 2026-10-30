@@ -4,6 +4,8 @@ namespace App\Services\Telegram;
 
 use App\Jobs\CalculateTelegramDraft;
 use App\Models\TelegramDraft;
+use App\Models\TelegramDraftDelivery;
+use App\Models\TelegramSubscriber;
 use App\Models\TelegramWatch;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -35,6 +37,12 @@ class DraftBot
             return;
         }
         $text = trim($message['text'] ?? '');
+        if (preg_match('~^/auto_off(?:@\w+)?$~', $text)) {
+            TelegramSubscriber::query()->where('chat_id', $chatId)->update(['active' => false]);
+            $this->telegram->send($chatId, 'Автоматические матчи отключены. /start — включить снова.');
+
+            return;
+        }
         if (preg_match('~^/allow(?:@\w+)?$~', $text) && $userId === config('telegram.owner_id')) {
             Cache::forever('telegram:allowed:'.$chatId, true);
             $this->telegram->send($chatId, 'Участники этого чата могут подтверждать драфты. Пришлите /watch и ссылку на матч BetBoom.');
@@ -42,13 +50,18 @@ class DraftBot
             return;
         }
         if (preg_match('~^/stop(?:@\w+)?$~', $text)) {
+            TelegramSubscriber::query()->where('chat_id', $chatId)->update(['active' => false]);
             TelegramWatch::query()->where('chat_id', $chatId)->update(['active' => false]);
-            TelegramDraft::query()->where('chat_id', $chatId)->where('status', 'draft')->update(['status' => 'stopped', 'message_hash' => null]);
+            TelegramDraft::query()->where('chat_id', $chatId)->where('status', 'draft')->whereDoesntHave('deliveries')->update(['status' => 'stopped', 'message_hash' => null]);
             $this->telegram->send($chatId, 'Наблюдение за матчами остановлено.');
 
             return;
         }
         if (preg_match('~^/(start|help)(?:@\w+)?(?:\s.*)?$~', $text)) {
+            if (preg_match('~^/start(?:@\w+)?(?:\s.*)?$~', $text)) {
+                TelegramSubscriber::query()->updateOrCreate(['chat_id' => $chatId], ['active' => true]);
+                $this->telegram->send($chatId, 'Автопоиск включён. Предупрежу за 10 минут до матча и пришлю составы. /auto_off — отключить. Первое подтверждение запускает общий расчёт для всех.');
+            }
             $this->telegram->send($chatId, "Пришли ссылку на матч Dota 2 с BetBoom или /watch ссылка. Я дождусь выбора героев и пришлю составы.\n\nНажми на игрока, чтобы изменить позицию. После проверки нажми «Отправить в dematus». Расчёт сохранится в таблицу.\n\nРоли — предварительные, по статистике игроков. /stop останавливает наблюдение. В группе владелец может разрешить подтверждение всем командой /allow.");
 
             return;
@@ -79,7 +92,10 @@ class DraftBot
         return $lock->block(5, function () use ($chatId, $payload, $players, $fingerprint): ?TelegramDraft {
             $draft = TelegramDraft::query()->where('match_id', $payload['matchId'])->where('map_number', $payload['map'])->first();
             if ($draft && $draft->chat_id !== $chatId) {
-                return null;
+                if (! TelegramWatch::query()->where('chat_id', $chatId)->where('match_id', $draft->match_id)->where('active', true)->exists()) {
+                    return null;
+                }
+                TelegramDraftDelivery::query()->firstOrCreate(['telegram_draft_id' => $draft->id, 'chat_id' => $chatId]);
             }
             $seenAt = Carbon::createFromTimestampMs($payload['receivedAt']);
             if ($draft && $seenAt->lessThan($draft->seen_at)) {
@@ -102,7 +118,7 @@ class DraftBot
                     $values += ['fingerprint' => $fingerprint, 'players' => $players, 'revision' => $draft->revision + 1, 'status' => 'draft', 'confirmed_at' => null, 'confirmed_by' => null, 'message_hash' => null];
                 }
                 $draft->update($values);
-                if (! $changed && $draft->message_id && $draft->message_hash) {
+                if (! $changed && $draft->message_id && $draft->message_hash && ! $draft->deliveries()->whereNull('message_hash')->exists()) {
                     return $draft;
                 }
             }
@@ -161,16 +177,34 @@ class DraftBot
         }
         $text = implode("\n", $lines);
         $hash = hash('sha256', json_encode([$text, $keyboard], JSON_THROW_ON_ERROR));
-        if ($draft->message_id && $draft->message_hash === $hash) {
-            return;
+        $recipients = [['record' => $draft, 'chat_id' => $draft->chat_id]];
+        foreach ($draft->deliveries as $delivery) {
+            $recipients[] = ['record' => $delivery, 'chat_id' => $delivery->chat_id];
         }
-        if ($draft->message_id) {
-            $this->telegram->call('editMessageText', ['chat_id' => $draft->chat_id, 'message_id' => $draft->message_id, 'text' => $text, 'reply_markup' => ['inline_keyboard' => $keyboard]]);
-        } else {
-            $message = $this->telegram->send($draft->chat_id, $text, $keyboard);
-            $draft->update(['message_id' => (string) $message['message_id']]);
+        $failed = false;
+        foreach ($recipients as $recipient) {
+            $record = $recipient['record'];
+            if ($record->message_id && $record->message_hash === $hash) {
+                continue;
+            }
+            try {
+                if ($record->message_id) {
+                    $this->telegram->call('editMessageText', ['chat_id' => $recipient['chat_id'], 'message_id' => $record->message_id, 'text' => $text, 'reply_markup' => ['inline_keyboard' => $keyboard]]);
+                } else {
+                    $message = $this->telegram->send($recipient['chat_id'], $text, $keyboard);
+                    $record->update(['message_id' => (string) $message['message_id']]);
+                }
+                $record->update(['message_hash' => $hash]);
+            } catch (\Throwable $error) {
+                $failed = true;
+                if (count($recipients) === 1) {
+                    throw $error;
+                }
+            }
         }
-        $draft->update(['message_hash' => $hash]);
+        if ($failed) {
+            $draft->update(['message_hash' => null]);
+        }
     }
 
     public function callback(array $callback): void
@@ -182,7 +216,8 @@ class DraftBot
             $parts = explode(':', $callback['data'] ?? '');
             if (count($parts) >= 4 && $parts[0] === 'd') {
                 $draft = TelegramDraft::query()->find((int) $parts[1]);
-                if ($draft && $draft->chat_id === $chatId && $draft->message_id === (string) data_get($callback, 'message.message_id')) {
+                $delivery = $draft?->deliveries()->where('chat_id', $chatId)->where('message_id', (string) data_get($callback, 'message.message_id'))->first();
+                if ($draft && (($draft->chat_id === $chatId && $draft->message_id === (string) data_get($callback, 'message.message_id')) || $delivery)) {
                     $answer = Cache::lock('telegram:draft:'.$draft->match_id.':'.$draft->map_number, 90)->block(5, function () use ($draft, $parts, $userId): string {
                         $draft->refresh();
                         if ($draft->revision !== (int) $parts[2]) {
