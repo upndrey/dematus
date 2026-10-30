@@ -21,9 +21,15 @@ class AutomaticMatches
 
     public function tick(): void
     {
+        if (! app(WatcherControl::class)->state()->running) {
+            return;
+        }
         $matches = Cache::get('telegram:schedule', []);
         foreach ($matches as $match) {
             if (! ctype_digit((string) ($match['id'] ?? '')) || empty($match['start'])) {
+                continue;
+            }
+            if (app(WatcherControl::class)->ignored((string) $match['id'])) {
                 continue;
             }
             $start = Carbon::parse($match['start']);
@@ -39,7 +45,7 @@ class AutomaticMatches
                 $key = 'telegram:announced:'.$subscriber->chat_id.':'.$match['id'];
                 if (! Cache::has($key)) {
                     try {
-                        app(TelegramClient::class)->send($subscriber->chat_id, ($start->isFuture() ? 'Скоро начнётся матч: ' : 'Наблюдаем за матчем: ').$match['home'].' — '.$match['away']."\n".$match['tournament']."\nНачало по расписанию: ".$start->copy()->timezone('Asia/Novosibirsk')->format('d.m H:i').' (Новосибирск). Дождусь выбора героев и пришлю составы для проверки.');
+                        app(TelegramClient::class)->send($subscriber->chat_id, ($start->isFuture() ? 'Скоро начнётся матч: ' : 'Наблюдаем за матчем: ').$match['home'].' — '.$match['away']."\n".$match['tournament']."\nНачало по расписанию: ".$start->copy()->timezone('Asia/Novosibirsk')->format('d.m H:i').' (Новосибирск). Дождусь выбора героев и пришлю составы для проверки.', [[['text' => 'Игнорировать игру', 'callback_data' => 'ignore:'.$match['id']]]]);
                         Cache::put($key, true, now()->addDays(14));
                     } catch (\Throwable) {
                         continue;

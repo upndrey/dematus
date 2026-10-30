@@ -37,6 +37,19 @@ class DraftBot
             return;
         }
         $text = trim($message['text'] ?? '');
+        if (preg_match('~^/(start|stop)[_-]watcher(?:@\w+)?$~', $text, $command)) {
+            $running = $command[1] === 'start';
+            if ($running) {
+                TelegramSubscriber::query()->updateOrCreate(['chat_id' => $chatId], ['active' => true]);
+            }
+            app(WatcherControl::class)->setRunning($running);
+            $this->telegram->send($chatId, $running
+                ? 'Общий сбор матчей включён. Если ближайшие 20 минут игр нет, проверяю расписание раз в 5 минут.'
+                : 'Общий сбор матчей остановлен для всех. /start_watcher — возобновить. Уже подтверждённые расчёты могут завершиться.');
+
+            return;
+        }
+
         if (preg_match('~^/auto_off(?:@\w+)?$~', $text)) {
             TelegramSubscriber::query()->where('chat_id', $chatId)->update(['active' => false]);
             $this->telegram->send($chatId, 'Автоматические матчи отключены. /start — включить снова.');
@@ -60,14 +73,22 @@ class DraftBot
         if (preg_match('~^/(start|help)(?:@\w+)?(?:\s.*)?$~', $text)) {
             if (preg_match('~^/start(?:@\w+)?(?:\s.*)?$~', $text)) {
                 TelegramSubscriber::query()->updateOrCreate(['chat_id' => $chatId], ['active' => true]);
-                $this->telegram->send($chatId, 'Автопоиск включён. Предупрежу за 10 минут до матча и пришлю составы. /auto_off — отключить. Первое подтверждение запускает общий расчёт для всех.');
+                $this->telegram->send($chatId, app(WatcherControl::class)->state()->running
+                    ? 'Автопоиск включён. Предупрежу за 10 минут до матча и пришлю составы. /auto_off — отключить. Первое подтверждение запускает общий расчёт для всех.'
+                    : 'Подписка включена, но общий сбор остановлен. /start_watcher — включить сбор для всех.');
             }
-            $this->telegram->send($chatId, "Пришли ссылку на матч Dota 2 с BetBoom или /watch ссылка. Я дождусь выбора героев и пришлю составы.\n\nНажми на игрока, чтобы изменить позицию. После проверки нажми «Отправить в dematus». Расчёт сохранится в таблицу.\n\nРоли — предварительные, по статистике игроков. /stop останавливает наблюдение. В группе владелец может разрешить подтверждение всем командой /allow.");
+            $this->telegram->send($chatId, "Пришли ссылку на матч Dota 2 с BetBoom или /watch ссылка. Я дождусь выбора героев и пришлю составы.\n\nНажми на игрока, чтобы изменить позицию. После проверки нажми «Отправить в dematus». Расчёт сохранится в таблицу.\n\nРоли — предварительные, по статистике игроков. /stop останавливает наблюдение в этом чате. /start_watcher и /stop_watcher управляют общим сбором. Игнорирование исключает всю серию для всех. В группе владелец может разрешить подтверждение всем командой /allow.");
 
             return;
         }
         try {
             $matchId = $this->source->matchId($text);
+            if (app(WatcherControl::class)->ignored($matchId)) {
+                throw new InvalidArgumentException('Эта игра исключена для всех.');
+            }
+            if (! app(WatcherControl::class)->state()->running) {
+                throw new InvalidArgumentException('Общий сбор остановлен. /start_watcher — включить.');
+            }
             $other = TelegramDraft::query()->where('match_id', $matchId)->where('chat_id', '!=', $chatId)->exists();
             if ($other) {
                 throw new InvalidArgumentException('Этот матч уже обрабатывается в другом чате. Продолжите подтверждение там.');
@@ -87,9 +108,12 @@ class DraftBot
         }
         $players = $this->source->players($payload);
         $fingerprint = hash('sha256', json_encode(array_map(fn (array $p): array => array_diff_key($p, ['position' => true]), $players), JSON_THROW_ON_ERROR));
-        $lock = Cache::lock('telegram:draft:'.$payload['matchId'].':'.$payload['map'], 90);
+        $lock = Cache::lock('telegram:match:'.$payload['matchId'], 90);
 
         return $lock->block(5, function () use ($chatId, $payload, $players, $fingerprint): ?TelegramDraft {
+            if (app(WatcherControl::class)->ignored((string) $payload['matchId']) || ! app(WatcherControl::class)->state()->running) {
+                return null;
+            }
             $draft = TelegramDraft::query()->where('match_id', $payload['matchId'])->where('map_number', $payload['map'])->first();
             if ($draft && $draft->chat_id !== $chatId) {
                 if (! TelegramWatch::query()->where('chat_id', $chatId)->where('match_id', $draft->match_id)->where('active', true)->exists()) {
@@ -130,7 +154,7 @@ class DraftBot
 
     public function deliver(TelegramDraft $draft): void
     {
-        Cache::lock('telegram:draft:'.$draft->match_id.':'.$draft->map_number, 90)->block(5, function () use ($draft): void {
+        Cache::lock('telegram:match:'.$draft->match_id, 90)->block(5, function () use ($draft): void {
             $this->publish($draft->fresh());
         });
     }
@@ -152,6 +176,7 @@ class DraftBot
             'queued', 'calculating' => 'Рассчитываю и сохраняю в таблицу…',
             'done' => 'Сохранено в таблицу. Строка '.data_get($draft->sheet_result, 'row', '').'.',
             'failed' => 'Не удалось завершить расчёт. Можно повторить отправку.',
+            'ignored' => 'Игра исключена для всех. Сохранения не будет.',
             'stopped' => 'Наблюдение остановлено.',
             'expired' => 'Началась следующая карта. Это подтверждение устарело.',
             default => 'Проверь позиции: предложены по статистике игроков, могут отличаться от текущей карты.',
@@ -174,6 +199,9 @@ class DraftBot
             }
         } elseif ($draft->status === 'failed' && ! $draft->source_changed) {
             $keyboard[] = [['text' => 'Повторить сохранение', 'callback_data' => $prefix.'retry']];
+        }
+        if (in_array($draft->status, ['draft', 'queued'], true)) {
+            $keyboard[] = [['text' => 'Игнорировать игру', 'callback_data' => 'ignore:'.$draft->match_id]];
         }
         $text = implode("\n", $lines);
         $hash = hash('sha256', json_encode([$text, $keyboard], JSON_THROW_ON_ERROR));
@@ -214,16 +242,28 @@ class DraftBot
         $answer = 'Нет доступа.';
         if ($this->authorized($chatId, $userId, (string) data_get($callback, 'from.username', ''))) {
             $parts = explode(':', $callback['data'] ?? '');
+            if (count($parts) === 2 && $parts[0] === 'ignore' && ctype_digit($parts[1])) {
+                $known = TelegramWatch::query()->where('chat_id', $chatId)->where('match_id', $parts[1])->exists();
+                if ($known) {
+                    $answer = app(WatcherControl::class)->ignore($parts[1], $userId);
+                }
+            }
             if (count($parts) >= 4 && $parts[0] === 'd') {
                 $draft = TelegramDraft::query()->find((int) $parts[1]);
                 $delivery = $draft?->deliveries()->where('chat_id', $chatId)->where('message_id', (string) data_get($callback, 'message.message_id'))->first();
                 if ($draft && (($draft->chat_id === $chatId && $draft->message_id === (string) data_get($callback, 'message.message_id')) || $delivery)) {
-                    $answer = Cache::lock('telegram:draft:'.$draft->match_id.':'.$draft->map_number, 90)->block(5, function () use ($draft, $parts, $userId): string {
+                    $answer = Cache::lock('telegram:match:'.$draft->match_id, 90)->block(5, function () use ($draft, $parts, $userId): string {
                         $draft->refresh();
+                        if (app(WatcherControl::class)->ignored($draft->match_id)) {
+                            return 'Игра исключена для всех.';
+                        }
                         if ($draft->revision !== (int) $parts[2]) {
                             return 'Состав изменился. Используй новые кнопки.';
                         }
                         $action = $parts[3];
+                        if (in_array($action, ['confirm', 'retry'], true) && ! app(WatcherControl::class)->state()->running) {
+                            return 'Сбор остановлен. /start_watcher — включить.';
+                        }
                         if ($action === 'retry' && $draft->status === 'failed' && ! $draft->source_changed) {
                             $this->enqueue($draft, ['error' => null]);
                             $this->publish($draft);

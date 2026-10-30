@@ -16,6 +16,9 @@ class DraftCalculation
 
     public function run(TelegramDraft $draft): void
     {
+        if (app(WatcherControl::class)->ignored($draft->match_id)) {
+            throw new RuntimeException('Ignored matches cannot be calculated or saved.');
+        }
         if (! $this->sheets->isConfigured()) {
             throw new RuntimeException('Google Sheets is not configured.');
         }

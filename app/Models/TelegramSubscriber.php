@@ -10,6 +10,6 @@ class TelegramSubscriber extends Model
 
     protected function casts(): array
     {
-        return ['active' => 'boolean'];
+        return ['active' => 'boolean', 'watcher_reminded_at' => 'datetime'];
     }
 }

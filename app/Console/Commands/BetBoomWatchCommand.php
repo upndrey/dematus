@@ -2,11 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Models\TelegramIgnoredMatch;
 use App\Models\TelegramSubscriber;
 use App\Models\TelegramWatch;
 use App\Services\Telegram\AutomaticMatches;
 use App\Services\Telegram\DraftBot;
 use App\Services\Telegram\TelegramClient;
+use App\Services\Telegram\WatcherControl;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Process;
@@ -23,6 +25,8 @@ class BetBoomWatchCommand extends Command
         $discovery = null;
         $discoveryBuffer = '';
         $nextTick = 0;
+        $nextDiscovery = 0;
+        $discoveryIgnores = null;
         $processes = [];
         $buffers = [];
         $warnings = [];
@@ -35,29 +39,44 @@ class BetBoomWatchCommand extends Command
         }
         try {
             do {
-                if (! $this->option('once') && TelegramSubscriber::query()->where('active', true)->exists()) {
-                    if (! $discovery || ! $discovery->running()) {
-                        $discovery = Process::forever()->start([config('telegram.node_binary'), resource_path('js/betboom/discover.mjs')]);
+                $running = app(WatcherControl::class)->state()->running;
+                if ($running && ! $this->option('once') && TelegramSubscriber::query()->where('active', true)->exists()) {
+                    $ignored = TelegramIgnoredMatch::query()->orderBy('match_id')->pluck('match_id')->all();
+                    if ($discovery && $discoveryIgnores !== $ignored) {
+                        $discovery->stop();
+                        $discovery = null;
+                        $nextDiscovery = 0;
+                    }
+                    if ((! $discovery || ! $discovery->running()) && time() >= $nextDiscovery) {
+                        $discovery = Process::forever()->start([config('telegram.node_binary'), resource_path('js/betboom/discover.mjs'), json_encode($ignored)]);
+                        $discoveryIgnores = $ignored;
+                        $nextDiscovery = time() + 300;
                         $discoveryBuffer = '';
                     }
-                    $discoveryBuffer .= $discovery->latestOutput();
-                    $discovery->latestErrorOutput();
+                    $discoveryBuffer .= ($discovery?->latestOutput() ?? '');
+                    $discovery?->latestErrorOutput();
                     while (($end = strpos($discoveryBuffer, "\n")) !== false) {
                         $event = json_decode(substr($discoveryBuffer, 0, $end), true);
                         $discoveryBuffer = substr($discoveryBuffer, $end + 1);
                         if (is_array($event)) {
+                            if (($event['event'] ?? '') === 'idle') {
+                                $nextDiscovery = time() + 300;
+                            }
                             app(AutomaticMatches::class)->receive($event);
                         }
                     }
                     if (time() >= $nextTick) {
+                        app(WatcherControl::class)->remind();
                         app(AutomaticMatches::class)->tick();
                         $nextTick = time() + 10;
                     }
-                } elseif ($discovery) {
-                    $discovery->stop();
+                } else {
+                    $discovery?->stop();
                     $discovery = null;
+                    $nextDiscovery = 0;
+                    $nextTick = 0;
                 }
-                $watches = TelegramWatch::query()->where('active', true)->where('expires_at', '>', now())->get();
+                $watches = TelegramWatch::query()->where('active', true)->whereNotIn('match_id', TelegramIgnoredMatch::query()->select('match_id'))->when(! $running, fn ($query) => $query->whereRaw('1 = 0'))->where('expires_at', '>', now())->get();
                 foreach ($processes as $matchId => $process) {
                     if (! $watches->contains('match_id', (string) $matchId)) {
                         $process->stop();

@@ -29,8 +29,11 @@ class CalculateTelegramDraft implements ShouldQueue
         }
         try {
             $draft = TelegramDraft::query()->findOrFail($this->draftId);
-            $claimed = Cache::lock('telegram:draft:'.$draft->match_id.':'.$draft->map_number, 90)->block(10, function () use ($draft): bool {
+            $claimed = Cache::lock('telegram:match:'.$draft->match_id, 90)->block(10, function () use ($draft): bool {
                 $draft->refresh();
+                if (app(\App\Services\Telegram\WatcherControl::class)->ignored($draft->match_id)) {
+                    return false;
+                }
                 if ($draft->revision !== $this->revision || ! in_array($draft->status, ['queued', 'calculating'], true)) {
                     return false;
                 }
