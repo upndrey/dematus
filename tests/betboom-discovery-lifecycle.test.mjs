@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { Script, createContext } from 'node:vm';
 import { shouldSleep } from '../resources/js/betboom/discovery-policy.mjs';
 
-function harness() {
+function harness(ignoredTournaments = []) {
     const sockets = [], events = [], intervals = new Set(), timeouts = [];
     class Socket {
         readyState = 1;
@@ -22,7 +22,7 @@ function harness() {
         setInterval:fn => { intervals.add(fn); return fn; },
         clearInterval:fn => intervals.delete(fn),
         setTimeout:fn => { timeouts.push(fn); return fn; }, clearTimeout:() => {},
-        process:{argv:[],stdout:{write:s=>events.push(JSON.parse(s))},on:()=>{},exit:()=>{}},
+        process:{argv:[null,null,'[]',JSON.stringify(ignoredTournaments)],stdout:{write:s=>events.push(JSON.parse(s))},on:()=>{},exit:()=>{}},
     });
     const path = new URL('../resources/js/betboom/discover.mjs',import.meta.url);
     const code = readFileSync(path,'utf8').replace(/^import .*;\r?\n/gm,'').replaceAll('import.meta.url',JSON.stringify(path.href));
@@ -59,4 +59,16 @@ test('live match keeps the schedule connected',()=>{
     h.socket.receive({state_subscribe_categories:{categories:[{code:200,type:1,category:{tournaments:[tournament]}},{code:200,type:2,category:{tournaments:[]}}]}});
     h.socket.receive({state_subscribe_tournaments:{tournaments:[{code:200,type:1,tournament}]}});
     h.tick();assert.equal(h.socket.closed,false);assert.equal(h.events.some(e=>e.event==='idle'),false);
+});
+
+test('ignored tournaments are not subscribed or emitted and allow quiet mode',()=>{
+    const h=harness(['10']);
+    const before=h.socket.sent.length;
+    const tournament={info:{id:10,name:'Skip'},matches:[{info:{id:1,tournament_id:10,type:1,start_dttm:new Date().toISOString(),teams:{home_team:{name:'A'},away_team:{name:'B'}}}}]};
+    h.socket.receive({state_subscribe_categories:{categories:[{code:200,type:1,category:{tournaments:[tournament]}},{code:200,type:2,category:{tournaments:[]}}]}});
+    h.socket.receive({newsletters_match:{match:tournament.matches[0]}});
+    assert.equal(h.socket.sent.length,before);
+    h.tick();
+    assert.equal(h.socket.closed,true);
+    assert.deepEqual(h.events.find(e=>e.event==='schedule').matches,[]);
 });

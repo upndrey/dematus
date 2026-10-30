@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\TelegramIgnoredMatch;
+use App\Models\TelegramIgnoredTournament;
 use App\Models\TelegramSubscriber;
 use App\Models\TelegramWatch;
 use App\Services\Telegram\AutomaticMatches;
@@ -41,14 +42,14 @@ class BetBoomWatchCommand extends Command
             do {
                 $running = app(WatcherControl::class)->state()->running;
                 if ($running && ! $this->option('once') && TelegramSubscriber::query()->where('active', true)->exists()) {
-                    $ignored = TelegramIgnoredMatch::query()->orderBy('match_id')->pluck('match_id')->all();
+                    $ignored = [TelegramIgnoredMatch::query()->orderBy('match_id')->pluck('match_id')->all(), TelegramIgnoredTournament::query()->orderBy('tournament_id')->pluck('tournament_id')->all()];
                     if ($discovery && $discoveryIgnores !== $ignored) {
                         $discovery->stop();
                         $discovery = null;
                         $nextDiscovery = 0;
                     }
                     if ((! $discovery || ! $discovery->running()) && time() >= $nextDiscovery) {
-                        $discovery = Process::forever()->start([config('telegram.node_binary'), resource_path('js/betboom/discover.mjs'), json_encode($ignored)]);
+                        $discovery = Process::forever()->start([config('telegram.node_binary'), resource_path('js/betboom/discover.mjs'), json_encode($ignored[0]), json_encode($ignored[1])]);
                         $discoveryIgnores = $ignored;
                         $nextDiscovery = time() + 300;
                         $discoveryBuffer = '';
@@ -76,7 +77,7 @@ class BetBoomWatchCommand extends Command
                     $nextDiscovery = 0;
                     $nextTick = 0;
                 }
-                $watches = TelegramWatch::query()->where('active', true)->whereNotIn('match_id', TelegramIgnoredMatch::query()->select('match_id'))->when(! $running, fn ($query) => $query->whereRaw('1 = 0'))->where('expires_at', '>', now())->get();
+                $watches = TelegramWatch::query()->where('active', true)->whereNotIn('match_id', TelegramIgnoredMatch::query()->select('match_id'))->where(fn ($query) => $query->whereNull('tournament_id')->orWhereNotIn('tournament_id', TelegramIgnoredTournament::query()->select('tournament_id')))->when(! $running, fn ($query) => $query->whereRaw('1 = 0'))->where('expires_at', '>', now())->get();
                 foreach ($processes as $matchId => $process) {
                     if (! $watches->contains('match_id', (string) $matchId)) {
                         $process->stop();

@@ -83,6 +83,11 @@ class DraftBot
         }
         try {
             $matchId = $this->source->matchId($text);
+            preg_match('~betboom\.ru/(?:esport|sport)/dota-2/(\d+)/'.preg_quote($matchId, '~').'~i', $text, $url);
+            $tournamentId = $url[1] ?? TelegramWatch::query()->where('match_id', $matchId)->value('tournament_id');
+            if ($tournamentId && app(WatcherControl::class)->tournamentIgnored($tournamentId)) {
+                throw new InvalidArgumentException('Этот турнир исключён для всех.');
+            }
             if (app(WatcherControl::class)->ignored($matchId)) {
                 throw new InvalidArgumentException('Эта игра исключена для всех.');
             }
@@ -94,7 +99,7 @@ class DraftBot
                 throw new InvalidArgumentException('Этот матч уже обрабатывается в другом чате. Продолжите подтверждение там.');
             }
             TelegramDraft::query()->where('match_id', $matchId)->where('chat_id', $chatId)->where('status', 'stopped')->update(['status' => 'draft', 'message_hash' => null]);
-            TelegramWatch::query()->updateOrCreate(['chat_id' => $chatId, 'match_id' => $matchId], ['active' => true, 'expires_at' => now()->addHours(12)]);
+            TelegramWatch::query()->updateOrCreate(['chat_id' => $chatId, 'match_id' => $matchId], ['active' => true, 'expires_at' => now()->addHours(12), 'tournament_id' => $tournamentId]);
             $this->telegram->send($chatId, 'Наблюдаю за матчем '.$matchId.'. Когда герои будут привязаны к игрокам, пришлю составы для проверки. Если у матча нет трансляции драфта, получить составы не удастся.');
         } catch (InvalidArgumentException $error) {
             $this->telegram->send($chatId, $error->getMessage());
@@ -242,6 +247,12 @@ class DraftBot
         $answer = 'Нет доступа.';
         if ($this->authorized($chatId, $userId, (string) data_get($callback, 'from.username', ''))) {
             $parts = explode(':', $callback['data'] ?? '');
+            if (count($parts) === 2 && $parts[0] === 'ignore_tournament' && ctype_digit($parts[1])) {
+                $watch = TelegramWatch::query()->where('chat_id', $chatId)->where('tournament_id', $parts[1])->first();
+                if ($watch) {
+                    $answer = app(WatcherControl::class)->ignoreTournament($parts[1], $userId);
+                }
+            }
             if (count($parts) === 2 && $parts[0] === 'ignore' && ctype_digit($parts[1])) {
                 $known = TelegramWatch::query()->where('chat_id', $chatId)->where('match_id', $parts[1])->exists();
                 if ($known) {
@@ -312,6 +323,9 @@ class DraftBot
             }
         }
         $this->telegram->call('answerCallbackQuery', ['callback_query_id' => $callback['id'], 'text' => $answer]);
+        if (isset($parts) && ($parts[0] ?? '') === 'ignore_tournament') {
+            app(MatchNotifications::class)->flush();
+        }
         if (isset($parts) && ($parts[0] ?? '') === 'ignore' && isset($parts[1]) && $this->authorized($chatId, $userId, (string) data_get($callback, 'from.username', ''))) {
             app(MatchNotifications::class)->flush($parts[1]);
         }

@@ -9,6 +9,7 @@ function vi(n) { const a=[]; do {a.push((n & 127) | (n > 127 ? 128 : 0));n=Math.
 function msg(n,b) {return Buffer.concat([vi(n*8+2),vi(b.length),b]);}
 function val(n,x) {return Buffer.concat([vi(n*8),vi(x)]);}
 const ignored = JSON.parse(process.argv[2] ?? '[]');
+const ignoredTournaments = new Set(JSON.parse(process.argv[3] ?? '[]').map(String));
 let ws, timer, retry, stopping=false, failures=0, last=0;
 function connect() {
  const matches=new Map(), tournaments=new Map(), subscriptions=new Set();
@@ -20,7 +21,7 @@ function connect() {
  const send=(kind,body)=>ws.send(msg(kind,body));
  const subscribe=(type,id)=>{const key=type+':'+id;if(subscriptions.has(key))return;subscriptions.add(key);pending.add(key);const uid=Buffer.from(key);send(8,Buffer.concat([msg(1,uid),msg(2,Buffer.concat([msg(1,uid),val(2,type),val(3,id)]))]));};
  function collect(t,type) {
-  if(!t?.info)return;
+  if(!t?.info || ignoredTournaments.has(String(t.info.id)))return;
   tournaments.set(t.info.id,t.info.name);subscribe(type,t.info.id);
   for(const m of t.matches??[]) {if(m.info?.teams) matches.set(m.info.id,m.info);}
  }
@@ -35,7 +36,7 @@ function connect() {
    const id=update.match.info.id;
    if(matches.get(id)?.type===update.type)matches.delete(id);
    if(update.type===1)emit({event:'ended',matchId:String(id)});
-  } else if(update?.match?.info?.teams)matches.set(update.match.info.id,update.match.info);
+  } else if(update?.match?.info?.teams && !ignoredTournaments.has(String(update.match.info.tournament_id)))matches.set(update.match.info.id,update.match.info);
   const tournament=d.newsletters_tournament;
   if(tournament?.action===3 && tournament.tournament?.info?.id) {
    const id=tournament.tournament.info.id,key=tournament.type+':'+id,uid=Buffer.from(key);
@@ -48,7 +49,7 @@ function connect() {
   if(Date.now()-last>60000){ws.close();return;}
   if(ws.readyState!==1||!ready)return;
   send(1,msg(1,Buffer.from('ping'+Date.now())));
-  emit({event:'schedule',matches:[...matches.values()].map(m=>({id:String(m.id),start:m.start_dttm,home:m.teams.home_team?.name,away:m.teams.away_team?.name,tournament:tournaments.get(m.tournament_id)??'',type:m.type}))});
+  emit({event:'schedule',matches:[...matches.values()].map(m=>({id:String(m.id),start:m.start_dttm,home:m.teams.home_team?.name,away:m.teams.away_team?.name,tournament:tournaments.get(m.tournament_id)??'',tournamentId:String(m.tournament_id),type:m.type}))});
   if(snapshotValid && categoriesReady.has(1) && categoriesReady.has(2) && pending.size===0 && shouldSleep([...matches.values()],ignored)) {
    stopping=true;clearInterval(timer);emit({event:'idle'});ws.close();setTimeout(()=>process.exit(0),1000);
   }

@@ -50,6 +50,9 @@ class MatchNotifications
                     return;
                 }
                 $text = 'Игра BetBoom '.$watch->match_id.' проигнорирована для всех. Наблюдение за этой серией остановлено, следующие карты исключены. Расчёта и сохранения в таблицу не будет.';
+                if ($watch->tournament_id && app(WatcherControl::class)->tournamentIgnored($watch->tournament_id)) {
+                    $text = 'Турнир '.($watch->tournament_name ?: $watch->tournament_id).' проигнорирован для всех. Игра BetBoom '.$watch->match_id.' больше не отслеживается. Новые игры турнира не будут приходить. Уже начатые расчёты могут завершиться, сохранённые результаты остаются в таблице.';
+                }
                 $failed = false;
                 try {
                     if (! $watch->ignored_message_id) {
@@ -74,7 +77,7 @@ class MatchNotifications
                 }
                 $watch->update(['ignore_update_pending' => $failed]);
                 if ($failed) {
-                    Cache::put('telegram:ignore-retry:'.$watch->id,true,60);
+                    Cache::put('telegram:ignore-retry:'.$watch->id, true, 60);
                 }
             });
         }

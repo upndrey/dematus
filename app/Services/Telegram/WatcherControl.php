@@ -4,6 +4,7 @@ namespace App\Services\Telegram;
 
 use App\Models\TelegramDraft;
 use App\Models\TelegramIgnoredMatch;
+use App\Models\TelegramIgnoredTournament;
 use App\Models\TelegramSubscriber;
 use App\Models\TelegramWatch;
 use App\Models\TelegramWatcherState;
@@ -50,7 +51,31 @@ class WatcherControl
 
     public function ignored(string $matchId): bool
     {
-        return TelegramIgnoredMatch::query()->where('match_id', $matchId)->exists();
+        return TelegramIgnoredMatch::query()->where('match_id', $matchId)->exists()
+            || TelegramWatch::query()->where('match_id', $matchId)->whereIn('tournament_id', TelegramIgnoredTournament::query()->select('tournament_id'))->exists();
+    }
+
+    public function tournamentIgnored(string $tournamentId): bool
+    {
+        return TelegramIgnoredTournament::query()->where('tournament_id', $tournamentId)->exists();
+    }
+
+    public function ignoreTournament(string $tournamentId, string $userId): string
+    {
+        TelegramIgnoredTournament::query()->firstOrCreate(['tournament_id' => $tournamentId], ['ignored_by' => $userId]);
+        $matches = TelegramWatch::query()->where('tournament_id', $tournamentId)->distinct()->pluck('match_id');
+        foreach ($matches as $matchId) {
+            Cache::lock('telegram:match:'.$matchId, 90)->block(5, function () use ($matchId): void {
+                TelegramWatch::query()->where('match_id', $matchId)->update(['active' => false, 'ignore_update_pending' => true]);
+                foreach (TelegramDraft::query()->where('match_id', $matchId)->whereIn('status', ['draft', 'queued', 'failed'])->get() as $draft) {
+                    if (! $draft->calculation && ! $draft->draft_snapshot_id && ! $draft->sheet_result) {
+                        $draft->update(['status' => 'ignored', 'revision' => $draft->revision + 1, 'message_hash' => null]);
+                    }
+                }
+            });
+        }
+
+        return 'Турнир исключён для всех. Новые игры отслеживаться не будут.';
     }
 
     public function ignore(string $matchId, string $userId): string
