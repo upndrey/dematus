@@ -232,6 +232,7 @@ class TelegramDraftBotTest extends TestCase
 
         Http::assertSentCount(2);
         Http::assertSent(fn ($request): bool => str_starts_with($request['text'], 'Подключились к матчу 6344550.'));
+        Http::assertSent(fn ($request): bool => ($request['reply_markup']['inline_keyboard'][0][0]['callback_data'] ?? null) === 'ignore:6344550');
         $this->assertSame(0, TelegramDraft::query()->count());
     }
 
