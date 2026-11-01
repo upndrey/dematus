@@ -73,6 +73,76 @@ class TelegramDraftBotTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_unknown_hero_warns_once_per_map_and_chat_then_recovers(): void
+    {
+        $payload = $this->payload();
+        foreach (['42', '43'] as $chat) {
+            TelegramWatch::query()->create(['chat_id' => $chat, 'match_id' => $payload['matchId'], 'active' => true, 'expires_at' => now()->addHour()]);
+        }
+        $valid = $payload;
+        $payload['players'][0]['hero'] = 'Unknown Hero';
+        foreach (range(1, 3) as $repeat) {
+            foreach (['42', '43'] as $chat) {
+                $this->assertNull(app(DraftBot::class)->ingest($chat, $payload));
+            }
+            $payload['players'][1]['hero'] = 'Another Unknown';
+        }
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($r): bool => $r['chat_id'] === '42' && str_contains($r['text'], 'Unknown Hero') && str_contains($r['text'], 'Карта 2'));
+        Http::assertSent(fn ($r): bool => $r['chat_id'] === '43' && str_contains($r['text'], 'Unknown Hero'));
+        $draft = app(DraftBot::class)->ingest('42', $valid);
+        $this->assertNotNull($draft);
+        $this->assertCount(10, $draft->players);
+        $payload['map'] = 3;
+        app(DraftBot::class)->ingest('42', $payload);
+        Http::assertSentCount(4);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_missing_or_known_hero_does_not_trigger_unknown_warning(): void
+    {
+        $source = app(BetBoomDraftSource::class);
+        $this->assertSame([], $source->unknownHeroes(['players' => [['hero' => ''], [], ['hero' => 'Outworld Destroyer'], ['hero' => 'Anti-Mage']]]));
+        $payload = $this->payload();
+        $payload['players'][0]['hero'] = '';
+        TelegramWatch::query()->create(['chat_id' => '42', 'match_id' => $payload['matchId'], 'active' => true, 'expires_at' => now()->addHour()]);
+        app(DraftBot::class)->ingest('42', $payload);
+        Http::assertNothingSent();
+    }
+
+    public function test_unknown_warning_retries_failed_delivery_without_marking_it_sent(): void
+    {
+        $payload = $this->payload();
+        $payload['players'][0]['hero'] = 'Unknown Hero';
+        TelegramWatch::query()->create(['chat_id' => '42', 'match_id' => $payload['matchId'], 'active' => true, 'expires_at' => now()->addHour()]);
+        Http::swap(new \Illuminate\Http\Client\Factory);
+        Http::preventStrayRequests();
+        Http::fake(['api.telegram.org/*' => Http::sequence()->push(['ok' => false, 'error_code' => 503])->push(['ok' => true, 'result' => ['message_id' => 78]])]);
+        try {
+            app(DraftBot::class)->ingest('42', $payload);
+            $this->fail('Failed delivery must remain retryable');
+        } catch (\RuntimeException $error) {
+            $this->assertStringContainsString('Telegram request failed', $error->getMessage());
+        }
+        app(DraftBot::class)->ingest('42', $payload);
+        app(DraftBot::class)->ingest('42', $payload);
+        Http::assertSentCount(2);
+    }
+
+    public function test_ignored_and_paused_matches_do_not_warn_about_unknown_heroes(): void
+    {
+        $payload = $this->payload();
+        $payload['players'][0]['hero'] = 'Unknown Hero';
+        TelegramWatch::query()->create(['chat_id' => '42', 'match_id' => $payload['matchId'], 'active' => true, 'expires_at' => now()->addHour()]);
+        $control = app(\App\Services\Telegram\WatcherControl::class);
+        $control->setRunning(false);
+        app(DraftBot::class)->ingest('42', $payload);
+        $control->setRunning(true);
+        $control->ignore((string) $payload['matchId'], '42');
+        app(DraftBot::class)->ingest('42', $payload);
+        Http::assertNothingSent();
+    }
+
     public function test_positions_swap_only_within_team_and_preserve_hero_player_links(): void
     {
         $draft = $this->draft();

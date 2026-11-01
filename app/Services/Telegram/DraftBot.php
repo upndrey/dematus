@@ -130,6 +130,12 @@ class DraftBot
             if ($draft && $seenAt->lessThan($draft->seen_at)) {
                 return $draft;
             }
+            $unknown = $this->source->unknownHeroes($payload);
+            $warningKey = 'telegram:unknown-hero:'.$chatId.':'.$payload['matchId'].':'.$payload['map'];
+            if ($unknown && ! Cache::has($warningKey) && TelegramWatch::query()->where('chat_id', $chatId)->where('match_id', $payload['matchId'])->where('active', true)->where('expires_at', '>', now())->exists()) {
+                $this->telegram->send($chatId, 'Карта '.$payload['map'].' · BetBoom '.$payload['matchId']."\nНе удалось распознать героев: ".implode(', ', array_slice($unknown, 0, 10)).'. Для этой карты нужно исправить названия в справочнике dematus. Продолжаю следить за составами; это предупреждение больше не повторится.');
+                Cache::forever($warningKey, true);
+            }
             TelegramDraft::query()->where('match_id', $payload['matchId'])->where('map_number', '<', $payload['map'])->where('status', 'draft')->update(['status' => 'expired', 'message_hash' => null]);
             if (! $draft && ! $this->source->complete($players)) {
                 return null;

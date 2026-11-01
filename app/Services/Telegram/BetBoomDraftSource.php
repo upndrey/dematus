@@ -18,12 +18,7 @@ class BetBoomDraftSource
 
     public function players(array $payload): array
     {
-        $heroes = [];
-        foreach (Hero::cases() as $hero) {
-            $heroes[$this->normalize($hero->title())] = $hero;
-            $heroes[$this->normalize($hero->name)] = $hero;
-        }
-        $heroes[$this->normalize('Outworld Destroyer')] = Hero::OutworldDevourer;
+        $heroes = $this->heroNames();
         $players = [];
         foreach ($payload['players'] ?? [] as $player) {
             $hero = $heroes[$this->normalize($player['hero'] ?? '')] ?? null;
@@ -49,6 +44,34 @@ class BetBoomDraftSource
         }
 
         return $players;
+    }
+
+    /** @return list<string> */
+    public function unknownHeroes(array $payload): array
+    {
+        $heroes = $this->heroNames();
+        $unknown = [];
+        foreach ($payload['players'] ?? [] as $player) {
+            $name = trim($player['hero'] ?? '');
+            if ($name !== '' && ! isset($heroes[$this->normalize($name)])) {
+                $unknown[] = mb_substr($name, 0, 100);
+            }
+        }
+
+        return array_values(array_unique($unknown));
+    }
+
+    /** @return array<string, Hero> */
+    private function heroNames(): array
+    {
+        $heroes = [];
+        foreach (Hero::cases() as $hero) {
+            $heroes[$this->normalize($hero->title())] = $hero;
+            $heroes[$this->normalize($hero->name)] = $hero;
+        }
+        $heroes[$this->normalize('Outworld Destroyer')] = Hero::OutworldDevourer;
+
+        return $heroes;
     }
 
     public function complete(array $players, bool $requirePositions = false): bool
