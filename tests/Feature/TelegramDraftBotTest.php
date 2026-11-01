@@ -57,6 +57,22 @@ class TelegramDraftBotTest extends TestCase
         $this->assertSame('queued', $draft->fresh()->status);
     }
 
+    public function test_outworld_destroyer_alias_does_not_block_complete_draft(): void
+    {
+        $payload = $this->payload();
+        $payload['players'][0]['hero'] = 'outworld destroyer';
+        $draft = app(DraftBot::class)->ingest('42', $payload);
+        $this->assertNotNull($draft);
+        $this->assertCount(10, $draft->players);
+        $player = collect($draft->players)->firstWhere('id', $payload['players'][0]['playerId']);
+        $this->assertSame(76, $player['hero_id']);
+        $this->assertSame('77', $draft->message_id);
+        $payload['players'][0]['hero'] = 'Outworld Devourer';
+        $updated = app(DraftBot::class)->ingest('42', $payload);
+        $this->assertSame($draft->fingerprint, $updated->fingerprint);
+        Queue::assertNothingPushed();
+    }
+
     public function test_positions_swap_only_within_team_and_preserve_hero_player_links(): void
     {
         $draft = $this->draft();

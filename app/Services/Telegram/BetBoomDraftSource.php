@@ -23,6 +23,7 @@ class BetBoomDraftSource
             $heroes[$this->normalize($hero->title())] = $hero;
             $heroes[$this->normalize($hero->name)] = $hero;
         }
+        $heroes[$this->normalize('Outworld Destroyer')] = Hero::OutworldDevourer;
         $players = [];
         foreach ($payload['players'] ?? [] as $player) {
             $hero = $heroes[$this->normalize($player['hero'] ?? '')] ?? null;
