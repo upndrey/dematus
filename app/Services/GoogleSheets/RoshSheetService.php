@@ -2,8 +2,13 @@
 
 namespace App\Services\GoogleSheets;
 
+use App\Models\DraftSnapshot;
+use App\Services\DraftSnapshots\DraftSnapshotFeatureAggregator;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -15,7 +20,7 @@ class RoshSheetService
 
     private const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 
-    private const MATCH_ID_COLUMN = 'B';
+    private const MATCH_ID_COLUMN = 'A';
 
     private const TEAM_1_RADIANT_COLUMN = 'C';
 
@@ -23,18 +28,66 @@ class RoshSheetService
 
     private const WHO_WON_COLUMN = 'E';
 
-    private const RADIANT_ODDS_1_COLUMN = 'G';
+    private const RADIANT_ODDS_1_COLUMN = 'F';
 
-    private const RADIANT_ODDS_2_COLUMN = 'H';
+    private const RADIANT_ODDS_2_COLUMN = 'G';
 
-    private const DIRE_ODDS_1_COLUMN = 'J';
+    private const DIRE_ODDS_1_COLUMN = 'I';
 
-    private const DIRE_ODDS_2_COLUMN = 'K';
+    private const DIRE_ODDS_2_COLUMN = 'J';
+
+    private const DATASET_SHEET_TITLE = 'Dataset';
+
+    private const DATASET_BATCH_SIZE = 100;
+
+    /**
+     * @var list<string>
+     */
+    private const BASE_DATASET_HEADERS = [
+        'snapshot_id',
+        'source',
+        'captured_at',
+        'match_id',
+        'tournament',
+        'radiant_team',
+        'dire_team',
+        'winner',
+        'model_version',
+        'sheet_title',
+        'sheet_row',
+        'baseline_ready',
+        'windows_4_8_12_ready',
+        'bucket_count',
+        'radiant_odds_1',
+        'radiant_odds_2',
+        'dire_odds_1',
+        'dire_odds_2',
+        'avg_radiant_odds',
+        'avg_dire_odds',
+        'bookmaker_odds_radiant',
+        'bookmaker_odds_dire',
+        'bookmaker_odds_unverified',
+        'raw_size_mb',
+    ];
+
+    public function __construct(private readonly DraftSnapshotFeatureAggregator $featureAggregator) {}
 
     public function isConfigured(): bool
     {
+        $credentialsPath = (string) config('services.google_sheets.service_account_credentials');
+
         return filled(config('services.google_sheets.spreadsheet_url'))
-            && filled(config('services.google_sheets.service_account_credentials'));
+            && filled($credentialsPath)
+            && is_file($this->resolveCredentialsPath($credentialsPath));
+    }
+
+    public function syncBetBoomOdds(string $matchId, int $mapNumber, array $formatted): array
+    {
+        if (! ctype_digit($matchId) || $mapNumber < 1) {
+            throw new RuntimeException('Invalid BetBoom match or map.');
+        }
+
+        return $this->syncOdds('BETBOOM:'.$matchId.':'.$mapNumber, $formatted);
     }
 
     /**
@@ -84,6 +137,219 @@ class RoshSheetService
     }
 
     /**
+     * @param  iterable<DraftSnapshot>  $snapshots
+     * @return array{
+     *     spreadsheet_id:string,
+     *     sheet_title:string,
+     *     exported_rows:int,
+     *     rows:array<int, int>
+     * }
+     */
+    public function syncSnapshotDataset(iterable $snapshots, bool $overwriteBookmakerOdds = false): array
+    {
+        return $this->withWriteLock(fn (): array => $this->syncSnapshotDatasetUnlocked($snapshots, $overwriteBookmakerOdds));
+    }
+
+    private function syncSnapshotDatasetUnlocked(iterable $snapshots, bool $overwriteBookmakerOdds = false): array
+    {
+        if (! $this->isConfigured()) {
+            throw new RuntimeException('Google Sheets dataset sync is not configured.');
+        }
+
+        $spreadsheet = $this->parseSpreadsheetConfig(
+            (string) config('services.google_sheets.spreadsheet_url'),
+        );
+        $accessToken = $this->requestAccessToken();
+        $sheetTitle = $this->ensureSheetExists(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            self::DATASET_SHEET_TITLE,
+        );
+
+        $this->batchUpdateValues(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            [
+                $this->sheetRange($sheetTitle, $this->rowRange(1)) => $this->datasetHeaders(),
+            ],
+        );
+
+        $existingRows = $this->datasetExistingRows(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            $sheetTitle,
+        );
+        $nextRow = $existingRows === [] ? 2 : max(array_column($existingRows, 'row')) + 1;
+        $rows = [];
+        $exportedRows = 0;
+        $ranges = [];
+
+        foreach ($snapshots as $snapshot) {
+            $snapshotId = (string) $snapshot->id;
+            $row = $existingRows[$snapshotId]['row'] ?? $nextRow++;
+            $rows[$snapshot->id] = $row;
+            $ranges[$this->sheetRange($sheetTitle, $this->rowRange($row))] = $this->snapshotDatasetRow(
+                $snapshot,
+                $existingRows[$snapshotId]['values'] ?? [],
+                $overwriteBookmakerOdds,
+            );
+
+            if (count($ranges) === self::DATASET_BATCH_SIZE) {
+                $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+                $exportedRows += count($ranges);
+                $ranges = [];
+            }
+        }
+
+        if ($ranges !== []) {
+            $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+            $exportedRows += count($ranges);
+        }
+
+        return [
+            'spreadsheet_id' => $spreadsheet['spreadsheet_id'],
+            'sheet_title' => $sheetTitle,
+            'exported_rows' => $exportedRows,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @param  iterable<DraftSnapshot>  $snapshots
+     */
+    public function syncSnapshotFirstPickSides(iterable $snapshots): int
+    {
+        return $this->withWriteLock(fn (): int => $this->syncSnapshotFirstPickSidesUnlocked($snapshots));
+    }
+
+    private function syncSnapshotFirstPickSidesUnlocked(iterable $snapshots): int
+    {
+        if (! $this->isConfigured()) {
+            throw new RuntimeException('Google Sheets dataset sync is not configured.');
+        }
+
+        $spreadsheet = $this->parseSpreadsheetConfig((string) config('services.google_sheets.spreadsheet_url'));
+        $accessToken = $this->requestAccessToken();
+        $sheetTitle = $this->ensureSheetExists(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            self::DATASET_SHEET_TITLE,
+        );
+
+        $this->batchUpdateValues(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            [$this->sheetRange($sheetTitle, $this->rowRange(1)) => $this->datasetHeaders()],
+        );
+
+        $existingRows = $this->datasetExistingRows(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            $sheetTitle,
+        );
+        $firstPickColumn = $this->columnName(array_search('first_pick_side', $this->datasetHeaders(), true) + 1);
+        $ranges = [];
+        $exportedRows = 0;
+
+        foreach ($snapshots as $snapshot) {
+            $existingRow = $existingRows[(string) $snapshot->id] ?? null;
+
+            if ($existingRow === null) {
+                continue;
+            }
+
+            $ranges[$this->sheetRange($sheetTitle, $firstPickColumn.$existingRow['row'])] = [
+                $this->formatSheetTextValue($snapshot->first_pick_side),
+            ];
+
+            if (count($ranges) === self::DATASET_BATCH_SIZE) {
+                $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+                $exportedRows += count($ranges);
+                $ranges = [];
+            }
+        }
+
+        if ($ranges !== []) {
+            $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+            $exportedRows += count($ranges);
+        }
+
+        return $exportedRows;
+    }
+
+    /**
+     * Repairs Dataset rows created before the bookmaker verification flag existed.
+     *
+     * @param  iterable<DraftSnapshot>  $snapshots
+     */
+    public function repairSnapshotDatasetBookmakerColumnLayout(iterable $snapshots): int
+    {
+        return $this->withWriteLock(fn (): int => $this->repairSnapshotDatasetBookmakerColumnLayoutUnlocked($snapshots));
+    }
+
+    private function repairSnapshotDatasetBookmakerColumnLayoutUnlocked(iterable $snapshots): int
+    {
+        if (! $this->isConfigured()) {
+            throw new RuntimeException('Google Sheets dataset sync is not configured.');
+        }
+
+        $spreadsheet = $this->parseSpreadsheetConfig(
+            (string) config('services.google_sheets.spreadsheet_url'),
+        );
+        $accessToken = $this->requestAccessToken();
+        $sheetTitle = $this->ensureSheetExists(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            self::DATASET_SHEET_TITLE,
+        );
+        $existingRows = $this->datasetExistingRows(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            $sheetTitle,
+        );
+        $unverifiedIndex = array_search('bookmaker_odds_unverified', $this->datasetHeaders(), true);
+
+        if (! is_int($unverifiedIndex)) {
+            throw new RuntimeException('Dataset bookmaker verification column is missing.');
+        }
+
+        $ranges = [];
+        $repairedRows = 0;
+
+        foreach ($snapshots as $snapshot) {
+            $existing = $existingRows[(string) $snapshot->id] ?? null;
+
+            if ($existing === null) {
+                continue;
+            }
+
+            $values = $existing['values'];
+            $marker = $this->bookmakerOddsUnverifiedValue($snapshot);
+            $legacyRow = is_numeric(trim((string) data_get($values, (string) $unverifiedIndex, '')));
+
+            if ($legacyRow) {
+                array_splice($values, $unverifiedIndex, 0, [$marker]);
+            } else {
+                $values[$unverifiedIndex] = $marker;
+            }
+
+            $ranges[$this->sheetRange($sheetTitle, $this->rowRange($existing['row']))] = $values;
+            $repairedRows++;
+
+            if (count($ranges) === self::DATASET_BATCH_SIZE) {
+                $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+                $ranges = [];
+            }
+        }
+
+        if ($ranges !== []) {
+            $this->batchUpdateValues($accessToken, $spreadsheet['spreadsheet_id'], $ranges);
+        }
+
+        return $repairedRows;
+    }
+
+    /**
      * @param  array{
      *     match_id?:int|string,
      *     winner?:string,
@@ -102,6 +368,11 @@ class RoshSheetService
      * }
      */
     private function syncOdds(string $matchIdValue, array $formatted, bool $alwaysAppend = false): array
+    {
+        return $this->withWriteLock(fn (): array => $this->syncOddsUnlocked($matchIdValue, $formatted, $alwaysAppend));
+    }
+
+    private function syncOddsUnlocked(string $matchIdValue, array $formatted, bool $alwaysAppend = false): array
     {
         if (! $this->isConfigured()) {
             throw new RuntimeException('Google Sheets ROSH sync is not configured.');
@@ -123,8 +394,13 @@ class RoshSheetService
             $matchIdValue,
             $alwaysAppend,
         );
-        $matchMetadata = [
-            $matchIdValue,
+        $this->ensureSheetHasRows(
+            $accessToken,
+            $spreadsheet['spreadsheet_id'],
+            $sheetTitle,
+            $row,
+        );
+        $teamMetadata = [
             $this->formatSheetTextValue($formatted['radiant_team'] ?? null),
             $this->formatSheetTextValue($formatted['dire_team'] ?? null),
             $this->formatWinnerValue($formatted['winner'] ?? null),
@@ -145,8 +421,12 @@ class RoshSheetService
             [
                 $this->sheetRange(
                     $sheetTitle,
-                    self::MATCH_ID_COLUMN.$row.':'.self::WHO_WON_COLUMN.$row,
-                ) => $matchMetadata,
+                    self::MATCH_ID_COLUMN.$row,
+                ) => [$matchIdValue],
+                $this->sheetRange(
+                    $sheetTitle,
+                    self::TEAM_1_RADIANT_COLUMN.$row.':'.self::WHO_WON_COLUMN.$row,
+                ) => $teamMetadata,
                 $this->sheetRange(
                     $sheetTitle,
                     self::RADIANT_ODDS_1_COLUMN.$row.':'.self::RADIANT_ODDS_2_COLUMN.$row,
@@ -162,14 +442,14 @@ class RoshSheetService
             $accessToken,
             $spreadsheet['spreadsheet_id'],
             [
-                'B'.$row,
+                'A'.$row,
                 'C'.$row,
                 'D'.$row,
                 'E'.$row,
+                'F'.$row,
                 'G'.$row,
-                'H'.$row,
+                'I'.$row,
                 'J'.$row,
-                'K'.$row,
             ],
             $sheetTitle,
         );
@@ -180,6 +460,18 @@ class RoshSheetService
             'row' => $row,
             'cells' => $verifiedValues,
         ];
+    }
+
+    private function withWriteLock(callable $write): mixed
+    {
+        $spreadsheet = $this->parseSpreadsheetConfig((string) config('services.google_sheets.spreadsheet_url'));
+        $key = 'google-sheets:write:'.$spreadsheet['spreadsheet_id'];
+
+        try {
+            return Cache::lock($key, 900)->block(10, $write);
+        } catch (LockTimeoutException) {
+            throw new RuntimeException('Таблица занята другим сохранением. Повторите попытку чуть позже.');
+        }
     }
 
     /**
@@ -289,6 +581,277 @@ class RoshSheetService
         }
 
         return $fallbackTitle;
+    }
+
+    private function ensureSheetExists(string $accessToken, string $spreadsheetId, string $sheetTitle): string
+    {
+        $response = $this->authorizedRequest($accessToken)
+            ->get(self::SHEETS_API_BASE.'/'.$spreadsheetId, [
+                'fields' => 'sheets(properties(title))',
+            ]);
+        $data = $this->decodeResponse($response, 'Google Sheets metadata request failed.');
+
+        foreach ((array) data_get($data, 'sheets', []) as $sheet) {
+            if (data_get($sheet, 'properties.title') === $sheetTitle) {
+                return $sheetTitle;
+            }
+        }
+
+        $response = $this->authorizedRequest($accessToken)
+            ->post(self::SHEETS_API_BASE.'/'.$spreadsheetId.':batchUpdate', [
+                'requests' => [
+                    [
+                        'addSheet' => [
+                            'properties' => [
+                                'title' => $sheetTitle,
+                            ],
+                        ],
+                    ],
+                ],
+            ]);
+
+        $this->decodeResponse($response, 'Google Sheets dataset sheet creation failed.');
+
+        return $sheetTitle;
+    }
+
+    private function ensureSheetHasRows(
+        string $accessToken,
+        string $spreadsheetId,
+        string $sheetTitle,
+        int $requiredRow,
+    ): void {
+        $response = $this->authorizedRequest($accessToken)
+            ->get(self::SHEETS_API_BASE.'/'.$spreadsheetId, [
+                'fields' => 'sheets(properties(sheetId,title,gridProperties(rowCount)))',
+            ]);
+        $data = $this->decodeResponse($response, 'Google Sheets grid metadata request failed.');
+
+        foreach ((array) data_get($data, 'sheets', []) as $sheet) {
+            if (data_get($sheet, 'properties.title') !== $sheetTitle) {
+                continue;
+            }
+
+            $sheetId = data_get($sheet, 'properties.sheetId');
+            $rowCount = data_get($sheet, 'properties.gridProperties.rowCount');
+
+            if (! is_numeric($sheetId) || ! is_numeric($rowCount) || (int) $rowCount >= $requiredRow) {
+                return;
+            }
+
+            $resizeResponse = $this->authorizedRequest($accessToken)
+                ->post(self::SHEETS_API_BASE.'/'.$spreadsheetId.':batchUpdate', [
+                    'requests' => [[
+                        'appendDimension' => [
+                            'sheetId' => (int) $sheetId,
+                            'dimension' => 'ROWS',
+                            'length' => $requiredRow - (int) $rowCount,
+                        ],
+                    ]],
+                ]);
+            $this->decodeResponse($resizeResponse, 'Google Sheets grid resize failed.');
+
+            return;
+        }
+
+        throw new RuntimeException('Unable to resolve the Google Sheets tab for grid resize.');
+    }
+
+    /**
+     * @return array<string, array{row:int, values:list<string>}>
+     */
+    private function datasetExistingRows(string $accessToken, string $spreadsheetId, string $sheetTitle): array
+    {
+        $range = $this->sheetRange($sheetTitle, 'A:'.$this->columnName(count($this->datasetHeaders())));
+        $response = $this->authorizedRequest($accessToken)
+            ->get(self::SHEETS_API_BASE.'/'.$spreadsheetId.'/values/'.rawurlencode($range));
+        $data = $this->decodeResponse($response, 'Google Sheets dataset lookup request failed.');
+        $rows = [];
+
+        foreach ((array) data_get($data, 'values', []) as $index => $row) {
+            if ($index === 0) {
+                continue;
+            }
+
+            $snapshotId = trim((string) data_get($row, '0', ''));
+
+            if ($snapshotId !== '') {
+                $rows[$snapshotId] = [
+                    'row' => $index + 1,
+                    'values' => array_values(array_map('strval', (array) $row)),
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function datasetHeaders(): array
+    {
+        return [
+            ...self::BASE_DATASET_HEADERS,
+            ...$this->featureAggregator->headers(),
+            'first_pick_side',
+        ];
+    }
+
+    private function rowRange(int $row): string
+    {
+        return 'A'.$row.':'.$this->columnName(count($this->datasetHeaders())).$row;
+    }
+
+    private function columnName(int $columnNumber): string
+    {
+        $columnName = '';
+
+        while ($columnNumber > 0) {
+            $columnNumber--;
+            $columnName = chr(65 + ($columnNumber % 26)).$columnName;
+            $columnNumber = intdiv($columnNumber, 26);
+        }
+
+        return $columnName;
+    }
+
+    /**
+     * @param  list<string>  $existingRow
+     * @return list<string>
+     */
+    private function snapshotDatasetRow(
+        DraftSnapshot $snapshot,
+        array $existingRow = [],
+        bool $overwriteBookmakerOdds = false,
+    ): array {
+        $formatted = (array) data_get($snapshot->feature_payload, 'formatted', []);
+        $radiantOdds = [
+            $this->numericOrNull(data_get($formatted, 'radiant_odds_1')),
+            $this->numericOrNull(data_get($formatted, 'radiant_odds_2')),
+        ];
+        $direOdds = [
+            $this->numericOrNull(data_get($formatted, 'dire_odds_1')),
+            $this->numericOrNull(data_get($formatted, 'dire_odds_2')),
+        ];
+
+        return [
+            (string) $snapshot->id,
+            (string) $snapshot->source,
+            $snapshot->captured_at?->toISOString() ?? '',
+            $snapshot->match_id !== null ? (string) $snapshot->match_id : 'LIVE',
+            $this->formatSheetTextValue($snapshot->tournament),
+            $this->formatSheetTextValue($snapshot->radiant_team),
+            $this->formatSheetTextValue($snapshot->dire_team),
+            $this->formatWinnerValue(data_get($snapshot->result_payload, 'winner')),
+            $this->formatSheetTextValue($snapshot->model_version),
+            $this->formatSheetTextValue(data_get($snapshot->sheet_payload, 'sheet_title')),
+            $this->formatSheetScalar(data_get($snapshot->sheet_payload, 'row')),
+            $this->formatBooleanValue($this->hasBaselineBuckets($snapshot)),
+            $this->formatBooleanValue($this->hasCompleteCollectedWindows($snapshot)),
+            (string) $this->snapshotBuckets($snapshot)->count(),
+            $this->formatDecimalValue($radiantOdds[0]),
+            $this->formatDecimalValue($radiantOdds[1]),
+            $this->formatDecimalValue($direOdds[0]),
+            $this->formatDecimalValue($direOdds[1]),
+            $this->formatDecimalValue($this->averageNumericValues($radiantOdds)),
+            $this->formatDecimalValue($this->averageNumericValues($direOdds)),
+            $overwriteBookmakerOdds
+                ? $this->formatDecimalValue($this->numericOrNull($snapshot->bookmaker_odds_radiant))
+                : $this->manualDatasetValue(
+                    $existingRow,
+                    'bookmaker_odds_radiant',
+                    $this->formatDecimalValue($this->numericOrNull($snapshot->bookmaker_odds_radiant)),
+                ),
+            $overwriteBookmakerOdds
+                ? $this->formatDecimalValue($this->numericOrNull($snapshot->bookmaker_odds_dire))
+                : $this->manualDatasetValue(
+                    $existingRow,
+                    'bookmaker_odds_dire',
+                    $this->formatDecimalValue($this->numericOrNull($snapshot->bookmaker_odds_dire)),
+                ),
+            $this->bookmakerOddsUnverifiedValue($snapshot),
+            $this->formatDecimalValue($this->snapshotRawSizeMegabytes($snapshot)),
+            ...array_map(
+                fn (?float $value): string => $this->formatDecimalValue($value),
+                array_values($this->featureAggregator->aggregate($snapshot)),
+            ),
+            $this->formatSheetTextValue($snapshot->first_pick_side),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $existingRow
+     */
+    private function manualDatasetValue(array $existingRow, string $header, string $fallback = ''): string
+    {
+        $index = array_search($header, $this->datasetHeaders(), true);
+
+        if (! is_int($index)) {
+            return $fallback;
+        }
+
+        $existingValue = trim((string) data_get($existingRow, (string) $index, ''));
+
+        return $existingValue !== '' ? $existingValue : $fallback;
+    }
+
+    private function bookmakerOddsUnverifiedValue(DraftSnapshot $snapshot): string
+    {
+        return data_get($snapshot->book_payload, 'verification.orientation') === 'unverified'
+            ? 'YES'
+            : '';
+    }
+
+    private function hasBaselineBuckets(DraftSnapshot $snapshot): bool
+    {
+        $buckets = $this->snapshotBuckets($snapshot);
+
+        return collect([
+            ['heroes_meta_positions', 1],
+            ['hero_stats_by_time_bracket', 1],
+            ['synergy', 4],
+        ])->every(fn (array $bucket): bool => $buckets->contains(
+            fn ($existingBucket): bool => $existingBucket->data_type === $bucket[0]
+                && $existingBucket->window_weeks === $bucket[1],
+        ));
+    }
+
+    private function hasCompleteCollectedWindows(DraftSnapshot $snapshot): bool
+    {
+        $buckets = $this->snapshotBuckets($snapshot);
+
+        return collect(['heroes_meta_positions', 'hero_stats_by_time_bracket', 'synergy'])
+            ->every(fn (string $dataType): bool => collect([4, 8, 12])
+                ->every(fn (int $windowWeeks): bool => $buckets->contains(
+                    fn ($bucket): bool => $bucket->data_type === $dataType
+                        && $bucket->window_weeks === $windowWeeks
+                        && str_starts_with($bucket->bucket_key, 'stratz_window_collector:'),
+                )));
+    }
+
+    private function snapshotRawSizeMegabytes(DraftSnapshot $snapshot): ?float
+    {
+        $bytes = 0;
+
+        foreach ($this->snapshotBuckets($snapshot) as $bucket) {
+            $bytes += strlen((string) json_encode($bucket->raw_payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+
+        if ($bytes === 0) {
+            return null;
+        }
+
+        return round($bytes / 1024 / 1024, 3);
+    }
+
+    private function snapshotBuckets(DraftSnapshot $snapshot): Collection
+    {
+        if ($snapshot->relationLoaded('stratzDataBuckets')) {
+            return $snapshot->stratzDataBuckets;
+        }
+
+        return $snapshot->stratzDataBuckets()->get();
     }
 
     private function findOrNextMatchRow(
@@ -443,6 +1006,52 @@ class RoshSheetService
     private function formatSheetTextValue(mixed $value): string
     {
         return is_string($value) ? trim($value) : '';
+    }
+
+    private function formatSheetScalar(mixed $value): string
+    {
+        if (is_string($value)) {
+            return trim($value);
+        }
+
+        if (is_numeric($value)) {
+            return (string) $value;
+        }
+
+        return '';
+    }
+
+    private function formatBooleanValue(bool $value): string
+    {
+        return $value ? 'yes' : 'no';
+    }
+
+    private function formatDecimalValue(?float $value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        return number_format($value, 3, '.', '');
+    }
+
+    private function numericOrNull(mixed $value): ?float
+    {
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    /**
+     * @param  list<?float>  $values
+     */
+    private function averageNumericValues(array $values): ?float
+    {
+        $numericValues = array_values(array_filter($values, is_float(...)));
+
+        if ($numericValues === []) {
+            return null;
+        }
+
+        return array_sum($numericValues) / count($numericValues);
     }
 
     private function formatWinnerValue(mixed $value): string

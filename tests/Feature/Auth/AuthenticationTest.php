@@ -53,6 +53,15 @@ class AuthenticationTest extends TestCase
             ->assertSessionMissing(config('static-auth.session_key'));
     }
 
+    public function test_csrf_token_endpoint_returns_the_current_session_token(): void
+    {
+        $this
+            ->withSession(['_token' => 'current-csrf-token'])
+            ->getJson(route('csrf.token'))
+            ->assertOk()
+            ->assertJsonPath('csrf_token', 'current-csrf-token');
+    }
+
     public function test_login_attempts_are_rate_limited(): void
     {
         $this->withStaticCredentials();

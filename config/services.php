@@ -39,8 +39,15 @@ return [
         'endpoint' => env('STRATZ_ENDPOINT', 'https://api.stratz.com/graphql'),
         'token' => env('STRATZ_TOKEN'),
         'timeout' => (int) env('STRATZ_TIMEOUT', 60),
+        'request_interval_seconds' => (int) env('STRATZ_REQUEST_INTERVAL_SECONDS', 0),
         'force_ipv4' => (bool) env('STRATZ_FORCE_IPV4', false),
         'team_rosters_path' => env('STRATZ_TEAM_ROSTERS_PATH', resource_path('data/stratz-teams.json')),
+    ],
+
+    'odds_api' => [
+        'endpoint' => env('ODDS_API_ENDPOINT', 'https://api.odds-api.io/v3'),
+        'key' => env('ODDS_API_KEY'),
+        'timeout' => (int) env('ODDS_API_TIMEOUT', 20),
     ],
 
     'liquipedia' => [
@@ -52,6 +59,7 @@ return [
     ],
 
     'opendota' => [
+        'api_base_url' => env('OPENDOTA_API_BASE_URL', 'https://api.opendota.com/api'),
         'pro_players_endpoint' => env('OPENDOTA_PRO_PLAYERS_ENDPOINT', 'https://api.opendota.com/api/proPlayers'),
         'timeout' => (int) env('OPENDOTA_TIMEOUT', 10),
         'pro_players_cache_seconds' => (int) env('OPENDOTA_PRO_PLAYERS_CACHE_SECONDS', 900),

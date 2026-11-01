@@ -3,6 +3,8 @@
 namespace App\Services\Stratz;
 
 use App\Exceptions\ExternalHttpRequestException;
+use GuzzleHttp\Handler\CurlHandler;
+use GuzzleHttp\HandlerStack;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -41,6 +43,12 @@ class Api
      */
     private function queryPayload(string $query, array $variables = [], bool $allowGraphQLErrors = false): array
     {
+        $requestIntervalSeconds = (int) config('services.stratz.request_interval_seconds', 0);
+
+        if ($requestIntervalSeconds > 0 && ! app()->environment('testing')) {
+            sleep($requestIntervalSeconds);
+        }
+
         $token = config('services.stratz.token');
 
         if (! is_string($token) || $token === '') {
@@ -184,19 +192,19 @@ class Api
      */
     private function httpOptions(): array
     {
-        if (! config('services.stratz.force_ipv4', false)) {
-            return [];
+        $options = [];
+
+        if (! app()->environment('testing') && extension_loaded('curl')) {
+            $options['handler'] = HandlerStack::create(new CurlHandler);
         }
 
-        if (! defined('CURLOPT_IPRESOLVE') || ! defined('CURL_IPRESOLVE_V4')) {
-            return [];
-        }
-
-        return [
-            'curl' => [
+        if (config('services.stratz.force_ipv4', false) && defined('CURLOPT_IPRESOLVE') && defined('CURL_IPRESOLVE_V4')) {
+            $options['curl'] = [
                 constant('CURLOPT_IPRESOLVE') => constant('CURL_IPRESOLVE_V4'),
-            ],
-        ];
+            ];
+        }
+
+        return $options;
     }
 
     /**

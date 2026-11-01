@@ -1,0 +1,210 @@
+{
+  "matchId": "6344550",
+  "map": 2,
+  "receivedAt": 1793280590812,
+  "status": "pick_ban",
+  "complete": true,
+  "players": [
+    {
+      "teamId": "od:competitor:22232",
+      "side": "radiant",
+      "playerId": "od:player:5050",
+      "playerName": "Darklord,,`",
+      "hero": "windranger",
+      "heroId": 21,
+      "heroImages": {
+        "id": "windranger",
+        "image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/1119bf0adaf93066e8d7b1f9050119ba.png",
+        "face_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/b07a0bf667793273dd3ab6f2528a40b1.png",
+        "gif_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/0f4040249a5de4c1d6d0353ad909df5a.gif"
+      },
+      "position": 1,
+      "positionType": "POSITION_1",
+      "role": "SAFE_LANER",
+      "roleSource": "Oddin historical primaryRole THREE_MONTHS",
+      "roleFetchedAt": 1793278494663,
+      "teamName": "LEGION"
+    },
+    {
+      "teamId": "od:competitor:22232",
+      "side": "radiant",
+      "playerId": "od:player:5232",
+      "playerName": "KingJungles",
+      "hero": "dazzle",
+      "heroId": 50,
+      "heroImages": {
+        "id": "dazzle",
+        "image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/7fdf45dadd99b30ca0ebe898bd37f9f6.png",
+        "face_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/1d204b219a3de23741b2e4c14b3c3e15.png",
+        "gif_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/59551d3aba1224023e957be1166fa30b.gif"
+      },
+      "position": 5,
+      "positionType": "POSITION_5",
+      "role": "HARD_SUPPORT",
+      "roleSource": "Oddin historical primaryRole THREE_MONTHS",
+      "roleFetchedAt": 1793278494663,
+      "teamName": "LEGION"
+    },
+    {
+      "teamId": "od:competitor:22232",
+      "side": "radiant",
+      "playerId": "od:player:5540",
+      "playerName": "Saberlight",
+      "hero": "largo",
+      "heroId": 155,
+      "heroImages": {
+        "id": "largo",
+        "image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/largo.png",
+        "face_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/largo_face.png",
+        "gif_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/largo-10.gif"
+      },
+      "position": 3,
+      "positionType": "POSITION_3",
+      "role": "OFF_LANER",
+      "roleSource": "Oddin historical primaryRole THREE_MONTHS",
+      "roleFetchedAt": 1793278494663,
+      "teamName": "LEGION"
+    },
+    {
+      "teamId": "od:competitor:22232",
+      "side": "radiant",
+      "playerId": "od:player:6406",
+      "playerName": "Danial",
+      "hero": "dark willow",
+      "heroId": 119,
+      "heroImages": {
+        "id": "dark willow",
+        "image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/998f1d1b6332fb50879da82919941e8a.png",
+        "face_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/b158a79496b172719c76cf8ce5ed6437.png",
+        "gif_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/e2424d7cc6ca24f72a7ae5e5ac67233a.gif"
+      },
+      "position": 4,
+      "positionType": "POSITION_4",
+      "role": "SOFT_SUPPORT",
+      "roleSource": "Oddin historical primaryRole THREE_MONTHS",
+      "roleFetchedAt": 1793278494663,
+      "teamName": "LEGION"
+    },
+    {
+      "teamId": "od:competitor:22232",
+      "side": "radiant",
+      "playerId": "od:player:6497",
+      "playerName": "Stojkov",
+      "hero": "ember spirit",
+      "heroId": 106,
+      "heroImages": {
+        "id": "ember spirit",
+        "image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/017324b7e7efb4d07891cb9e005d0352.png",
+        "face_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/05dbdb44d601d3a5a4bbee187842bbcc.png",
+        "gif_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/63528891198904e73ce99d36b1db6cf6.gif"
+      },
+      "position": 2,
+      "positionType": "POSITION_2",
+      "role": "MID_LANER",
+      "roleSource": "Oddin historical primaryRole THREE_MONTHS",
+      "roleFetchedAt": 1793278494663,
+      "teamName": "LEGION"
+    },
+    {
+      "teamId": "od:competitor:269",
+      "side": "dire",
+      "playerId": "od:player:14430",
+      "playerName": "rue",
+      "hero": "witch doctor",
+      "heroId": 30,
+      "heroImages": {
+        "id": "witch doctor",
+        "image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/76db5fe369898f4d314dcb22415a5e90.png",
+        "face_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/179c90c0a45aac26ce031564a11be268.png",
+        "gif_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/5ce635eb0b8354bb4a957b5cd379fdd2.gif"
+      },
+      "position": 4,
+      "positionType": "POSITION_4",
+      "role": "SOFT_SUPPORT",
+      "roleSource": "Oddin historical primaryRole THREE_MONTHS",
+      "roleFetchedAt": 1793278494663,
+      "teamName": "Team Spirit"
+    },
+    {
+      "teamId": "od:competitor:269",
+      "side": "dire",
+      "playerId": "od:player:5735",
+      "playerName": "Yatoro",
+      "hero": "kez",
+      "heroId": 145,
+      "heroImages": {
+        "id": "kez",
+        "image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/332ef157-1d42-49bf-95c8-eb2eebb36a46.png",
+        "face_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/2c31ffef-bc0d-45ee-8c46-0f3aeef97119.png",
+        "gif_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/64b48000-6590-49e8-a44e-20a9f39f4bfb.gif"
+      },
+      "position": 1,
+      "positionType": "POSITION_1",
+      "role": "SAFE_LANER",
+      "roleSource": "Oddin historical primaryRole THREE_MONTHS",
+      "roleFetchedAt": 1793278494663,
+      "teamName": "Team Spirit"
+    },
+    {
+      "teamId": "od:competitor:269",
+      "side": "dire",
+      "playerId": "od:player:5278",
+      "playerName": "Larl",
+      "hero": "sand king",
+      "heroId": 16,
+      "heroImages": {
+        "id": "sand king",
+        "image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/b16436b17fd1b0ee44f149070ffa89a7.png",
+        "face_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/949b37846689f9d50995c8993ae586ed.png",
+        "gif_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/99943579ed8769ba49bee863bfedb485.gif"
+      },
+      "position": 2,
+      "positionType": "POSITION_2",
+      "role": "MID_LANER",
+      "roleSource": "Oddin historical primaryRole THREE_MONTHS",
+      "roleFetchedAt": 1793278494663,
+      "teamName": "Team Spirit"
+    },
+    {
+      "teamId": "od:competitor:269",
+      "side": "dire",
+      "playerId": "od:player:23683",
+      "playerName": "not_me",
+      "hero": "hoodwink",
+      "heroId": 123,
+      "heroImages": {
+        "id": "hoodwink",
+        "image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/b0f903dafed8605589c659740a434b7f.png",
+        "face_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/0985362a1791a62ad203379dec8a3f2f.png",
+        "gif_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/bc7ad80ebf6f6b456b20613b218b640b.gif"
+      },
+      "position": 5,
+      "positionType": "POSITION_5",
+      "role": "HARD_SUPPORT",
+      "roleSource": "Oddin historical primaryRole THREE_MONTHS",
+      "roleFetchedAt": 1793278494663,
+      "teamName": "Team Spirit"
+    },
+    {
+      "teamId": "od:competitor:269",
+      "side": "dire",
+      "playerId": "od:player:17592",
+      "playerName": "Batyuk",
+      "hero": "tidehunter",
+      "heroId": 29,
+      "heroImages": {
+        "id": "tidehunter",
+        "image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/1acd86803bed0e765d1e98aeacee15dc.png",
+        "face_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/cf860a04decd5c83579ffdf4acd29e6e.png",
+        "gif_image": "https://static.sporthub.bet/aa3d3491a0d2a4774baa3b1863918115/multifeed/grid-widget/dota/characters/2eb6d05f49332e7fbe21fdffe98331b9.gif"
+      },
+      "position": 3,
+      "positionType": "POSITION_3",
+      "role": "OFF_LANER",
+      "roleSource": "Oddin historical primaryRole THREE_MONTHS",
+      "roleFetchedAt": 1793278494663,
+      "teamName": "Team Spirit"
+    }
+  ],
+  "event": "draft"
+}

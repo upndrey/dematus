@@ -1,0 +1,1891 @@
+[
+  {
+    "symbol": "WH",
+    "name": "bb.grid_widget.Error",
+    "fields": [
+      {
+        "no": 1,
+        "name": "message",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "details",
+        "kind": "message",
+        "repeated": false,
+        "message": "Fe"
+      }
+    ]
+  },
+  {
+    "symbol": "GH",
+    "name": "bb.grid_widget.BadRequestErrorDetails.Violation",
+    "fields": [
+      {
+        "no": 1,
+        "name": "reason",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "message",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "KH",
+    "name": "bb.grid_widget.Match",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "grid_id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "3"
+      },
+      {
+        "no": 3,
+        "name": "ready",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "widget",
+        "kind": "message",
+        "repeated": false,
+        "message": "qH"
+      },
+      {
+        "no": 5,
+        "name": "game_mode",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "qH",
+    "name": "bb.grid_widget.Match.Widget",
+    "fields": [
+      {
+        "no": 1,
+        "name": "csgo",
+        "kind": "message",
+        "repeated": false,
+        "message": "JH"
+      },
+      {
+        "no": 2,
+        "name": "dota",
+        "kind": "message",
+        "repeated": false,
+        "message": "oU"
+      },
+      {
+        "no": 3,
+        "name": "lol",
+        "kind": "message",
+        "repeated": false,
+        "message": "hU"
+      },
+      {
+        "no": 4,
+        "name": "valorant",
+        "kind": "message",
+        "repeated": false,
+        "message": "wU"
+      }
+    ]
+  },
+  {
+    "symbol": "JH",
+    "name": "bb.grid_widget.Match.Widget.Csgo",
+    "fields": [
+      {
+        "no": 1,
+        "name": "status",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "timer",
+        "kind": "message",
+        "repeated": false,
+        "message": "XH"
+      },
+      {
+        "no": 3,
+        "name": "teams",
+        "kind": "message",
+        "repeated": true,
+        "message": "ZH"
+      },
+      {
+        "no": 4,
+        "name": "games",
+        "kind": "message",
+        "repeated": true,
+        "message": "$H"
+      },
+      {
+        "no": 5,
+        "name": "last_kill",
+        "kind": "message",
+        "repeated": false,
+        "message": "rU"
+      }
+    ]
+  },
+  {
+    "symbol": "YH",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoItem",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "XH",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoTimer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "start_dttm",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "ticking",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 3,
+        "name": "ticks_backwards",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "current_seconds",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      }
+    ]
+  },
+  {
+    "symbol": "ZH",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoTeam",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "name",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "home",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "score",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 5,
+        "name": "players",
+        "kind": "message",
+        "repeated": true,
+        "message": "QH"
+      }
+    ]
+  },
+  {
+    "symbol": "QH",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoTeam.CsgoPlayer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "name",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "$H",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoGame",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "sequence",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 3,
+        "name": "map_name",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 4,
+        "name": "map_image",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 5,
+        "name": "current",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 6,
+        "name": "teams",
+        "kind": "message",
+        "repeated": true,
+        "message": "eU"
+      },
+      {
+        "no": 7,
+        "name": "map_image_v2",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 8,
+        "name": "rounds",
+        "kind": "message",
+        "repeated": true,
+        "message": "nU"
+      }
+    ]
+  },
+  {
+    "symbol": "eU",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoGame.CsgoGameTeam",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "side",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "score",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 4,
+        "name": "money",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "3"
+      },
+      {
+        "no": 5,
+        "name": "players",
+        "kind": "message",
+        "repeated": true,
+        "message": "tU"
+      }
+    ]
+  },
+  {
+    "symbol": "tU",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoGame.CsgoGameTeam.CsgoGameTeamPlayer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "alive",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 3,
+        "name": "weapon",
+        "kind": "message",
+        "repeated": false,
+        "message": "YH"
+      }
+    ]
+  },
+  {
+    "symbol": "nU",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoGame.CsgoGameRound",
+    "fields": [
+      {
+        "no": 1,
+        "name": "number",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 2,
+        "name": "winner_team_id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "side",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 4,
+        "name": "method",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "rU",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoLastKill",
+    "fields": [
+      {
+        "no": 1,
+        "name": "killer",
+        "kind": "message",
+        "repeated": false,
+        "message": "iU"
+      },
+      {
+        "no": 2,
+        "name": "assists",
+        "kind": "message",
+        "repeated": true,
+        "message": "iU"
+      },
+      {
+        "no": 3,
+        "name": "weapon",
+        "kind": "message",
+        "repeated": false,
+        "message": "YH"
+      },
+      {
+        "no": 4,
+        "name": "kill",
+        "kind": "message",
+        "repeated": false,
+        "message": "aU"
+      },
+      {
+        "no": 5,
+        "name": "target",
+        "kind": "message",
+        "repeated": false,
+        "message": "iU"
+      },
+      {
+        "no": 6,
+        "name": "dttm",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "iU",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoLastKill.CsgoKillPlayer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "aU",
+    "name": "bb.grid_widget.Match.Widget.Csgo.CsgoLastKill.CsgoKillInfo",
+    "fields": [
+      {
+        "no": 1,
+        "name": "headshot",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 2,
+        "name": "selfkill",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      }
+    ]
+  },
+  {
+    "symbol": "oU",
+    "name": "bb.grid_widget.Match.Widget.Dota",
+    "fields": [
+      {
+        "no": 1,
+        "name": "status",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "timer",
+        "kind": "message",
+        "repeated": false,
+        "message": "cU"
+      },
+      {
+        "no": 3,
+        "name": "teams",
+        "kind": "message",
+        "repeated": true,
+        "message": "lU"
+      },
+      {
+        "no": 4,
+        "name": "games",
+        "kind": "message",
+        "repeated": true,
+        "message": "dU"
+      }
+    ]
+  },
+  {
+    "symbol": "sU",
+    "name": "bb.grid_widget.Match.Widget.Dota.DotaCharacter",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "image",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "face_image",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 4,
+        "name": "gif_image",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "cU",
+    "name": "bb.grid_widget.Match.Widget.Dota.DotaTimer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "start_dttm",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "ticking",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 3,
+        "name": "ticks_backwards",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "current_seconds",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      }
+    ]
+  },
+  {
+    "symbol": "lU",
+    "name": "bb.grid_widget.Match.Widget.Dota.DotaTeam",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "name",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "home",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "score",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 5,
+        "name": "players",
+        "kind": "message",
+        "repeated": true,
+        "message": "uU"
+      }
+    ]
+  },
+  {
+    "symbol": "uU",
+    "name": "bb.grid_widget.Match.Widget.Dota.DotaTeam.DotaPlayer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "name",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "dU",
+    "name": "bb.grid_widget.Match.Widget.Dota.DotaGame",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "sequence",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 3,
+        "name": "current",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "teams",
+        "kind": "message",
+        "repeated": true,
+        "message": "fU"
+      },
+      {
+        "no": 5,
+        "name": "pick_ban_road",
+        "kind": "message",
+        "repeated": true,
+        "message": "mU"
+      }
+    ]
+  },
+  {
+    "symbol": "fU",
+    "name": "bb.grid_widget.Match.Widget.Dota.DotaGame.DotaGameTeam",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "side",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "money",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "3"
+      },
+      {
+        "no": 4,
+        "name": "kills",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 5,
+        "name": "roshan_kills",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 6,
+        "name": "towers_destroyed",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 7,
+        "name": "has_first_blood",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 8,
+        "name": "has_first_ten_kills",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 9,
+        "name": "is_winner",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 10,
+        "name": "players",
+        "kind": "message",
+        "repeated": true,
+        "message": "pU"
+      }
+    ]
+  },
+  {
+    "symbol": "pU",
+    "name": "bb.grid_widget.Match.Widget.Dota.DotaGame.DotaGameTeam.DotaGameTeamPlayer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "alive",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 3,
+        "name": "character",
+        "kind": "message",
+        "repeated": false,
+        "message": "sU"
+      }
+    ]
+  },
+  {
+    "symbol": "mU",
+    "name": "bb.grid_widget.Match.Widget.Dota.DotaGame.DotaGamePickStep",
+    "fields": [
+      {
+        "no": 1,
+        "name": "type",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "team_id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "current",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "character",
+        "kind": "message",
+        "repeated": false,
+        "message": "sU"
+      }
+    ]
+  },
+  {
+    "symbol": "hU",
+    "name": "bb.grid_widget.Match.Widget.Lol",
+    "fields": [
+      {
+        "no": 1,
+        "name": "status",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "timer",
+        "kind": "message",
+        "repeated": false,
+        "message": "_U"
+      },
+      {
+        "no": 3,
+        "name": "teams",
+        "kind": "message",
+        "repeated": true,
+        "message": "vU"
+      },
+      {
+        "no": 4,
+        "name": "games",
+        "kind": "message",
+        "repeated": true,
+        "message": "bU"
+      }
+    ]
+  },
+  {
+    "symbol": "gU",
+    "name": "bb.grid_widget.Match.Widget.Lol.LolCharacter",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "image",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "face_image",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "_U",
+    "name": "bb.grid_widget.Match.Widget.Lol.LolTimer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "start_dttm",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "ticking",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 3,
+        "name": "ticks_backwards",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "current_seconds",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      }
+    ]
+  },
+  {
+    "symbol": "vU",
+    "name": "bb.grid_widget.Match.Widget.Lol.LolTeam",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "name",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "home",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "score",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 5,
+        "name": "players",
+        "kind": "message",
+        "repeated": true,
+        "message": "yU"
+      }
+    ]
+  },
+  {
+    "symbol": "yU",
+    "name": "bb.grid_widget.Match.Widget.Lol.LolTeam.LolPlayer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "name",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "bU",
+    "name": "bb.grid_widget.Match.Widget.Lol.LolGame",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "sequence",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 3,
+        "name": "current",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "teams",
+        "kind": "message",
+        "repeated": true,
+        "message": "xU"
+      },
+      {
+        "no": 5,
+        "name": "pick_ban_road",
+        "kind": "message",
+        "repeated": true,
+        "message": "CU"
+      }
+    ]
+  },
+  {
+    "symbol": "xU",
+    "name": "bb.grid_widget.Match.Widget.Lol.LolGame.LolGameTeam",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "side",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "money",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "3"
+      },
+      {
+        "no": 4,
+        "name": "kills",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 5,
+        "name": "baron_kills",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 6,
+        "name": "dragon_kills",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 7,
+        "name": "towers_destroyed",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 8,
+        "name": "inhibitors_destroyed",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 9,
+        "name": "has_first_blood",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 10,
+        "name": "is_winner",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 11,
+        "name": "players",
+        "kind": "message",
+        "repeated": true,
+        "message": "SU"
+      }
+    ]
+  },
+  {
+    "symbol": "SU",
+    "name": "bb.grid_widget.Match.Widget.Lol.LolGame.LolGameTeam.LolGameTeamPlayer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "alive",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 3,
+        "name": "character",
+        "kind": "message",
+        "repeated": false,
+        "message": "gU"
+      }
+    ]
+  },
+  {
+    "symbol": "CU",
+    "name": "bb.grid_widget.Match.Widget.Lol.LolGame.LolGamePickStep",
+    "fields": [
+      {
+        "no": 1,
+        "name": "type",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "team_id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "current",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "character",
+        "kind": "message",
+        "repeated": false,
+        "message": "gU"
+      }
+    ]
+  },
+  {
+    "symbol": "wU",
+    "name": "bb.grid_widget.Match.Widget.Valorant",
+    "fields": [
+      {
+        "no": 1,
+        "name": "status",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "timer",
+        "kind": "message",
+        "repeated": false,
+        "message": "DU"
+      },
+      {
+        "no": 3,
+        "name": "teams",
+        "kind": "message",
+        "repeated": true,
+        "message": "OU"
+      },
+      {
+        "no": 4,
+        "name": "games",
+        "kind": "message",
+        "repeated": true,
+        "message": "AU"
+      },
+      {
+        "no": 5,
+        "name": "last_kill",
+        "kind": "message",
+        "repeated": false,
+        "message": "PU"
+      }
+    ]
+  },
+  {
+    "symbol": "TU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantWeapon",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "EU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantCharacter",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "image",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "DU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantTimer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "start_dttm",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "ticking",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 3,
+        "name": "ticks_backwards",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "current_seconds",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      }
+    ]
+  },
+  {
+    "symbol": "OU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantTeam",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "name",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "home",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 4,
+        "name": "score",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 5,
+        "name": "players",
+        "kind": "message",
+        "repeated": true,
+        "message": "kU"
+      }
+    ]
+  },
+  {
+    "symbol": "kU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantTeam.ValorantPlayer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "name",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "AU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantGame",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "sequence",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 3,
+        "name": "map_name",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 4,
+        "name": "map_image",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 5,
+        "name": "current",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 6,
+        "name": "teams",
+        "kind": "message",
+        "repeated": true,
+        "message": "jU"
+      },
+      {
+        "no": 7,
+        "name": "rounds",
+        "kind": "message",
+        "repeated": true,
+        "message": "NU"
+      },
+      {
+        "no": 8,
+        "name": "map_image_v2",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "jU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantGame.ValorantGameTeam",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "side",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "score",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 4,
+        "name": "players",
+        "kind": "message",
+        "repeated": true,
+        "message": "MU"
+      }
+    ]
+  },
+  {
+    "symbol": "MU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantGame.ValorantGameTeam.ValorantGameTeamPlayer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "alive",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 3,
+        "name": "character",
+        "kind": "message",
+        "repeated": false,
+        "message": "EU"
+      }
+    ]
+  },
+  {
+    "symbol": "NU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantGame.ValorantGameRound",
+    "fields": [
+      {
+        "no": 1,
+        "name": "number",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 2,
+        "name": "winner_team_id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "side",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 4,
+        "name": "method",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "PU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantLastKill",
+    "fields": [
+      {
+        "no": 1,
+        "name": "killer",
+        "kind": "message",
+        "repeated": false,
+        "message": "FU"
+      },
+      {
+        "no": 2,
+        "name": "assists",
+        "kind": "message",
+        "repeated": true,
+        "message": "FU"
+      },
+      {
+        "no": 3,
+        "name": "weapon",
+        "kind": "message",
+        "repeated": false,
+        "message": "TU"
+      },
+      {
+        "no": 4,
+        "name": "kill",
+        "kind": "message",
+        "repeated": false,
+        "message": "IU"
+      },
+      {
+        "no": 5,
+        "name": "target",
+        "kind": "message",
+        "repeated": false,
+        "message": "FU"
+      },
+      {
+        "no": 6,
+        "name": "dttm",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "FU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantLastKill.ValorantKillPlayer",
+    "fields": [
+      {
+        "no": 1,
+        "name": "id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "IU",
+    "name": "bb.grid_widget.Match.Widget.Valorant.ValorantLastKill.ValorantKillInfo",
+    "fields": [
+      {
+        "no": 1,
+        "name": "headshot",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      },
+      {
+        "no": 2,
+        "name": "selfkill",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "8"
+      }
+    ]
+  },
+  {
+    "symbol": "LU",
+    "name": "bb.grid_widget.MatchResponse",
+    "fields": [
+      {
+        "no": 1,
+        "name": "code",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 2,
+        "name": "status",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "error",
+        "kind": "message",
+        "repeated": false,
+        "message": "WH"
+      },
+      {
+        "no": 4,
+        "name": "match",
+        "kind": "message",
+        "repeated": false,
+        "message": "KH"
+      }
+    ]
+  },
+  {
+    "symbol": "RU",
+    "name": "bb.grid_widget.UnsubscribeMatchRequest",
+    "fields": [
+      {
+        "no": 1,
+        "name": "uid",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "match_id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "zU",
+    "name": "bb.grid_widget.UnsubscribeMatchResponse",
+    "fields": [
+      {
+        "no": 1,
+        "name": "code",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 2,
+        "name": "status",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "error",
+        "kind": "message",
+        "repeated": false,
+        "message": "WH"
+      },
+      {
+        "no": 4,
+        "name": "uid",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "BU",
+    "name": "bb.grid_widget.SubscribeMatchRequest",
+    "fields": [
+      {
+        "no": 1,
+        "name": "uid",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 2,
+        "name": "match_id",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "VU",
+    "name": "bb.grid_widget.SubscribeMatchResponse",
+    "fields": [
+      {
+        "no": 1,
+        "name": "code",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 2,
+        "name": "status",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "error",
+        "kind": "message",
+        "repeated": false,
+        "message": "WH"
+      },
+      {
+        "no": 4,
+        "name": "uid",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 5,
+        "name": "match",
+        "kind": "message",
+        "repeated": false,
+        "message": "KH"
+      }
+    ]
+  },
+  {
+    "symbol": "HU",
+    "name": "bb.grid_widget.PingRequest",
+    "fields": [
+      {
+        "no": 1,
+        "name": "uid",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "UU",
+    "name": "bb.grid_widget.PingResponse",
+    "fields": [
+      {
+        "no": 1,
+        "name": "code",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 2,
+        "name": "status",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "error",
+        "kind": "message",
+        "repeated": false,
+        "message": "WH"
+      },
+      {
+        "no": 4,
+        "name": "uid",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      }
+    ]
+  },
+  {
+    "symbol": "WU",
+    "name": "bb.grid_widget.DefaultResponse",
+    "fields": [
+      {
+        "no": 1,
+        "name": "code",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "5"
+      },
+      {
+        "no": 2,
+        "name": "status",
+        "kind": "scalar",
+        "repeated": false,
+        "scalar": "9"
+      },
+      {
+        "no": 3,
+        "name": "error",
+        "kind": "message",
+        "repeated": false,
+        "message": "WH"
+      }
+    ]
+  },
+  {
+    "symbol": "GU",
+    "name": "bb.grid_widget.MainRequest",
+    "fields": [
+      {
+        "no": 1,
+        "name": "ping",
+        "kind": "message",
+        "repeated": false,
+        "message": "HU"
+      },
+      {
+        "no": 2,
+        "name": "subscribe_match",
+        "kind": "message",
+        "repeated": false,
+        "message": "BU"
+      },
+      {
+        "no": 3,
+        "name": "unsubscribe_match",
+        "kind": "message",
+        "repeated": false,
+        "message": "RU"
+      }
+    ]
+  },
+  {
+    "symbol": "KU",
+    "name": "bb.grid_widget.MainResponse",
+    "fields": [
+      {
+        "no": 1,
+        "name": "error",
+        "kind": "message",
+        "repeated": false,
+        "message": "WU"
+      },
+      {
+        "no": 2,
+        "name": "ping",
+        "kind": "message",
+        "repeated": false,
+        "message": "UU"
+      },
+      {
+        "no": 3,
+        "name": "subscribe_match",
+        "kind": "message",
+        "repeated": false,
+        "message": "VU"
+      },
+      {
+        "no": 4,
+        "name": "unsubscribe_match",
+        "kind": "message",
+        "repeated": false,
+        "message": "zU"
+      },
+      {
+        "no": 5,
+        "name": "match",
+        "kind": "message",
+        "repeated": false,
+        "message": "LU"
+      }
+    ]
+  }
+]

@@ -1,0 +1,80 @@
+name: dematus
+
+x-persistent-volumes: &persistent-volumes
+  - /srv/dematus/.env:/var/www/html/.env:ro
+  - /srv/dematus/database.sqlite:/var/www/html/database/database.sqlite
+  - /srv/dematus/storage:/var/www/html/storage
+  - /srv/dematus/google-sheets-service-account.json:/run/secrets/google-sheets-service-account.json:ro
+  - /srv/dematus/stratz-teams.json:/var/www/html/resources/data/stratz-teams.json
+
+services:
+  app:
+    image: dematus:${DEMATUS_RELEASE:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    init: true
+    ports:
+      - 127.0.0.1:8083:80
+    volumes: *persistent-volumes
+    restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.5
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    image: dematus:${DEMATUS_RELEASE:-local}
+    init: true
+    user: "33:33"
+    command: php artisan queue:work database --queue=stratz-import,default --sleep=3 --tries=3 --timeout=200
+    volumes: *persistent-volumes
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.5
+
+  telegram-bot:
+    image: dematus:${DEMATUS_RELEASE:-local}
+    init: true
+    user: "33:33"
+    command: php artisan telegram:bot --no-interaction
+    volumes: *persistent-volumes
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+
+  telegram-watch:
+    image: dematus:${DEMATUS_RELEASE:-local}
+    init: true
+    user: "33:33"
+    command: php artisan telegram:watch --no-interaction
+    volumes: *persistent-volumes
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.5
+
+  telegram-worker:
+    image: dematus:${DEMATUS_RELEASE:-local}
+    init: true
+    user: "33:33"
+    command: php artisan queue:work telegram --queue=telegram --sleep=2 --tries=1 --timeout=900 --no-interaction
+    stop_grace_period: 16m
+    volumes: *persistent-volumes
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.0

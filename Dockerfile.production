@@ -1,0 +1,36 @@
+FROM php:8.4-apache-bookworm
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        libicu-dev \
+        libzip-dev \
+        unzip \
+    && docker-php-ext-install -j"$(nproc)" bcmath intl zip pcntl \
+    && a2enmod rewrite headers \
+    && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf \
+    && sed -ri 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf \
+    && printf 'SetEnvIf X-Forwarded-Proto "^https$" HTTPS=on\n' > /etc/apache2/conf-available/forwarded-https.conf \
+    && a2enconf forwarded-https \
+    && printf 'max_execution_time=240\nmemory_limit=512M\npost_max_size=10M\nupload_max_filesize=10M\n' > /usr/local/etc/php/conf.d/dematus.ini \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=node:22-bookworm-slim /usr/local/bin/node /usr/local/bin/node
+
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
+WORKDIR /var/www/html
+
+COPY composer.json composer.lock ./
+
+RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts --optimize-autoloader
+
+COPY . .
+
+RUN mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data database storage bootstrap/cache \
+    && composer dump-autoload --no-dev --optimize \
+    && php artisan package:discover --ansi \
+    && composer check-platform-reqs --no-dev
+
+EXPOSE 80
