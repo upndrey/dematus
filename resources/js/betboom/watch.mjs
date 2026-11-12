@@ -1,4 +1,5 @@
 import { decode, responseSchema, request } from './grid-codec.mjs';
+import { loadRoles } from './roles.mjs';
 
 const matchId = process.argv[2];
 if (!/^\d+$/.test(matchId ?? '')) throw new Error('A numeric match ID is required');
@@ -32,22 +33,9 @@ async function metadata() {
     const statistics = data.widget_groups?.flatMap(g => g.widgets ?? []).find(w => w.state === 'WIDGET_STATE_STAT');
     if (statistics?.url) {
         try {
-            const params = new URL(statistics.url).searchParams;
-            const response = await fetch('https://oddin-api-disir.sporthub.bet:470/main/disir/query', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json', 'x-api-key': params.get('brandToken'), 'x-locale': 'ru' },
-                body: JSON.stringify({
-                    variables: { homeTeamId: params.get('homeTeamId'), awayTeamId: params.get('awayTeamId') },
-                    query: 'query ($homeTeamId: ID!, $awayTeamId: ID!) { dota2TeamsHistoricalStatistics(timeframe: THREE_MONTHS, homeTeamId: $homeTeamId, awayTeamId: $awayTeamId) { teamStatistics { team { id name } players { player { id nickname } primaryRole } } } }',
-                }), signal: AbortSignal.timeout(10000),
-            });
-            const body = await response.json();
+            const loaded = await loadRoles(statistics.url, fetch, () => emit({ event: 'warning', code: 'roles_unavailable' }));
             roles.clear();
-            for (const team of body.data?.dota2TeamsHistoricalStatistics?.teamStatistics ?? []) {
-                for (const player of team.players ?? []) {
-                    roles.set(Buffer.from(player.player.id, 'base64').toString(), player.primaryRole);
-                }
-            }
+            for (const [id, role] of loaded) roles.set(id, role);
         } catch { emit({ event: 'warning', code: 'roles_unavailable' }); }
     }
     socketUrl = url.href;

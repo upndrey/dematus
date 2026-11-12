@@ -203,7 +203,14 @@ class DraftBot
                 $keyboard[] = array_map(fn (int $p): array => ['text' => (string) $p, 'callback_data' => $prefix.'set:'.$selected.':'.$p], range(1, 5));
                 $keyboard[] = [['text' => 'Назад', 'callback_data' => $prefix.'back']];
             } else {
-                foreach (array_chunk(array_keys($draft->players), 2) as $indexes) {
+                $columns = [];
+                foreach (['radiant', 'dire'] as $side) {
+                    $team = array_filter($draft->players, fn (array $player): bool => $player['side'] === $side);
+                    uasort($team, fn (array $a, array $b): int => ($a['position'] ?? 9) <=> ($b['position'] ?? 9));
+                    $columns[] = array_keys($team);
+                }
+                for ($row = 0; $row < max(count($columns[0]), count($columns[1])); $row++) {
+                    $indexes = array_values(array_filter([$columns[0][$row] ?? null, $columns[1][$row] ?? null], fn (?int $index): bool => $index !== null));
                     $keyboard[] = array_map(fn (int $index): array => ['text' => $draft->players[$index]['name'].' · '.($draft->players[$index]['position'] ?? 'не выбрано'), 'callback_data' => $prefix.'edit:'.$index], $indexes);
                 }
                 $keyboard[] = [['text' => 'Отправить в dematus', 'callback_data' => $prefix.'confirm']];

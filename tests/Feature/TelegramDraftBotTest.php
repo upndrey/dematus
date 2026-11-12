@@ -43,6 +43,37 @@ class TelegramDraftBotTest extends TestCase
         app(DraftBot::class)->callback(['id' => 'callback', 'from' => ['id' => $userId], 'message' => ['chat' => ['id' => $chatId], 'message_id' => 77], 'data' => 'd:'.$draft->id.':'.$draft->revision.':'.$action]);
     }
 
+    public function test_player_buttons_keep_teams_in_columns_and_edit_correct_players(): void
+    {
+        $draft = $this->draft();
+        $assertColumns = function (array $keyboard, array $players): void {
+            foreach (['radiant', 'dire'] as $column => $side) {
+                $expected = array_filter($players, fn (array $p): bool => $p['side'] === $side);
+                uasort($expected, fn (array $a, array $b): int => ($a['position'] ?? 9) <=> ($b['position'] ?? 9));
+                foreach (array_keys($expected) as $row => $index) {
+                    $this->assertStringEndsWith(':edit:'.$index, $keyboard[$row][$column]['callback_data']);
+                    $this->assertStringStartsWith($players[$index]['name'].' · ', $keyboard[$row][$column]['text']);
+                }
+            }
+        };
+        $sent = Http::recorded()->last()[0];
+        $assertColumns($sent['reply_markup']['inline_keyboard'], $draft->players);
+        $index = (int) array_key_first(array_filter($draft->players, fn (array $p): bool => $p['side'] === 'radiant'));
+        $this->press($draft, 'edit:'.$index);
+        $this->press($draft, 'set:'.$index.':5');
+        $draft->refresh();
+        $this->assertSame(5, $draft->players[$index]['position']);
+        $assertColumns(Http::recorded(fn ($request): bool => str_ends_with($request->url(), '/editMessageText'))->last()[0]['reply_markup']['inline_keyboard'], $draft->players);
+        $players = $draft->players;
+        foreach ($players as &$player) {
+            $player['position'] = null;
+        }
+        unset($player);
+        $draft->update(['players' => $players, 'message_hash' => null]);
+        app(DraftBot::class)->deliver($draft);
+        $assertColumns(Http::recorded(fn ($request): bool => str_ends_with($request->url(), '/editMessageText'))->last()[0]['reply_markup']['inline_keyboard'], $players);
+    }
+
     public function test_full_draft_is_normalized_and_calculation_order_follows_positions(): void
     {
         $draft = $this->draft();
