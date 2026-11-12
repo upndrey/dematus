@@ -8,6 +8,8 @@ Route::get('/login', [StaticAuthenticatedSessionController::class, 'create'])->n
 Route::post('/login', [StaticAuthenticatedSessionController::class, 'store'])
     ->middleware('throttle:5,1')
     ->name('login.store');
+Route::get('/csrf-token', [StaticAuthenticatedSessionController::class, 'csrfToken'])
+    ->name('csrf.token');
 
 Route::options('/api/dltv-match', [StratzController::class, 'dltvExtensionOptions'])
     ->name('dltv-match.options');
@@ -33,6 +35,10 @@ Route::middleware('static.auth')->group(function () {
     Route::patch('/stratz/teams/{teamRoster}', [StratzController::class, 'updateTeamRoster'])->name('stratz.teams.update');
     Route::delete('/stratz/teams/{teamRoster}', [StratzController::class, 'destroyTeamRoster'])->name('stratz.teams.destroy');
     Route::post('/stratz/draft', [StratzController::class, 'draft'])->name('stratz.draft');
+    Route::post('/stratz/import-batches', [StratzController::class, 'storeImportBatch'])->name('stratz.import-batches.store');
+    Route::post('/stratz/import-batches/league-preview', [StratzController::class, 'previewLeagueImport'])->name('stratz.import-batches.league-preview');
+    Route::post('/stratz/import-batches/resolve-league', [StratzController::class, 'resolveLeagueFromMatch'])->name('stratz.import-batches.resolve-league');
+    Route::get('/stratz/import-batches/{stratzImportBatch}', [StratzController::class, 'showImportBatch'])->name('stratz.import-batches.show');
     Route::post('/stratz/rosh', [StratzController::class, 'rosh'])->name('stratz.rosh');
     Route::post('/stratz/rosh-heroes', [StratzController::class, 'roshHeroes'])->name('stratz.rosh-heroes');
     Route::post('/stratz/rosh-html', [StratzController::class, 'roshHtml'])->name('stratz.rosh-html');

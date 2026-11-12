@@ -31,6 +31,15 @@ return [
 
     'connections' => [
 
+        'telegram' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => 'telegram',
+            'retry_after' => 1000,
+            'after_commit' => false,
+        ],
+
         'sync' => [
             'driver' => 'sync',
         ],

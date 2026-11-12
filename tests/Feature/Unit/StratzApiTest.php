@@ -4,6 +4,7 @@ namespace Tests\Feature\Unit;
 
 use App\Services\Stratz\Api;
 use Illuminate\Support\Facades\Http;
+use ReflectionMethod;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -85,5 +86,22 @@ class StratzApiTest extends TestCase
         $this->assertSame(12, data_get($payload, 'data.plus.player_0.matchCount'));
         $this->assertSame('Player Id is missing or anonymous.', data_get($payload, 'errors.0.message'));
         $this->assertSame(['plus', 'player_5'], data_get($payload, 'errors.0.path'));
+    }
+
+    public function test_it_builds_ipv4_curl_options_when_configured(): void
+    {
+        if (! defined('CURLOPT_IPRESOLVE') || ! defined('CURL_IPRESOLVE_V4')) {
+            $this->markTestSkipped('The PHP cURL constants needed to force IPv4 are not available.');
+        }
+
+        config()->set('services.stratz.force_ipv4', true);
+
+        $method = new ReflectionMethod(Api::class, 'httpOptions');
+        $options = $method->invoke(app(Api::class));
+
+        $this->assertSame(
+            constant('CURL_IPRESOLVE_V4'),
+            data_get($options, 'curl.'.constant('CURLOPT_IPRESOLVE')),
+        );
     }
 }

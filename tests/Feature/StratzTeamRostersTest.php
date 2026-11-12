@@ -14,6 +14,8 @@ class StratzTeamRostersTest extends TestCase
     {
         parent::setUp();
 
+        $this->authenticateStatically();
+
         $this->teamRostersPath = storage_path('framework/testing/stratz-team-rosters.json');
 
         File::ensureDirectoryExists(dirname($this->teamRostersPath));
